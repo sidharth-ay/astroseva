@@ -1,0 +1,252 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ============================================================
+   AI PAGE - Premium Dark Theme (only applies inside .ai-page)
+   ============================================================ */
+
+.ai-page {
+  background: radial-gradient(ellipse at 50% 0%, #1a0a2e 0%, #0a0a1a 50%, #050510 100%);
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #e5e7eb;
+}
+
+/* Starfield */
+.ai-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.15), transparent),
+    radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.1), transparent),
+    radial-gradient(1.5px 1.5px at 40% 10%, rgba(255,255,255,0.2), transparent),
+    radial-gradient(1px 1px at 55% 60%, rgba(255,255,255,0.12), transparent),
+    radial-gradient(1px 1px at 70% 25%, rgba(255,255,255,0.1), transparent),
+    radial-gradient(1.5px 1.5px at 85% 45%, rgba(255,255,255,0.18), transparent),
+    radial-gradient(1px 1px at 15% 70%, rgba(255,255,255,0.08), transparent),
+    radial-gradient(1px 1px at 60% 80%, rgba(255,255,255,0.1), transparent),
+    radial-gradient(1px 1px at 90% 75%, rgba(255,255,255,0.12), transparent),
+    radial-gradient(1px 1px at 35% 90%, rgba(255,255,255,0.08), transparent),
+    radial-gradient(1.5px 1.5px at 5% 50%, rgba(147,51,234,0.3), transparent),
+    radial-gradient(1px 1px at 50% 40%, rgba(147,51,234,0.2), transparent),
+    radial-gradient(1px 1px at 75% 55%, rgba(99,102,241,0.2), transparent);
+  background-size: 300px 200px;
+  animation: ai-drift 80s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Subtle nebula glow */
+.ai-page::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(147,51,234,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* AI Orb Avatar */
+.ai-orb {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #a78bfa, #7c3aed 50%, #4c1d95 100%);
+  box-shadow:
+    0 0 40px rgba(147, 51, 234, 0.5),
+    0 0 80px rgba(147, 51, 234, 0.2),
+    inset 0 0 20px rgba(255, 255, 255, 0.1);
+  animation: ai-pulse 3s ease-in-out infinite;
+  position: relative;
+}
+
+.ai-orb::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  animation: ai-ring-rotate 12s linear infinite;
+}
+
+.ai-orb::after {
+  content: "\2728";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+/* Glass chat bubbles */
+.ai-bubble-user {
+  background: rgba(147, 51, 234, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(147, 51, 234, 0.25);
+  border-radius: 20px 20px 4px 20px;
+  color: #e5e7eb;
+}
+
+.ai-bubble-assistant {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px 20px 20px 4px;
+  color: #e5e7eb;
+}
+
+/* Glowing input */
+.ai-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.ai-input:focus {
+  outline: none;
+  border-color: rgba(147, 51, 234, 0.5);
+  box-shadow: 0 0 20px rgba(147, 51, 234, 0.2), 0 0 40px rgba(147, 51, 234, 0.1);
+}
+
+.ai-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Glowing send button */
+.ai-send-btn {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.ai-send-btn:hover:not(:disabled) {
+  box-shadow: 0 0 30px rgba(147, 51, 234, 0.5);
+  transform: scale(1.05);
+}
+
+/* Quick action chips */
+.ai-chip {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  color: #a78bfa;
+  transition: all 0.3s ease;
+}
+
+.ai-chip:hover {
+  background: rgba(147, 51, 234, 0.15);
+  border-color: rgba(167, 139, 250, 0.5);
+  box-shadow: 0 0 15px rgba(147, 51, 234, 0.15);
+}
+
+/* Profile bar */
+.ai-profile-bar {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Header */
+.ai-header {
+  background: rgba(10, 10, 26, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Typing indicator dots */
+.ai-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a78bfa;
+  animation: ai-bounce 1.4s ease-in-out infinite;
+}
+
+.ai-dot:nth-child(2) { animation-delay: 0.16s; }
+.ai-dot:nth-child(3) { animation-delay: 0.32s; }
+
+/* Scrollbar for AI page */
+.ai-page ::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ai-page ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-page ::-webkit-scrollbar-thumb {
+  background: rgba(147, 51, 234, 0.3);
+  border-radius: 3px;
+}
+
+/* Animations */
+@keyframes ai-drift {
+  from { background-position: 0 0; }
+  to { background-position: 300px 200px; }
+}
+
+@keyframes ai-pulse {
+  0%, 100% {
+    box-shadow: 0 0 40px rgba(147, 51, 234, 0.5), 0 0 80px rgba(147, 51, 234, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 60px rgba(147, 51, 234, 0.7), 0 0 120px rgba(147, 51, 234, 0.3);
+    transform: scale(1.03);
+  }
+}
+
+@keyframes ai-ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ai-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ai-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Hide scrollbar for persona/profile horizontal scroll */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
