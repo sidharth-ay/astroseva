@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useState } from "react";
+import { useRef, useCallback, useState } from "react";
 import Link from "next/link";
 import ZodiacWheel from "@/components/ZodiacWheel";
 import HoroscopePopup from "@/components/HoroscopePopup";
 import FeatureShowcase from "@/components/FeatureShowcase";
-import MarqueeStrip from "@/components/MarqueeStrip";
+import StatsStrip from "@/components/StatsStrip";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import { useTilt } from "@/lib/useTilt";
 import { useMagnetic } from "@/lib/useMagnetic";
@@ -106,53 +106,28 @@ export default function HomePage() {
   const mag1 = useMagnetic<HTMLDivElement>(0.25, 120);
   const mag2 = useMagnetic<HTMLDivElement>(0.2, 100);
 
-  const [scrollY, setScrollY] = useState(0);
   const [popupSign, setPopupSign] = useState<string | null>(null);
-
-  useEffect(() => {
-    const onScroll = () => setScrollY(window.scrollY);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   return (
     <div>
-      {/* Horoscope Popup */}
       {popupSign && <HoroscopePopup sign={popupSign} onClose={() => setPopupSign(null)} />}
 
-      {/* Hero */}
-      <section className="relative py-20 md:py-28 overflow-hidden">
-        {/* Floating background orbs */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="hero-orb hero-orb-1" />
-          <div className="hero-orb hero-orb-2" />
-          <div className="hero-orb hero-orb-3" />
-        </div>
-
-        {/* Background layers */}
-        <div className="absolute inset-0"
-          style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(120,60,220,0.15) 0%, rgba(124,58,237,0.05) 40%, transparent 70%)" }} />
-        <div className="absolute inset-0"
-          style={{ background: "radial-gradient(ellipse at 80% 60%, rgba(251,191,36,0.04) 0%, transparent 50%)" }} />
-
-        <div className="max-w-7xl mx-auto px-4 text-center relative">
-          <div ref={heroRef} className="scroll-reveal" style={{ transform: `translateY(${scrollY * 0.15}px)` }}>
-            <div className="hero-wheel-enter">
-              <ZodiacWheel />
-            </div>
-
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold font-display mt-8 mb-6 tracking-tight text-glow-gold">
-              <span className="text-gradient-gold heading-underline">AstroSeva</span>
-            </h1>
-
-            <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed hero-subtitle" style={{ color: "var(--text-secondary)" }}>
-              Free <span className="text-gradient-purple" style={{ WebkitTextFillColor: "unset" }}>Vedic Astrology</span> Platform
-              <br className="hidden md:block" />
-              Kundli &middot; Marriage Matching &middot; AI Predictions &middot; and more
-            </p>
+      {/* ===== HERO — Full viewport cinematic ===== */}
+      <section className="hero-full">
+        <div ref={heroRef} className="scroll-reveal flex flex-col items-center gap-6">
+          <div className="hero-wheel-enter">
+            <ZodiacWheel />
           </div>
 
-          <div ref={featuresHeaderRef} className="flex flex-wrap justify-center gap-4 scroll-reveal hero-buttons" style={{ transitionDelay: "200ms" }}>
+          <h1 className="hero-title-massive font-display text-gradient-gold text-glow-gold hero-title-enter">
+            AstroSeva
+          </h1>
+
+          <p className="hero-tagline hero-subtitle">
+            Free <span className="text-gradient-purple" style={{ WebkitTextFillColor: "unset" }}>Vedic Astrology</span> Platform
+          </p>
+
+          <div ref={featuresHeaderRef} className="flex flex-wrap justify-center gap-4 hero-buttons" style={{ transitionDelay: "200ms" }}>
             <div ref={mag1.ref} onMouseMove={mag1.onMouseMove} onMouseLeave={mag1.onMouseLeave}>
               <RippleButton className="glow-btn text-lg">Generate Kundli</RippleButton>
             </div>
@@ -163,13 +138,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="section-divider" />
+      {/* ===== STATS STRIP ===== */}
+      <StatsStrip />
 
-      {/* Features Grid */}
-      <section className="py-20">
+      {/* ===== FEATURES GRID ===== */}
+      <section className="py-24 gradient-wash-purple">
         <div className="max-w-7xl mx-auto px-4">
-          <div ref={featuresGridRef} className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4 scroll-reveal">
+          <div ref={featuresGridRef} className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold font-display mb-5 scroll-reveal">
               Our <span className="text-gradient-purple text-glow">Services</span>
             </h2>
             <p className="max-w-lg mx-auto scroll-reveal" style={{ color: "var(--text-secondary)", transitionDelay: "100ms" }}>
@@ -185,23 +161,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="section-divider" />
-
-      {/* Marquee Strip */}
-      <MarqueeStrip />
-
-      <div className="section-divider" />
-
-      {/* Feature Showcase — full-width alternating sections */}
+      {/* ===== FEATURE SHOWCASE ===== */}
       <FeatureShowcase />
 
-      <div className="section-divider" />
-
-      {/* Zodiac Signs — tap for horoscope popup */}
-      <section className="py-20">
+      {/* ===== ZODIAC SIGNS — Tap for popup ===== */}
+      <section className="py-24 gradient-wash-gold">
         <div className="max-w-7xl mx-auto px-4">
-          <div ref={zodiacHeaderRef} className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4 scroll-reveal">
+          <div ref={zodiacHeaderRef} className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-bold font-display mb-5 scroll-reveal">
               Daily <span className="text-gradient-gold text-glow-gold">Horoscope</span>
             </h2>
             <p className="max-w-lg mx-auto scroll-reveal" style={{ color: "var(--text-secondary)", transitionDelay: "100ms" }}>
@@ -242,20 +209,18 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div className="section-divider" />
-
-      {/* About */}
-      <section className="py-20">
+      {/* ===== ABOUT ===== */}
+      <section className="py-24">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <div ref={aboutRef} className="scroll-reveal">
-            <h2 className="text-3xl md:text-4xl font-bold font-display mb-6">
+            <h2 className="text-3xl md:text-5xl font-bold font-display mb-8">
               About <span className="text-gradient-gold text-glow-gold">AstroSeva</span>
             </h2>
-            <p className="text-lg mb-4 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-lg mb-5 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
               AstroSeva is a free Vedic Astrology platform that provides accurate birth chart generation,
               marriage matching, AI-powered predictions, and all essential astrology tools.
             </p>
-            <p className="text-lg mb-10 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-lg mb-12 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
               Our calculations are based on the ancient Vedic astrology system with <span className="text-gradient-purple" style={{ WebkitTextFillColor: "unset" }}>Lahiri ayanamsa</span>.
             </p>
             <RippleButton className="glow-btn text-lg">Get Your Kundli Now</RippleButton>
