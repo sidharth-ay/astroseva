@@ -3,6 +3,9 @@
 import { useRef, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import ZodiacWheel from "@/components/ZodiacWheel";
+import HoroscopePopup from "@/components/HoroscopePopup";
+import FeatureShowcase from "@/components/FeatureShowcase";
+import MarqueeStrip from "@/components/MarqueeStrip";
 import { useScrollReveal } from "@/lib/useScrollReveal";
 import { useTilt } from "@/lib/useTilt";
 import { useMagnetic } from "@/lib/useMagnetic";
@@ -10,7 +13,7 @@ import { useMagnetic } from "@/lib/useMagnetic";
 const features = [
   { title: "Kundli Generator", description: "Generate your Vedic birth chart with planetary positions, houses, and analysis.", href: "/kundli", icon: "\u{1F52E}", color: "#f97316", element: "fire" },
   { title: "Marriage Matching", description: "Ashtakoot gun milan for marriage compatibility analysis.", href: "/matching", icon: "\u{1F492}", color: "#ec4899", element: "water" },
-  { title: "AI Predictions", description: "Get personalized predictions powered by AI for career, marriage, health, and more.", href: "/predictions", icon: "\u{1F52E}", color: "#b48eff", element: "air" },
+  { title: "AI Predictions", description: "Get personalized predictions powered by AI for career, marriage, health, and more.", href: "/predictions", icon: "\u2728", color: "#b48eff", element: "air" },
   { title: "Daily Horoscope", description: "Your daily horoscope with love, career, and health ratings.", href: "/horoscope", icon: "\u2B50", color: "#fbbf24", element: "fire" },
   { title: "Numerology", description: "Calculate your life path, destiny, and soul urge numbers.", href: "/numerology", icon: "\u{1F522}", color: "#facc15", element: "earth" },
   { title: "Panchang", description: "Daily panchang with tithi, nakshatra, yoga, and auspicious timings.", href: "/panchang", icon: "\u{1F570}\uFE0F", color: "#34d399", element: "earth" },
@@ -50,15 +53,15 @@ function FeatureCard({ f, index }: { f: typeof features[0]; index: number }) {
       style={{ transformStyle: "preserve-3d" }}
     >
       <Link href={f.href}
-        className="glass-card p-6 group scroll-reveal block"
+        className="glass-card p-8 group scroll-reveal block"
         style={{ textDecoration: "none", transitionDelay: `${index * 80}ms` }}>
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-4 icon-idle-pulse ${iconDelays[index]}`}
+        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mb-5 icon-idle-pulse ${iconDelays[index]}`}
           style={{ background: `${f.color}15`, color: f.color }}>
           {f.icon}
         </div>
-        <h3 className="text-lg font-bold mb-2 group-hover:text-white transition-colors" style={{ color: "var(--text-primary)" }}>{f.title}</h3>
-        <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{f.description}</p>
-        <div className="mt-4 text-xs font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        <h3 className="text-xl font-bold mb-3 group-hover:text-white transition-colors" style={{ color: "var(--text-primary)" }}>{f.title}</h3>
+        <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--text-secondary)" }}>{f.description}</p>
+        <div className="text-xs font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{ color: elementColors[f.element] }}>
           Learn more <span className="transition-transform group-hover:translate-x-1">&rarr;</span>
         </div>
@@ -104,6 +107,7 @@ export default function HomePage() {
   const mag2 = useMagnetic<HTMLDivElement>(0.2, 100);
 
   const [scrollY, setScrollY] = useState(0);
+  const [popupSign, setPopupSign] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY);
@@ -113,6 +117,9 @@ export default function HomePage() {
 
   return (
     <div>
+      {/* Horoscope Popup */}
+      {popupSign && <HoroscopePopup sign={popupSign} onClose={() => setPopupSign(null)} />}
+
       {/* Hero */}
       <section className="relative py-20 md:py-28 overflow-hidden">
         {/* Floating background orbs */}
@@ -158,7 +165,7 @@ export default function HomePage() {
 
       <div className="section-divider" />
 
-      {/* Features */}
+      {/* Features Grid */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div ref={featuresGridRef} className="text-center mb-14">
@@ -180,7 +187,17 @@ export default function HomePage() {
 
       <div className="section-divider" />
 
-      {/* Zodiac Signs */}
+      {/* Marquee Strip */}
+      <MarqueeStrip />
+
+      <div className="section-divider" />
+
+      {/* Feature Showcase — full-width alternating sections */}
+      <FeatureShowcase />
+
+      <div className="section-divider" />
+
+      {/* Zodiac Signs — tap for horoscope popup */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div ref={zodiacHeaderRef} className="text-center mb-14">
@@ -188,15 +205,15 @@ export default function HomePage() {
               Daily <span className="text-gradient-gold text-glow-gold">Horoscope</span>
             </h2>
             <p className="max-w-lg mx-auto scroll-reveal" style={{ color: "var(--text-secondary)", transitionDelay: "100ms" }}>
-              Select your zodiac sign to view today&apos;s prediction
+              Tap your zodiac sign to view today&apos;s prediction
             </p>
           </div>
 
           <div ref={zodiacGridRef} className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 scroll-stagger">
             {zodiacSigns.map((z, i) => (
-              <Link key={z.sign} href={`/horoscope?sign=${z.sign}`}
-                className="text-center p-5 rounded-xl scroll-reveal group zodiac-sign-card"
-                style={{ border: "1px solid transparent", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)", animationDelay: `${i * 60}ms` }}
+              <button key={z.sign} onClick={() => setPopupSign(z.sign)}
+                className="text-center p-5 rounded-xl scroll-reveal group zodiac-sign-card cursor-pointer"
+                style={{ border: "1px solid transparent", background: "transparent", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)", animationDelay: `${i * 60}ms` }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = `${elementColors[z.element]}40`;
                   e.currentTarget.style.background = `${elementColors[z.element]}08`;
@@ -215,7 +232,11 @@ export default function HomePage() {
                   {z.symbol}
                 </div>
                 <div className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{z.name}</div>
-              </Link>
+                <div className="text-[10px] mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ color: elementColors[z.element] }}>
+                  tap for horoscope
+                </div>
+              </button>
             ))}
           </div>
         </div>
