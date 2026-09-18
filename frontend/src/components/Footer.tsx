@@ -6,13 +6,13 @@ export default function Footer() {
   return (
     <footer className="mt-auto">
       <div className="footer-gradient-border" />
-      <div style={{ background: "rgba(3, 0, 20, 0.9)" }}>
+      <div style={{ background: "rgba(10, 10, 26, 0.9)" }}>
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
-                  style={{ background: "linear-gradient(135deg, var(--accent-deep), #6d28d9)" }}>
+                  style={{ background: "linear-gradient(135deg, var(--accent-deep), var(--accent))" }}>
                   &#x2728;
                 </div>
                 <h3 className="font-bold text-lg text-gradient-gold">AstroSeva</h3>
@@ -62,7 +62,7 @@ export default function Footer() {
             </div>
           </div>
           <div className="mt-10 pt-6 text-center text-xs"
-            style={{ borderTop: "1px solid rgba(120, 60, 220, 0.08)", color: "var(--text-secondary)" }}>
+            style={{ borderTop: "1px solid rgba(139, 126, 200, 0.08)", color: "var(--text-secondary)" }}>
             <p>AstroSeva &mdash; Vedic Astrology Platform. For educational purposes only. &copy; {new Date().getFullYear()}</p>
           </div>
         </div>

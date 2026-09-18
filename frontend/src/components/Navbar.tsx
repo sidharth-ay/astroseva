@@ -22,7 +22,7 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50"
       style={{
-        background: "rgba(3, 0, 20, 0.85)",
+        background: "rgba(10, 10, 26, 0.85)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         borderBottom: "1px solid var(--border)",
@@ -31,7 +31,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-transform duration-300 group-hover:scale-110"
-              style={{ background: "linear-gradient(135deg, var(--accent-deep), #6d28d9)" }}>
+              style={{ background: "linear-gradient(135deg, var(--accent-deep), var(--accent))" }}>
               &#x2728;
             </div>
             <span className="text-xl font-bold text-gradient-gold">AstroSeva</span>
