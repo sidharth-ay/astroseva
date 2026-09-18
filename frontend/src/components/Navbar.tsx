@@ -20,20 +20,21 @@ export default function Navbar() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-[var(--border)]"
+    <nav className="sticky top-0 z-50"
       style={{
-        background: "rgba(5, 5, 16, 0.8)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
+        background: "rgba(3, 0, 20, 0.85)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        borderBottom: "1px solid var(--border)",
       }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg"
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-transform duration-300 group-hover:scale-110"
               style={{ background: "linear-gradient(135deg, var(--accent-deep), #6d28d9)" }}>
               &#x2728;
             </div>
-            <span className="text-xl font-bold" style={{ color: "var(--gold)" }}>AstroSeva</span>
+            <span className="text-xl font-bold text-gradient-gold">AstroSeva</span>
           </Link>
 
           {/* Desktop nav */}
@@ -42,12 +43,7 @@ export default function Navbar() {
               const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
               return (
                 <Link key={link.href} href={link.href}
-                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    active
-                      ? "text-white bg-white/10"
-                      : "text-white/50 hover:text-white hover:bg-white/5"
-                  }`}
-                  style={active ? { boxShadow: "0 0 15px rgba(147,51,234,0.2)" } : {}}>
+                  className={`nav-link ${active ? "active" : ""}`}>
                   {link.label}
                 </Link>
               );
@@ -56,7 +52,7 @@ export default function Navbar() {
 
           {/* Mobile toggle */}
           <button onClick={() => setOpen(!open)}
-            className="md:hidden text-white/60 hover:text-white p-2 rounded-lg transition-colors"
+            className="md:hidden text-white/60 hover:text-white p-2 rounded-lg transition-all duration-200 hover:bg-white/5"
             aria-label="Toggle navigation" aria-expanded={open}>
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {open ? (
@@ -70,26 +66,20 @@ export default function Navbar() {
       </div>
 
       {/* Mobile nav overlay */}
-      {open && (
-        <div className="md:hidden border-t border-[var(--border)] animate-fade-in"
-          style={{ background: "rgba(5, 5, 16, 0.95)" }}>
-          <div className="px-4 py-3 space-y-1">
-            {navLinks.map((link) => {
-              const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
-              return (
-                <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
-                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                    active
-                      ? "text-white bg-white/10"
-                      : "text-white/50 hover:text-white hover:bg-white/5"
-                  }`}>
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
+      <div className={`md:hidden overflow-hidden transition-all duration-300 ease-out ${open ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}`}
+        style={{ borderTop: open ? "1px solid var(--border)" : "none" }}>
+        <div className="px-4 py-3 space-y-1" style={{ background: "rgba(3, 0, 20, 0.95)" }}>
+          {navLinks.map((link) => {
+            const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+            return (
+              <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
+                className={`nav-link block ${active ? "active" : ""}`}>
+                {link.label}
+              </Link>
+            );
+          })}
         </div>
-      )}
+      </div>
     </nav>
   );
 }

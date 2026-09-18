@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { api, MatchingResponse } from "@/lib/api";
 import CitySearch from "@/components/CitySearch";
+import { useScrollReveal } from "@/lib/useScrollReveal";
 
 export default function MatchingPage() {
+  const headerRef = useScrollReveal();
+  const formRef = useScrollReveal();
   const [boy, setBoy] = useState({ name: "", birth_date: "1990-01-01", birth_time: "10:00", birth_place: "Delhi", latitude: 28.6139, longitude: 77.209, timezone_offset: 5.5 });
   const [girl, setGirl] = useState({ name: "", birth_date: "1992-05-15", birth_time: "14:00", birth_place: "Delhi", latitude: 28.6139, longitude: 77.209, timezone_offset: 5.5 });
   const [result, setResult] = useState<MatchingResponse | null>(null);
@@ -32,10 +35,12 @@ export default function MatchingPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold mb-2 animate-fade-in-up">Marriage Matching</h1>
-      <p className="mb-8 animate-fade-in-up" style={{ color: "var(--text-secondary)" }}>Ashtakoot Gun Milan for marriage compatibility</p>
+      <div ref={headerRef} className="scroll-reveal">
+        <h1 className="text-3xl md:text-4xl font-bold mb-2">Marriage <span className="text-gradient-purple">Matching</span></h1>
+        <p className="mb-8" style={{ color: "var(--text-secondary)" }}>Ashtakoot Gun Milan for marriage compatibility</p>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div ref={formRef} className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 scroll-reveal" style={{ transitionDelay: "100ms" }}>
         {[
           { label: "Groom Details", data: boy, setter: setBoy, accent: "var(--accent)" },
           { label: "Bride Details", data: girl, setter: setGirl, accent: "#ec4899" },

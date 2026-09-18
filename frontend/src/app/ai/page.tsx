@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { useScrollReveal } from "@/lib/useScrollReveal";
 
 const quickQuestions = [
   "What does my birth chart say about my career?",
@@ -12,6 +13,8 @@ const quickQuestions = [
 ];
 
 export default function AiPage() {
+  const headerRef = useScrollReveal();
+  const inputRef = useScrollReveal();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,11 +36,13 @@ export default function AiPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold mb-2 animate-fade-in-up">AI Astrologer</h1>
-      <p className="mb-8 animate-fade-in-up" style={{ color: "var(--text-secondary)" }}>Ask questions about Vedic astrology, your chart, or predictions</p>
+      <div ref={headerRef} className="scroll-reveal">
+        <h1 className="text-3xl md:text-4xl font-bold mb-2">AI <span className="text-gradient-purple">Astrologer</span></h1>
+        <p className="mb-8" style={{ color: "var(--text-secondary)" }}>Ask questions about Vedic astrology, your chart, or predictions</p>
+      </div>
 
       {/* Quick Questions */}
-      <div className="mb-6 animate-fade-in-up">
+      <div className="mb-6">
         <p className="text-sm font-medium mb-3" style={{ color: "var(--text-secondary)" }}>Quick questions:</p>
         <div className="flex flex-wrap gap-2">
           {quickQuestions.map((q, i) => (
@@ -51,7 +56,7 @@ export default function AiPage() {
       </div>
 
       {/* Input */}
-      <div className="glass-card p-4 mb-6 animate-fade-in-up">
+      <div ref={inputRef} className="glass-card p-4 mb-6 scroll-reveal" style={{ transitionDelay: "100ms" }}>
         <div className="flex gap-3">
           <input type="text" placeholder="Ask anything about Vedic astrology..." value={question}
             onChange={(e) => setQuestion(e.target.value)}

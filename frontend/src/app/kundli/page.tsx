@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api, KundliResponse } from "@/lib/api";
 import KundliChart from "@/components/KundliChart";
 import CitySearch from "@/components/CitySearch";
+import { useScrollReveal } from "@/lib/useScrollReveal";
 
 const zodiacMap: Record<number, { en: string; hi: string }> = {
   0: { en: "Aries", hi: "\u092E\u0947\u0937" }, 1: { en: "Taurus", hi: "\u0935\u0943\u0937\u092D" },
@@ -15,6 +16,8 @@ const zodiacMap: Record<number, { en: string; hi: string }> = {
 };
 
 export default function KundliPage() {
+  const headerRef = useScrollReveal();
+  const formRef = useScrollReveal();
   const [form, setForm] = useState({
     name: "",
     birth_date: "1990-05-15",
@@ -80,13 +83,15 @@ export default function KundliPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold mb-2 animate-fade-in-up">Kundli Generator</h1>
-      <p className="mb-8 animate-fade-in-up" style={{ color: "var(--text-secondary)" }}>
-        Generate your Vedic birth chart with planetary positions
-      </p>
+      <div ref={headerRef} className="scroll-reveal">
+        <h1 className="text-3xl md:text-4xl font-bold mb-2">Kundli <span className="text-gradient-purple">Generator</span></h1>
+        <p className="mb-8" style={{ color: "var(--text-secondary)" }}>
+          Generate your Vedic birth chart with planetary positions
+        </p>
+      </div>
 
       {/* Form */}
-      <div className="glass-card p-6 mb-8 animate-fade-in-up">
+      <div ref={formRef} className="glass-card p-6 mb-8 scroll-reveal" style={{ transitionDelay: "100ms" }}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Name</label>

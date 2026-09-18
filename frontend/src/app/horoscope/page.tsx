@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api, HoroscopeResponse } from "@/lib/api";
+import { useScrollReveal } from "@/lib/useScrollReveal";
 
 const zodiacSigns = [
   { sign: "aries", name: "Aries", symbol: "\u2648" }, { sign: "taurus", name: "Taurus", symbol: "\u2649" },
@@ -15,6 +16,8 @@ const zodiacSigns = [
 const ratingLabels = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
 
 export default function HoroscopePage() {
+  const headerRef = useScrollReveal();
+  const selectorRef = useScrollReveal();
   const [sign, setSign] = useState("aries");
   const [result, setResult] = useState<HoroscopeResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,11 +34,13 @@ export default function HoroscopePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold mb-2 animate-fade-in-up">Daily Horoscope</h1>
-      <p className="mb-8 animate-fade-in-up" style={{ color: "var(--text-secondary)" }}>Select your zodiac sign for today&apos;s prediction</p>
+      <div ref={headerRef} className="scroll-reveal">
+        <h1 className="text-3xl md:text-4xl font-bold mb-2">Daily <span className="text-gradient-gold">Horoscope</span></h1>
+        <p className="mb-8" style={{ color: "var(--text-secondary)" }}>Select your zodiac sign for today&apos;s prediction</p>
+      </div>
 
       {/* Sign selector */}
-      <div className="flex flex-wrap justify-center gap-3 mb-10 animate-fade-in-up">
+      <div ref={selectorRef} className="flex flex-wrap justify-center gap-3 mb-10 scroll-reveal" style={{ transitionDelay: "100ms" }}>
         {zodiacSigns.map((z) => (
           <button key={z.sign} onClick={() => setSign(z.sign)}
             className="px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"

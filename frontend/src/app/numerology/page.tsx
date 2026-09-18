@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useScrollReveal } from "@/lib/useScrollReveal";
 
 const lifePathExplanations: Record<number, string> = {
   1: "Natural-born leader with strong will and independence. Pioneering spirit, ambitious, confident, determined.",
@@ -15,6 +16,8 @@ const lifePathExplanations: Record<number, string> = {
 };
 
 export default function NumerologyPage() {
+  const headerRef = useScrollReveal();
+  const formRef = useScrollReveal();
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [result, setResult] = useState<{ lifePath: number; destiny: number; soulUrge: number; personality: number } | null>(null);
@@ -47,11 +50,13 @@ export default function NumerologyPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold mb-2 animate-fade-in-up">Numerology Calculator</h1>
-      <p className="mb-8 animate-fade-in-up" style={{ color: "var(--text-secondary)" }}>Calculate your Life Path, Destiny, Soul Urge &amp; Personality numbers</p>
+      <div ref={headerRef} className="scroll-reveal">
+        <h1 className="text-3xl md:text-4xl font-bold mb-2"><span className="text-gradient-mixed">Numerology</span> Calculator</h1>
+        <p className="mb-8" style={{ color: "var(--text-secondary)" }}>Calculate your Life Path, Destiny, Soul Urge &amp; Personality numbers</p>
+      </div>
 
       {/* Form */}
-      <div className="glass-card p-6 mb-10 animate-fade-in-up">
+      <div ref={formRef} className="glass-card p-6 mb-10 scroll-reveal" style={{ transitionDelay: "100ms" }}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Full Name</label>
