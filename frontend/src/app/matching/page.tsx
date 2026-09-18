@@ -18,124 +18,103 @@ export default function MatchingPage() {
   const handleAnalyze = async () => {
     if (!boy.name || !girl.name) { setError("Please enter both names"); return; }
     setLoading(true); setError("");
-    try {
-      const data = await api.analyzeMatching(boy, girl);
-      setResult(data);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed");
-    } finally { setLoading(false); }
+    try { const data = await api.analyzeMatching(boy, girl); setResult(data); }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed"); }
+    finally { setLoading(false); }
   };
 
   const getScoreColor = (score: number, max: number) => {
     const pct = (score / max) * 100;
-    if (pct >= 75) return "text-green-600";
-    if (pct >= 50) return "text-yellow-600";
-    return "text-red-600";
+    if (pct >= 75) return "var(--success)";
+    if (pct >= 50) return "var(--gold)";
+    return "var(--danger)";
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Marriage Matching</h1>
-      <p className="text-gray-700 mb-8">Ashtakoot Gun Milan for marriage compatibility</p>
+      <h1 className="text-3xl font-bold mb-2 animate-fade-in-up">Marriage Matching</h1>
+      <p className="mb-8 animate-fade-in-up" style={{ color: "var(--text-secondary)" }}>Ashtakoot Gun Milan for marriage compatibility</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Boy Form */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-lg font-bold text-blue-600 mb-4">Groom Details</h2>
-          <div className="space-y-3">
-            <div>
-              <label htmlFor="boy-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input id="boy-name" type="text" placeholder="Name" value={boy.name} onChange={(e) => setBoy({ ...boy, name: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
-            </div>
-            <div>
-              <label htmlFor="boy-date" className="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
-              <input id="boy-date" type="date" value={boy.birth_date} onChange={(e) => setBoy({ ...boy, birth_date: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
-            </div>
-            <div>
-              <label htmlFor="boy-time" className="block text-sm font-medium text-gray-700 mb-1">Birth Time</label>
-              <input id="boy-time" type="time" value={boy.birth_time} onChange={(e) => setBoy({ ...boy, birth_time: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
-            </div>
-            <div>
-              <label htmlFor="boy-city" className="block text-sm font-medium text-gray-700 mb-1">Birth City</label>
-              <CitySearch value={boy.birth_place} onChange={(c) => handleCity(setBoy, c)} placeholder="Search city..." />
-            </div>
-          </div>
-        </div>
-
-        {/* Girl Form */}
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-lg font-bold text-pink-600 mb-4">Bride Details</h2>
-          <div className="space-y-3">
-            <div>
-              <label htmlFor="girl-name" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input id="girl-name" type="text" placeholder="Name" value={girl.name} onChange={(e) => setGirl({ ...girl, name: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
-            </div>
-            <div>
-              <label htmlFor="girl-date" className="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
-              <input id="girl-date" type="date" value={girl.birth_date} onChange={(e) => setGirl({ ...girl, birth_date: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
-            </div>
-            <div>
-              <label htmlFor="girl-time" className="block text-sm font-medium text-gray-700 mb-1">Birth Time</label>
-              <input id="girl-time" type="time" value={girl.birth_time} onChange={(e) => setGirl({ ...girl, birth_time: e.target.value })}
-                className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
-            </div>
-            <div>
-              <label htmlFor="girl-city" className="block text-sm font-medium text-gray-700 mb-1">Birth City</label>
-              <CitySearch value={girl.birth_place} onChange={(c) => handleCity(setGirl, c)} placeholder="Search city..." />
+        {[
+          { label: "Groom Details", data: boy, setter: setBoy, accent: "var(--accent)" },
+          { label: "Bride Details", data: girl, setter: setGirl, accent: "#ec4899" },
+        ].map(({ label, data, setter, accent }) => (
+          <div key={label} className="glass-card p-6 animate-fade-in-up">
+            <h2 className="text-lg font-bold mb-4" style={{ color: accent }}>{label}</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Name</label>
+                <input type="text" placeholder="Name" value={data.name} onChange={(e) => setter({ ...data, name: e.target.value })} className="cosmic-input" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth Date</label>
+                <input type="date" value={data.birth_date} onChange={(e) => setter({ ...data, birth_date: e.target.value })} className="cosmic-input" style={{ colorScheme: "dark" }} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth Time</label>
+                <input type="time" value={data.birth_time} onChange={(e) => setter({ ...data, birth_time: e.target.value })} className="cosmic-input" style={{ colorScheme: "dark" }} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth City</label>
+                <CitySearch value={data.birth_place} onChange={(c) => handleCity(setter, c)} placeholder="Search city..." />
+              </div>
             </div>
           </div>
-        </div>
+        ))}
       </div>
 
-      <button onClick={handleAnalyze} disabled={loading}
-        className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-8 py-3 rounded-lg disabled:opacity-50 mb-8">
-        {loading ? "Analyzing..." : "Analyze Matching"}
-      </button>
-      {error && <p className="text-red-500 mb-4">{error}</p>}
+      <div className="flex justify-center mb-8">
+        <button onClick={handleAnalyze} disabled={loading} className="glow-btn-purple px-10 py-3 text-lg">
+          {loading ? "Analyzing..." : "Analyze Matching"}
+        </button>
+      </div>
 
-      {/* Results */}
+      {error && (
+        <div className="mb-6 p-3 rounded-lg text-sm text-center" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--danger)" }}>
+          {error}
+        </div>
+      )}
+
       {result && (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in-up">
           {/* Score Card */}
-          <div className="bg-white rounded-xl shadow-md p-6 text-center">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              {result.boy_name} & {result.girl_name}
-            </h2>
-            <div className="text-6xl font-bold text-purple-600 mb-2">
+          <div className="glass-card p-8 text-center">
+            <h2 className="text-2xl font-bold mb-4">{result.boy_name} &amp; {result.girl_name}</h2>
+            <div className="text-6xl font-bold mb-2" style={{ color: "var(--gold)" }}>
               {result.total_score}/{result.max_score}
             </div>
-            <div className="text-xl text-gray-900 mb-2">
+            <div className="text-xl mb-2" style={{ color: "var(--text-primary)" }}>
               {result.compatibility_percentage}% Compatible
             </div>
-            <div className={`text-lg font-semibold ${getScoreColor(result.total_score, result.max_score)}`}>
+            <div className="text-lg font-semibold mb-4" style={{ color: getScoreColor(result.total_score, result.max_score) }}>
               {result.recommendation}
             </div>
             {result.nadi_dosha && (
-              <div className="mt-4 bg-red-50 text-red-700 px-4 py-2 rounded-lg">
-                Nadi Dosha Detected - Consult an astrologer
+              <div className="p-3 rounded-lg text-sm inline-block" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--danger)" }}>
+                Nadi Dosha Detected &mdash; Consult an astrologer
               </div>
             )}
           </div>
 
           {/* Koota Details */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Ashtakoot Analysis</h2>
+          <div className="glass-card p-6">
+            <h2 className="text-xl font-bold mb-4">Ashtakoot Analysis</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(result.kootas).map(([key, koota]: [string, any]) => (
-                <div key={key} className="bg-gray-50 rounded-lg p-4">
+                <div key={key} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)" }}>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="font-semibold text-base text-gray-900 capitalize">{koota.koota}</span>
-                    <span className={`font-bold text-lg ${getScoreColor(koota.score, koota.max_points)}`}>
+                    <span className="font-semibold capitalize">{koota.koota}</span>
+                    <span className="font-bold" style={{ color: getScoreColor(koota.score, koota.max_points) }}>
                       {koota.score}/{koota.max_points}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div className="bg-purple-600 h-3 rounded-full" style={{ width: `${(koota.score / koota.max_points) * 100}%` }} />
+                  <div className="w-full rounded-full h-2" style={{ background: "rgba(255,255,255,0.06)" }}>
+                    <div className="h-2 rounded-full transition-all duration-700"
+                      style={{
+                        width: `${(koota.score / koota.max_points) * 100}%`,
+                        background: `linear-gradient(90deg, var(--accent-deep), ${getScoreColor(koota.score, koota.max_points)})`,
+                      }} />
                   </div>
                 </div>
               ))}

@@ -1,96 +1,108 @@
 "use client";
 
 import { useState } from "react";
-import { api, NumerologyResponse } from "@/lib/api";
+
+const lifePathExplanations: Record<number, string> = {
+  1: "Natural-born leader with strong will and independence. Pioneering spirit, ambitious, confident, determined.",
+  2: "Diplomatic, sensitive, and cooperative. Great mediator, intuitive, supportive, values harmony.",
+  3: "Creative, expressive, and optimistic. Excellent communicator, artistic talent, social and charming.",
+  4: "Practical, hardworking, and disciplined. Reliable builder, methodical, values stability and order.",
+  5: "Adventurous, versatile, and freedom-loving. Dynamic, curious, adaptable, restless energy.",
+  6: "Nurturing, responsible, and harmonious. Caring, family-oriented, seeks balance and beauty.",
+  7: "Analytical, spiritual, and introspective. Deep thinker, seeker of truth, values knowledge.",
+  8: "Ambitious, authoritative, and success-driven. Strong business sense, material mastery, powerful.",
+  9: "Humanitarian, compassionate, and idealistic. Generous, wise, selfless, global perspective.",
+};
 
 export default function NumerologyPage() {
   const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState("1990-05-15");
-  const [result, setResult] = useState<NumerologyResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [result, setResult] = useState<{ lifePath: number; destiny: number; soulUrge: number; personality: number } | null>(null);
 
-  const handleAnalyze = async () => {
-    if (!name) { setError("Please enter your name"); return; }
-    setLoading(true); setError("");
-    try {
-      const data = await api.getNumerology(name, birthDate);
-      setResult(data);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed");
-    } finally { setLoading(false); }
+  const reduceToSingle = (n: number): number => {
+    while (n > 9 && n !== 11 && n !== 22 && n !== 33) {
+      n = Math.floor(n / 10) + (n % 10);
+    }
+    return n;
   };
 
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Numerology</h1>
-      <p className="text-gray-700 mb-8">Discover your life path and destiny numbers</p>
+  const calculate = () => {
+    if (!name || !birthDate) return;
+    const nums = birthDate.replace(/-/g, "").split("").map(Number);
+    const lifePath = reduceToSingle(nums.reduce((a, b) => a + b, 0));
+    const destiny = reduceToSingle(name.toLowerCase().split("").filter((c) => c >= "a" && c <= "z").reduce((a, c) => a + (c.charCodeAt(0) - 96), 0));
+    const vowels = "aeiou";
+    const soulUrge = reduceToSingle(name.toLowerCase().split("").filter((c) => vowels.includes(c)).reduce((a, c) => a + (c.charCodeAt(0) - 96), 0));
+    const consonants = name.toLowerCase().split("").filter((c) => c >= "a" && c <= "z" && !vowels.includes(c));
+    const personality = reduceToSingle(consonants.reduce((a, c) => a + (c.charCodeAt(0) - 96), 0));
+    setResult({ lifePath, destiny, soulUrge, personality });
+  };
 
-      <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[200px]">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-            <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your full name"
-              className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
+  const orbs = [
+    { num: result?.lifePath, label: "Life Path", color: "var(--accent)", size: "120px" },
+    { num: result?.destiny, label: "Destiny", color: "var(--gold)", size: "100px" },
+    { num: result?.soulUrge, label: "Soul Urge", color: "#ec4899", size: "90px" },
+    { num: result?.personality, label: "Personality", color: "#60a5fa", size: "80px" },
+  ];
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-10">
+      <h1 className="text-3xl font-bold mb-2 animate-fade-in-up">Numerology Calculator</h1>
+      <p className="mb-8 animate-fade-in-up" style={{ color: "var(--text-secondary)" }}>Calculate your Life Path, Destiny, Soul Urge &amp; Personality numbers</p>
+
+      {/* Form */}
+      <div className="glass-card p-6 mb-10 animate-fade-in-up">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Full Name</label>
+            <input type="text" placeholder="Enter full name" value={name} onChange={(e) => setName(e.target.value)} className="cosmic-input" />
           </div>
           <div>
-            <label htmlFor="birth-date" className="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
-            <input id="birth-date" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth Date</label>
+            <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="cosmic-input" style={{ colorScheme: "dark" }} />
           </div>
-          <button onClick={handleAnalyze} disabled={loading}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 rounded-lg disabled:opacity-50">
-            {loading ? "Analyzing..." : "Analyze"}
-          </button>
+          <div className="flex items-end">
+            <button onClick={calculate} className="glow-btn-purple">Calculate</button>
+          </div>
         </div>
-        {error && <p className="text-red-500 mt-4">{error}</p>}
       </div>
 
+      {/* Result */}
       {result && (
-        <div className="space-y-6">
-          {/* Main Numbers */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {[
-              { label: "Life Path", value: result.life_path.life_path_number, planet: result.life_path.planet, color: "bg-purple-500" },
-              { label: "Destiny", value: result.destiny.destiny_number, planet: result.destiny.planet, color: "bg-indigo-500" },
-              { label: "Birthday", value: result.birthday.birthday_number, planet: "", color: "bg-pink-500" },
-              { label: "Soul Urge", value: result.soul_urge.soul_urge_number, planet: "", color: "bg-blue-500" },
-              { label: "Personality", value: result.personality.personality_number, planet: "", color: "bg-green-500" },
-            ].map((item) => (
-              <div key={item.label} className="bg-white rounded-xl shadow-md p-6 text-center">
-                <div className={`w-20 h-20 ${item.color} rounded-full flex items-center justify-center text-white text-3xl font-bold mx-auto mb-3`}>
-                  {item.value}
+        <div className="animate-fade-in-up">
+          {/* Glowing orbs */}
+          <div className="flex flex-wrap justify-center items-center gap-6 mb-10 py-8">
+            {orbs.map((o) => o.num && (
+              <div key={o.label} className="text-center animate-float" style={{ animationDelay: `${orbs.indexOf(o) * 200}ms` }}>
+                <div className="rounded-full flex items-center justify-center mx-auto mb-3 animate-glow-pulse"
+                  style={{
+                    width: o.size, height: o.size,
+                    background: `radial-gradient(circle, ${o.color}30, transparent)`,
+                    border: `2px solid ${o.color}`,
+                    boxShadow: `0 0 30px ${o.color}40`,
+                  }}>
+                  <span className="text-3xl font-bold" style={{ color: o.color }}>{o.num}</span>
                 </div>
-                <div className="font-semibold text-base text-gray-900">{item.label}</div>
-                {item.planet && <div className="text-sm text-gray-700">{item.planet}</div>}
+                <div className="text-sm font-medium">{o.label}</div>
               </div>
             ))}
           </div>
 
-          {/* Traits */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Your Traits</h2>
-            <div className="flex flex-wrap gap-2">
-              {result.life_path.traits.map((trait) => (
-                <span key={trait} className="bg-purple-100 text-purple-700 px-4 py-1.5 rounded-full text-base font-medium">{trait}</span>
-              ))}
-              {result.destiny.traits.map((trait) => (
-                <span key={trait} className="bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-base font-medium">{trait}</span>
-              ))}
-            </div>
-          </div>
-
-          {/* Lucky Numbers */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Lucky Numbers</h2>
-            <div className="flex gap-4">
-              {result.lucky_numbers.map((num) => (
-                <div key={num} className="w-14 h-14 bg-yellow-400 text-purple-900 rounded-full flex items-center justify-center text-2xl font-bold">
-                  {num}
-                </div>
-              ))}
-            </div>
+          {/* Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {[
+              { num: result.lifePath, title: "Life Path Number", desc: "Your life purpose and journey path." },
+              { num: result.destiny, title: "Destiny Number", desc: "Your life goal and what you're meant to achieve." },
+              { num: result.soulUrge, title: "Soul Urge Number", desc: "Your inner self and deepest desires." },
+              { num: result.personality, title: "Personality Number", desc: "How others perceive you." },
+            ].map((item) => (
+              <div key={item.title} className="glass-card p-6">
+                <div className="text-3xl font-bold mb-1" style={{ color: "var(--gold)" }}>{item.num}</div>
+                <h3 className="font-bold mb-2">{item.title}</h3>
+                <p className="text-sm mb-3" style={{ color: "var(--text-secondary)" }}>{item.desc}</p>
+                <p className="text-sm leading-relaxed">{lifePathExplanations[item.num] || `Number ${item.num} carries unique energy and significance.`}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}

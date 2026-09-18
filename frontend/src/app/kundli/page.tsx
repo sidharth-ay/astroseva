@@ -6,12 +6,12 @@ import KundliChart from "@/components/KundliChart";
 import CitySearch from "@/components/CitySearch";
 
 const zodiacMap: Record<number, { en: string; hi: string }> = {
-  0: { en: "Aries", hi: "मेष" }, 1: { en: "Taurus", hi: "वृषभ" },
-  2: { en: "Gemini", hi: "मिथुन" }, 3: { en: "Cancer", hi: "कर्क" },
-  4: { en: "Leo", hi: "सिंह" }, 5: { en: "Virgo", hi: "कन्या" },
-  6: { en: "Libra", hi: "तुला" }, 7: { en: "Scorpio", hi: "वृश्चिक" },
-  8: { en: "Sagittarius", hi: "धनु" }, 9: { en: "Capricorn", hi: "मकर" },
-  10: { en: "Aquarius", hi: "कुम्भ" }, 11: { en: "Pisces", hi: "मीन" },
+  0: { en: "Aries", hi: "\u092E\u0947\u0937" }, 1: { en: "Taurus", hi: "\u0935\u0943\u0937\u092D" },
+  2: { en: "Gemini", hi: "\u092E\u093F\u0925\u0941\u0928" }, 3: { en: "Cancer", hi: "\u0915\u0930\u094D\u0915" },
+  4: { en: "Leo", hi: "\u0938\u093F\u0902\u0939" }, 5: { en: "Virgo", hi: "\u0915\u0928\u094D\u092F\u093E" },
+  6: { en: "Libra", hi: "\u0924\u0941\u0932\u093E" }, 7: { en: "Scorpio", hi: "\u0935\u0943\u0936\u094D\u091A\u093F\u0915" },
+  8: { en: "Sagittarius", hi: "\u0927\u0928\u0941" }, 9: { en: "Capricorn", hi: "\u092E\u0915\u0930" },
+  10: { en: "Aquarius", hi: "\u0915\u0941\u092E\u094D\u092D" }, 11: { en: "Pisces", hi: "\u092E\u0940\u0928" },
 };
 
 export default function KundliPage() {
@@ -43,7 +43,6 @@ export default function KundliPage() {
         timezone_offset: form.timezone_offset,
       });
       setResult(data);
-      // Save to localStorage
       const saved = JSON.parse(localStorage.getItem("kundli_history") || "[]");
       saved.unshift({ ...data, saved_at: new Date().toISOString() });
       localStorage.setItem("kundli_history", JSON.stringify(saved.slice(0, 10)));
@@ -81,95 +80,112 @@ export default function KundliPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Kundli Generator</h1>
-      <p className="text-gray-700 mb-8">Generate your Vedic birth chart with planetary positions</p>
+      <h1 className="text-3xl font-bold mb-2 animate-fade-in-up">Kundli Generator</h1>
+      <p className="mb-8 animate-fade-in-up" style={{ color: "var(--text-secondary)" }}>
+        Generate your Vedic birth chart with planetary positions
+      </p>
 
       {/* Form */}
-      <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+      <div className="glass-card p-6 mb-8 animate-fade-in-up">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Name</label>
             <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              placeholder="Enter your name" />
+              className="cosmic-input" placeholder="Enter your name" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth Date</label>
             <input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
+              className="cosmic-input" style={{ colorScheme: "dark" }} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Birth Time</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth Time</label>
             <input type="time" value={form.birth_time} onChange={(e) => setForm({ ...form, birth_time: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500" />
+              className="cosmic-input" style={{ colorScheme: "dark" }} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Birth City</label>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth City</label>
             <CitySearch value={form.city} onChange={handleCityChange} placeholder="Search your city..." />
           </div>
-          <div className="flex items-end gap-2">
-            <button onClick={handleGenerate} disabled={loading}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 rounded-lg disabled:opacity-50">
+          <div className="flex items-end gap-3">
+            <button onClick={handleGenerate} disabled={loading} className="glow-btn-purple">
               {loading ? "Generating..." : "Generate Kundli"}
             </button>
-            <button onClick={handleSample}
-              className="border border-purple-600 text-purple-600 hover:bg-purple-50 font-bold px-6 py-2 rounded-lg">
+            <button onClick={handleSample} className="glow-btn-outline text-sm py-2 px-4">
               Load Sample
             </button>
           </div>
         </div>
-        {error && <p className="text-red-500 mt-4">{error}</p>}
+        {error && (
+          <div className="mt-4 p-3 rounded-lg text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--danger)" }}>
+            {error}
+          </div>
+        )}
       </div>
 
-      {/* Results */}
-      {result && (
+      {/* Loading skeleton */}
+      {loading && (
         <div className="space-y-6">
+          <div className="glass-card-static p-6"><div className="shimmer h-8 w-48 mb-4" /><div className="grid grid-cols-4 gap-4">{Array(8).fill(0).map((_, i) => <div key={i} className="shimmer h-6" />)}</div></div>
+          <div className="glass-card-static p-6"><div className="shimmer h-80 w-full" /></div>
+        </div>
+      )}
+
+      {/* Results */}
+      {result && !loading && (
+        <div className="space-y-6 animate-fade-in-up">
           {/* Basic Info */}
-          <div className="bg-white rounded-xl shadow-md p-6">
+          <div className="glass-card p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Birth Chart Details</h2>
+              <h2 className="text-xl font-bold">Birth Chart Details</h2>
               <button onClick={handleExportPdf} disabled={exportingPdf}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-lg text-sm disabled:opacity-50">
-                {exportingPdf ? "Exporting..." : "📄 Export PDF"}
+                className="glow-btn-purple text-sm py-2 px-4">
+                {exportingPdf ? "Exporting..." : "\uD83D\uDCC4 Export PDF"}
               </button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-base">
-              <div><span className="text-gray-700">Name:</span> <strong className="text-gray-900">{result.name}</strong></div>
-              <div><span className="text-gray-700">Date:</span> <strong className="text-gray-900">{result.birth_date}</strong></div>
-              <div><span className="text-gray-700">Time:</span> <strong className="text-gray-900">{result.birth_time}</strong></div>
-              <div><span className="text-gray-700">Place:</span> <strong className="text-gray-900">{result.birth_place}</strong></div>
-              <div><span className="text-gray-700">Ascendant:</span> <strong className="text-gray-900">{zodiacMap[result.asc_sign]?.en} {result.asc_sign_degree.toFixed(2)}°</strong></div>
-              <div><span className="text-gray-700">Ayanamsa:</span> <strong className="text-gray-900">{result.ayanamsa.toFixed(4)}° (Lahiri)</strong></div>
-              <div><span className="text-gray-700">Retrograde:</span> <strong className="text-red-500">{result.retrograde_planets.join(", ") || "None"}</strong></div>
-              <div><span className="text-gray-700">Exalted:</span> <strong className="text-green-500">{result.exalted_planets.join(", ") || "None"}</strong></div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              {[
+                { label: "Name", value: result.name },
+                { label: "Date", value: result.birth_date },
+                { label: "Time", value: result.birth_time },
+                { label: "Place", value: result.birth_place },
+                { label: "Ascendant", value: `${zodiacMap[result.asc_sign]?.en} ${result.asc_sign_degree.toFixed(2)}\u00B0` },
+                { label: "Ayanamsa", value: `${result.ayanamsa.toFixed(4)}\u00B0 (Lahiri)` },
+                { label: "Retrograde", value: result.retrograde_planets.join(", ") || "None", color: "var(--danger)" },
+                { label: "Exalted", value: result.exalted_planets.join(", ") || "None", color: "var(--success)" },
+              ].map((item) => (
+                <div key={item.label}>
+                  <span style={{ color: "var(--text-secondary)" }}>{item.label}:</span>{" "}
+                  <strong style={{ color: item.color || "var(--text-primary)" }}>{item.value}</strong>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Chart Visualization */}
+          {/* Chart */}
           <KundliChart chart={result.chart} ascSign={result.asc_sign} />
 
           {/* Planetary Positions */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Planetary Positions (Graha Sthiti)</h2>
+          <div className="glass-card p-6">
+            <h2 className="text-xl font-bold mb-4">Planetary Positions (Graha Sthiti)</h2>
             <div className="overflow-x-auto">
-              <table className="w-full text-base text-gray-900">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-purple-100">
-                    <th className="px-4 py-3 text-left">Planet</th>
-                    <th className="px-4 py-3 text-left">Sign</th>
-                    <th className="px-4 py-3 text-left">Degree</th>
-                    <th className="px-4 py-3 text-left">Retrograde</th>
-                    <th className="px-4 py-3 text-left">Dignity</th>
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                    {["Planet", "Sign", "Degree", "Retrograde", "Dignity"].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left font-semibold" style={{ color: "var(--accent)" }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {result.planets.map((p) => (
-                    <tr key={p.planet} className="border-b hover:bg-gray-50">
+                    <tr key={p.planet} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
+                      className="transition-colors hover:bg-white/[0.02]">
                       <td className="px-4 py-3 font-semibold">{p.planet}</td>
-                      <td className="px-4 py-3">{p.sign_name}</td>
-                      <td className="px-4 py-3">{p.sign_degree.toFixed(2)}°</td>
-                      <td className="px-4 py-3">{p.retrograde ? <span className="text-red-500 font-bold">Yes (R)</span> : "No"}</td>
-                      <td className="px-4 py-3">{p.dignity}</td>
+                      <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{p.sign_name}</td>
+                      <td className="px-4 py-3">{p.sign_degree.toFixed(2)}\u00B0</td>
+                      <td className="px-4 py-3">{p.retrograde ? <span className="font-bold" style={{ color: "var(--danger)" }}>Yes (R)</span> : "No"}</td>
+                      <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{p.dignity}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -178,14 +194,18 @@ export default function KundliPage() {
           </div>
 
           {/* Houses */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">House Placements (Bhava)</h2>
+          <div className="glass-card p-6">
+            <h2 className="text-xl font-bold mb-4">House Placements (Bhava)</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {Object.entries(result.houses).map(([house, planets]) => (
-                <div key={house} className={`rounded-lg p-4 ${planets.length > 0 ? "bg-purple-50 border border-purple-200" : "bg-gray-50"}`}>
-                  <div className="text-sm text-gray-700 mb-1">House {house}</div>
-                  <div className="font-semibold text-base text-gray-900">
-                    {planets.length > 0 ? planets.join(", ") : <span className="text-gray-500">Empty</span>}
+                <div key={house} className="rounded-xl p-4 transition-all"
+                  style={{
+                    background: planets.length > 0 ? "rgba(147,51,234,0.08)" : "rgba(255,255,255,0.02)",
+                    border: `1px solid ${planets.length > 0 ? "rgba(147,51,234,0.2)" : "var(--border)"}`,
+                  }}>
+                  <div className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>House {house}</div>
+                  <div className="font-semibold text-sm">
+                    {planets.length > 0 ? planets.join(", ") : <span style={{ color: "var(--text-secondary)" }}>Empty</span>}
                   </div>
                 </div>
               ))}
@@ -194,20 +214,20 @@ export default function KundliPage() {
 
           {/* Vimshottari Dasha */}
           {result.dasha_info && (
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Vimshottari Dasha</h2>
-              <p className="text-sm text-gray-700 mb-4">
+            <div className="glass-card p-6">
+              <h2 className="text-xl font-bold mb-4">Vimshottari Dasha</h2>
+              <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
                 Birth Nakshatra: {result.dasha_info.birth_nakshatra.name} (Pada {result.dasha_info.birth_nakshatra.pada})
                 {" "}&mdash; Dasha Lord: {result.dasha_info.birth_nakshatra.lord}
               </p>
               {result.dasha_info.current_dasha && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
-                  <h3 className="font-semibold text-gray-800 mb-2">Current Dasha Period</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-900">
+                <div className="rounded-xl p-4 mb-4" style={{ background: "rgba(147,51,234,0.08)", border: "1px solid rgba(147,51,234,0.2)" }}>
+                  <h3 className="font-semibold mb-2">Current Dasha Period</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-700">Mahadasha:</span>{" "}
+                      <span style={{ color: "var(--text-secondary)" }}>Mahadasha:</span>{" "}
                       <strong>{result.dasha_info.current_dasha.mahadasha}</strong>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
                         {new Date(result.dasha_info.current_dasha.mahadasha_start).toLocaleDateString()} &mdash;{" "}
                         {new Date(result.dasha_info.current_dasha.mahadasha_end).toLocaleDateString()}
                         <br />({result.dasha_info.current_dasha.mahadasha_remaining_years} yrs remaining)
@@ -215,9 +235,9 @@ export default function KundliPage() {
                     </div>
                     {result.dasha_info.current_dasha.antardasha && (
                       <div>
-                        <span className="text-gray-700">Antardasha:</span>{" "}
+                        <span style={{ color: "var(--text-secondary)" }}>Antardasha:</span>{" "}
                         <strong>{result.dasha_info.current_dasha.antardasha}</strong>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
                           {new Date(result.dasha_info.current_dasha.antardasha_start!).toLocaleDateString()} &mdash;{" "}
                           {new Date(result.dasha_info.current_dasha.antardasha_end!).toLocaleDateString()}
                         </div>
@@ -225,9 +245,9 @@ export default function KundliPage() {
                     )}
                     {result.dasha_info.current_dasha.pratyantardasha && (
                       <div>
-                        <span className="text-gray-700">Pratyantardasha:</span>{" "}
+                        <span style={{ color: "var(--text-secondary)" }}>Pratyantardasha:</span>{" "}
                         <strong>{result.dasha_info.current_dasha.pratyantardasha}</strong>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
                           {new Date(result.dasha_info.current_dasha.pratyantardasha_start!).toLocaleDateString()} &mdash;{" "}
                           {new Date(result.dasha_info.current_dasha.pratyantardasha_end!).toLocaleDateString()}
                         </div>
@@ -236,14 +256,20 @@ export default function KundliPage() {
                   </div>
                 </div>
               )}
-              <h3 className="font-semibold text-gray-800 mb-2">All Mahadashas</h3>
-              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
+              <h3 className="font-semibold mb-3">All Mahadashas</h3>
+              <div className="flex flex-wrap gap-2">
                 {result.dasha_info.all_mahadashas.slice(0, 9).map((d, i) => {
                   const isCurrent = result.dasha_info?.current_dasha?.mahadasha === d.lord;
                   return (
-                    <div key={`${d.lord}-${i}`} className={`text-center p-3 rounded-lg ${isCurrent ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-900"}`}>
+                    <div key={`${d.lord}-${i}`} className="text-center px-4 py-3 rounded-xl transition-all"
+                      style={{
+                        background: isCurrent ? "linear-gradient(135deg, var(--accent-deep), #6d28d9)" : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${isCurrent ? "var(--border-active)" : "var(--border)"}`,
+                        boxShadow: isCurrent ? "0 0 20px var(--accent-glow)" : "none",
+                        color: isCurrent ? "white" : "var(--text-primary)",
+                      }}>
                       <div className="text-sm font-semibold">{d.lord}</div>
-                      <div className="text-xs">{d.duration_years} yrs</div>
+                      <div className="text-xs" style={{ color: isCurrent ? "rgba(255,255,255,0.7)" : "var(--text-secondary)" }}>{d.duration_years} yrs</div>
                     </div>
                   );
                 })}

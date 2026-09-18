@@ -1,99 +1,128 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { api, PanchangResponse } from "@/lib/api";
 import CitySearch from "@/components/CitySearch";
 
-const defaultCity = { name: "Delhi", lat: 28.6139, lng: 77.209, tz: 5.5 };
+const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export default function PanchangPage() {
-  const [data, setData] = useState<PanchangResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [lat, setLat] = useState(28.6139);
+  const [lng, setLng] = useState(77.209);
+  const [city, setCity] = useState("Delhi");
+  const [result, setResult] = useState<PanchangResponse | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [selected, setSelected] = useState(defaultCity);
 
-  const fetchPanchang = () => {
-    setLoading(true);
-    setError("");
-    api.getPanchang(selected.lat, selected.lng)
-      .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load panchang"))
-      .finally(() => setLoading(false));
+  const handleCityChange = (c: { name: string; lat: number; lng: number; tz: number }) => {
+    setCity(c.name); setLat(c.lat); setLng(c.lng);
   };
 
-  useEffect(() => {
-    fetchPanchang();
-  }, [selected]);
+  const handleFetch = async () => {
+    setLoading(true); setError("");
+    try {
+      const data = await api.getPanchang(lat, lng);
+      setResult(data);
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed"); }
+    finally { setLoading(false); }
+  };
 
-  if (loading) return <div className="text-center py-20 text-gray-700">Loading...</div>;
+  const formatDate = (d: string) => {
+    const dt = new Date(d + "T00:00:00");
+    return `${dayNames[dt.getDay()]}, ${dt.getDate()} ${monthNames[dt.getMonth()]} ${dt.getFullYear()}`;
+  };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-bold text-gray-800 mb-2">Panchang</h1>
-      <p className="text-gray-700 mb-8">Daily Hindu calendar and auspicious timings</p>
+    <div className="max-w-7xl mx-auto px-4 py-10">
+      <h1 className="text-3xl font-bold mb-2 animate-fade-in-up">Panchang</h1>
+      <p className="mb-8 animate-fade-in-up" style={{ color: "var(--text-secondary)" }}>Daily Hindu calendar with tithi, nakshatra, yoga &amp; auspicious timings</p>
 
-      {/* City Selector */}
-      <div className="bg-white rounded-xl shadow-md p-4 mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-        <CitySearch value={selected.name} onChange={setSelected} placeholder="Search city..." className="w-full md:w-64" />
+      {/* Form */}
+      <div className="glass-card p-6 mb-8 animate-fade-in-up">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>City</label>
+            <CitySearch value={city} onChange={handleCityChange} placeholder="Search city..." />
+          </div>
+          <div className="flex items-end">
+            <button onClick={handleFetch} disabled={loading} className="glow-btn-purple">
+              {loading ? "Fetching..." : "Get Panchang"}
+            </button>
+          </div>
+        </div>
+        {error && (
+          <div className="mt-4 p-3 rounded-lg text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--danger)" }}>
+            {error}
+          </div>
+        )}
       </div>
 
-      {error && (
-        <div className="text-center py-10">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button onClick={fetchPanchang}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 rounded-lg">
-            Retry
-          </button>
-        </div>
-      )}
+      {result && (
+        <div className="space-y-6 animate-fade-in-up">
+          {/* Header */}
+          <div className="glass-card p-6 text-center">
+            <h2 className="text-2xl font-bold mb-1">{formatDate(result.date)}</h2>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{city} &bull; {lat.toFixed(2)}\u00B0N, {lng.toFixed(2)}\u00B0E</p>
+          </div>
 
-      {data && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-xl font-bold text-purple-600 mb-4">📅 {data.date}</h2>
+          {/* Main grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="glass-card p-5">
+              <div className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>Tithi</div>
+              <div className="text-lg font-bold mb-1">{result.tithi.tithi_name}</div>
+              <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Day {result.tithi.tithi_number} &bull; {result.tithi.paksha}</div>
+            </div>
+            <div className="glass-card p-5">
+              <div className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>Nakshatra</div>
+              <div className="text-lg font-bold mb-1">{result.nakshatra.nakshatra_name}</div>
+              <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Pada {result.nakshatra.pada}</div>
+            </div>
+            <div className="glass-card p-5">
+              <div className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>Yoga</div>
+              <div className="text-lg font-bold mb-1">{result.yoga.yoga_name}</div>
+            </div>
+            <div className="glass-card p-5">
+              <div className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>Karana</div>
+              <div className="text-lg font-bold mb-1">{result.karana.karana_name}</div>
+            </div>
+          </div>
+
+          {/* Var */}
+          <div className="glass-card p-5 text-center">
+            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Vara (Day)</div>
+            <div className="font-bold">{result.vara.vara_name} &mdash; Lord: {result.vara.vara_lord}</div>
+          </div>
+
+          {/* Rahu Kaal - highlighted red */}
+          <div className="glass-card p-6">
+            <h3 className="font-semibold mb-4" style={{ color: "var(--accent)" }}>Rahu Kaal &amp; Gulika Kaal</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-700">Tithi (Lunar Day)</div>
-                <div className="font-bold text-lg">{data.tithi.tithi_name}</div>
-                <div className="text-sm text-gray-700">{data.tithi.paksha} Paksha</div>
+              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <div className="text-xs font-medium mb-1" style={{ color: "var(--danger)" }}>Rahu Kaal</div>
+                <div className="text-sm font-bold">{result.rahu_kaal.start} \u2014 {result.rahu_kaal.end}</div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-700">Nakshatra (Star)</div>
-                <div className="font-bold text-lg">{data.nakshatra.nakshatra_name}</div>
-                <div className="text-sm text-gray-700">Pada {data.nakshatra.pada}</div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-700">Yoga</div>
-                <div className="font-bold text-lg">{data.yoga.yoga_name}</div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-700">Karana</div>
-                <div className="font-bold text-lg">{data.karana.karana_name}</div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-700">Vara (Day)</div>
-                <div className="font-bold text-lg">{data.vara.vara_name}</div>
-                <div className="text-sm text-gray-700">Lord: {data.vara.vara_lord}</div>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="text-sm text-gray-700">Sunrise / Sunset</div>
-                <div className="font-bold text-lg">{data.sunrise} / {data.sunset}</div>
+              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)" }}>
+                <div className="text-xs font-medium mb-1" style={{ color: "var(--gold)" }}>Gulika Kaal</div>
+                <div className="text-sm font-bold">{result.gulika_kaal.start} \u2014 {result.gulika_kaal.end}</div>
               </div>
             </div>
           </div>
 
-          {/* Timings */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-red-50 rounded-xl shadow-md p-6 border border-red-200">
-              <h3 className="text-lg font-bold text-red-700 mb-2">⚠️ Rahu Kaal</h3>
-              <div className="text-2xl font-bold text-red-600">{data.rahu_kaal.start} - {data.rahu_kaal.end}</div>
-              <p className="text-sm text-red-600 mt-2">Avoid important work during this period</p>
-            </div>
-            <div className="bg-gray-50 rounded-xl shadow-md p-6 border border-gray-200">
-              <h3 className="text-lg font-bold text-gray-700 mb-2">Gulika Kaal</h3>
-              <div className="text-2xl font-bold text-gray-900">{data.gulika_kaal.start} - {data.gulika_kaal.end}</div>
-              <p className="text-sm text-gray-700 mt-2">Inauspicious period to avoid</p>
+          {/* Sun times */}
+          <div className="glass-card p-6">
+            <h3 className="font-semibold mb-4" style={{ color: "var(--accent)" }}>Sunrise &amp; Sunset</h3>
+            <div className="flex justify-center gap-8">
+              <div className="text-center">
+                <div className="text-2xl mb-1">{'\u{1F305}'}</div>
+                <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Sunrise</div>
+                <div className="font-bold">{result.sunrise}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl mb-1">{'\u{1F307}'}</div>
+                <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Sunset</div>
+                <div className="font-bold">{result.sunset}</div>
+              </div>
             </div>
           </div>
         </div>
