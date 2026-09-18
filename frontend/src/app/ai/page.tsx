@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
+import { Brain, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
-import { useScrollReveal } from "@/lib/useScrollReveal";
 
 const quickQuestions = [
   "What does my birth chart say about my career?",
@@ -13,8 +14,6 @@ const quickQuestions = [
 ];
 
 export default function AiPage() {
-  const headerRef = useScrollReveal();
-  const inputRef = useScrollReveal();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,20 +34,24 @@ export default function AiPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
-      <div ref={headerRef} className="scroll-reveal">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">AI <span className="text-gradient-purple">Astrologer</span></h1>
-        <p className="mb-8" style={{ color: "var(--text-secondary)" }}>Ask questions about Vedic astrology, your chart, or predictions</p>
-      </div>
+    <div className="max-w-4xl mx-auto px-5 py-10">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
+          AI <span className="text-gradient-gold">Astrologer</span>
+        </h1>
+        <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Ask questions about Vedic astrology, your chart, or predictions</p>
+      </motion.div>
 
       {/* Quick Questions */}
       <div className="mb-6">
-        <p className="text-sm font-medium mb-3" style={{ color: "var(--text-secondary)" }}>Quick questions:</p>
+        <p className="text-xs font-medium mb-3" style={{ color: "var(--text-tertiary)" }}>Quick questions:</p>
         <div className="flex flex-wrap gap-2">
           {quickQuestions.map((q, i) => (
             <button key={i} onClick={() => handleAsk(q)} disabled={loading}
-              className="text-left text-sm px-4 py-2 rounded-xl transition-all duration-200 hover:bg-white/[0.06]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+              className="text-left text-xs px-3 py-2 rounded-xl transition-all duration-200"
+              style={{ border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--champagne)30"; e.currentTarget.style.background = "rgba(214, 184, 117, 0.04)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.background = "transparent"; }}>
               {q}
             </button>
           ))}
@@ -56,57 +59,54 @@ export default function AiPage() {
       </div>
 
       {/* Input */}
-      <div ref={inputRef} className="glass-card p-4 mb-6 scroll-reveal" style={{ transitionDelay: "100ms" }}>
+      <motion.div className="glass-card p-4 mb-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <div className="flex gap-3">
           <input type="text" placeholder="Ask anything about Vedic astrology..." value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAsk()}
-            className="flex-1 cosmic-input" />
+            className="flex-1 input-field" />
           <button onClick={() => handleAsk()} disabled={loading || !question.trim()}
-            className="glow-btn-purple whitespace-nowrap">
-            {loading ? "Thinking..." : "Ask"}
+            className="btn-primary whitespace-nowrap">
+            {loading ? "Thinking..." : "Ask"} <ChevronRight size={16} />
           </button>
         </div>
-      </div>
+      </motion.div>
 
-      {error && (
-        <div className="mb-6 p-3 rounded-lg text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--danger)" }}>
-          {error}
-        </div>
-      )}
+      {error && <p className="text-xs mb-6" style={{ color: "var(--danger)" }}>{error}</p>}
 
       {/* Answer */}
       {loading && (
-        <div className="glass-card p-8 text-center animate-fade-in">
-          <div className="text-4xl mb-3 animate-glow-pulse">{'\u2728'}</div>
-          <p style={{ color: "var(--text-secondary)" }}>Thinking...</p>
+        <div className="glass-card p-8 text-center">
+          <div className="shimmer h-24 w-full rounded-xl" />
         </div>
       )}
 
       {!loading && answer && (
-        <div className="glass-card p-6 mb-8 animate-fade-in-up">
+        <motion.div className="glass-card p-6 mb-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, var(--accent-deep), #6d28d9)" }}>
-              {'\u2728'}
+              style={{ background: "rgba(214, 184, 117, 0.1)", color: "var(--champagne)" }}>
+              <Brain size={18} />
             </div>
             <div>
-              <div className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>AI Astrologer</div>
-              <div className="text-sm leading-relaxed whitespace-pre-line">{answer}</div>
+              <div className="text-xs font-medium mb-2" style={{ color: "var(--champagne)" }}>AI Astrologer</div>
+              <div className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--text-secondary)" }}>{answer}</div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* History */}
       {history.length > 1 && (
         <div className="mt-8">
-          <h3 className="text-sm font-medium mb-3" style={{ color: "var(--text-secondary)" }}>Recent questions</h3>
+          <h3 className="text-xs font-medium mb-3" style={{ color: "var(--text-tertiary)" }}>Recent questions</h3>
           <div className="space-y-2">
             {history.slice(1, 6).map((h, i) => (
               <button key={i} onClick={() => { setQuestion(h.q); setAnswer(h.a); }}
-                className="w-full text-left p-3 rounded-lg text-sm transition-colors hover:bg-white/[0.04]"
-                style={{ border: "1px solid var(--border)" }}>
+                className="w-full text-left p-3 rounded-xl text-sm transition-colors"
+                style={{ border: "1px solid var(--border-subtle)" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(244, 240, 232, 0.03)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
                 <span style={{ color: "var(--text-secondary)" }}>{h.q}</span>
               </button>
             ))}
@@ -115,7 +115,7 @@ export default function AiPage() {
       )}
 
       {/* Disclaimer */}
-      <div className="mt-8 p-4 rounded-lg text-xs text-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+      <div className="mt-8 p-4 rounded-xl text-xs text-center" style={{ background: "rgba(244, 240, 232, 0.02)", border: "1px solid var(--border-subtle)", color: "var(--text-tertiary)" }}>
         AstroSeva AI is for educational and entertainment purposes only. Always consult a qualified astrologer for important life decisions.
       </div>
     </div>

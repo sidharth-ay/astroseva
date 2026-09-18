@@ -1,196 +1,149 @@
 "use client";
 
 import { useState } from "react";
-import { api, KundliResponse } from "@/lib/api";
-import KundliChart from "@/components/KundliChart";
+import { motion } from "framer-motion";
+import { Calendar, Clock, MapPin, User, Download, Beaker, ChevronRight } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
-import { useScrollReveal } from "@/lib/useScrollReveal";
+import KundliChart from "@/components/KundliChart";
+import { api, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
 
-const zodiacMap: Record<number, { en: string; hi: string }> = {
-  0: { en: "Aries", hi: "\u092E\u0947\u0937" }, 1: { en: "Taurus", hi: "\u0935\u0943\u0937\u092D" },
-  2: { en: "Gemini", hi: "\u092E\u093F\u0925\u0941\u0928" }, 3: { en: "Cancer", hi: "\u0915\u0930\u094D\u0915" },
-  4: { en: "Leo", hi: "\u0938\u093F\u0902\u0939" }, 5: { en: "Virgo", hi: "\u0915\u0928\u094D\u092F\u093E" },
-  6: { en: "Libra", hi: "\u0924\u0941\u0932\u093E" }, 7: { en: "Scorpio", hi: "\u0935\u0943\u0936\u094D\u091A\u093F\u0915" },
-  8: { en: "Sagittarius", hi: "\u0927\u0928\u0941" }, 9: { en: "Capricorn", hi: "\u092E\u0915\u0930" },
-  10: { en: "Aquarius", hi: "\u0915\u0941\u092E\u094D\u092D" }, 11: { en: "Pisces", hi: "\u092E\u0940\u0928" },
-};
+const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+
+const fadeUp = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } };
 
 export default function KundliPage() {
-  const headerRef = useScrollReveal();
-  const formRef = useScrollReveal();
-  const [form, setForm] = useState({
-    name: "",
-    birth_date: "1990-05-15",
-    birth_time: "10:30",
-    city: "Delhi",
-    latitude: 28.6139,
-    longitude: 77.209,
-    timezone_offset: 5.5,
+  const [form, setForm] = useState<BirthData>({
+    name: "", birth_date: "1990-05-15", birth_time: "10:30",
+    birth_place: "New Delhi", latitude: 28.6139, longitude: 77.209, timezone_offset: 5.5,
   });
   const [result, setResult] = useState<KundliResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [exportingPdf, setExportingPdf] = useState(false);
 
-  const handleCityChange = (city: { name: string; lat: number; lng: number; tz: number }) => {
-    setForm({ ...form, city: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
+  const handleCity = (city: CityEntry) => {
+    setForm({ ...form, birth_place: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
   };
 
-  const handleGenerate = async () => {
-    if (!form.name) { setError("Please enter your name"); return; }
+  const generate = async () => {
+    if (!form.name.trim()) { setError("Please enter your name."); return; }
     setLoading(true); setError("");
-    try {
-      const data = await api.generateKundli({
-        name: form.name, birth_date: form.birth_date, birth_time: form.birth_time,
-        birth_place: form.city, latitude: form.latitude, longitude: form.longitude,
-        timezone_offset: form.timezone_offset,
-      });
-      setResult(data);
-      const saved = JSON.parse(localStorage.getItem("kundli_history") || "[]");
-      saved.unshift({ ...data, saved_at: new Date().toISOString() });
-      localStorage.setItem("kundli_history", JSON.stringify(saved.slice(0, 10)));
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to generate kundli");
-    } finally { setLoading(false); }
-  };
-
-  const handleSample = async () => {
-    setLoading(true); setError("");
-    try { const data = await api.getSampleKundli(); setResult(data); }
-    catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed"); }
+    try { setResult(await api.generateKundli(form)); }
+    catch (e) { setError(e instanceof Error ? e.message : "Failed to generate kundli."); }
     finally { setLoading(false); }
   };
 
-  const handleExportPdf = async () => {
-    if (!result) return;
-    setExportingPdf(true);
+  const loadSample = async () => {
+    setLoading(true); setError("");
+    try { setResult(await api.getSampleKundli()); }
+    catch (e) { setError(e instanceof Error ? e.message : "Failed to load sample."); }
+    finally { setLoading(false); }
+  };
+
+  const exportPdf = async () => {
     try {
-      const blob = await api.exportKundliPdf({
-        name: result.name, birth_date: result.birth_date, birth_time: result.birth_time,
-        birth_place: result.birth_place, latitude: result.latitude, longitude: result.longitude,
-        timezone_offset: form.timezone_offset,
-      });
+      const blob = await api.exportKundliPdf(form);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `kundli_${result.name.replace(/\s+/g, "_")}.pdf`;
-      a.click();
+      const a = document.createElement("a"); a.href = url; a.download = `kundli-${form.name || "chart"}.pdf`; a.click();
       URL.revokeObjectURL(url);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "PDF export failed");
-    } finally { setExportingPdf(false); }
+    } catch { /* ignore */ }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      <div ref={headerRef} className="scroll-reveal">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">Kundli <span className="text-gradient-purple">Generator</span></h1>
-        <p className="mb-8" style={{ color: "var(--text-secondary)" }}>
-          Generate your Vedic birth chart with planetary positions
-        </p>
-      </div>
+    <div className="max-w-5xl mx-auto px-5 py-10">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
+          Kundli <span className="text-gradient-gold">Generator</span>
+        </h1>
+        <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Enter birth details to generate your Vedic birth chart</p>
+      </motion.div>
 
       {/* Form */}
-      <div ref={formRef} className="glass-card p-6 mb-8 scroll-reveal" style={{ transitionDelay: "100ms" }}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <motion.div className="glass-card p-6 mb-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Name</label>
-            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="cosmic-input" placeholder="Enter your name" />
+            <label className="input-label"><User size={12} className="inline mr-1" />Name</label>
+            <input className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter name" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth Date</label>
-            <input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })}
-              className="cosmic-input" style={{ colorScheme: "dark" }} />
+            <label className="input-label"><Calendar size={12} className="inline mr-1" />Birth Date</label>
+            <input type="date" className="input-field" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth Time</label>
-            <input type="time" value={form.birth_time} onChange={(e) => setForm({ ...form, birth_time: e.target.value })}
-              className="cosmic-input" style={{ colorScheme: "dark" }} />
+            <label className="input-label"><Clock size={12} className="inline mr-1" />Birth Time</label>
+            <input type="time" className="input-field" value={form.birth_time} onChange={(e) => setForm({ ...form, birth_time: e.target.value })} />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Birth City</label>
-            <CitySearch value={form.city} onChange={handleCityChange} placeholder="Search your city..." />
-          </div>
-          <div className="flex items-end gap-3">
-            <button onClick={handleGenerate} disabled={loading} className="glow-btn-purple">
-              {loading ? "Generating..." : "Generate Kundli"}
-            </button>
-            <button onClick={handleSample} className="glow-btn-outline text-sm py-2 px-4">
-              Load Sample
-            </button>
+            <label className="input-label"><MapPin size={12} className="inline mr-1" />Birth City</label>
+            <CitySearch value={form.birth_place} onChange={handleCity} />
           </div>
         </div>
-        {error && (
-          <div className="mt-4 p-3 rounded-lg text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--danger)" }}>
-            {error}
-          </div>
-        )}
-      </div>
-
-      {/* Loading skeleton */}
-      {loading && (
-        <div className="space-y-6">
-          <div className="glass-card-static p-6"><div className="shimmer h-8 w-48 mb-4" /><div className="grid grid-cols-4 gap-4">{Array(8).fill(0).map((_, i) => <div key={i} className="shimmer h-6" />)}</div></div>
-          <div className="glass-card-static p-6"><div className="shimmer h-80 w-full" /></div>
+        {error && <p className="text-xs mt-3" style={{ color: "var(--danger)" }}>{error}</p>}
+        <div className="flex flex-wrap gap-2 mt-5">
+          <button className="btn-primary" onClick={generate} disabled={loading}>
+            {loading ? "Generating..." : "Generate Kundli"} <ChevronRight size={16} />
+          </button>
+          <button className="btn-ghost" onClick={loadSample} disabled={loading}>
+            <Beaker size={14} /> Load Sample
+          </button>
+          {result && (
+            <button className="btn-ghost" onClick={exportPdf}>
+              <Download size={14} /> Export PDF
+            </button>
+          )}
         </div>
-      )}
+      </motion.div>
 
       {/* Results */}
-      {result && !loading && (
-        <div className="space-y-6 animate-fade-in-up">
-          {/* Basic Info */}
-          <div className="glass-card p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Birth Chart Details</h2>
-              <button onClick={handleExportPdf} disabled={exportingPdf}
-                className="glow-btn-purple text-sm py-2 px-4">
-                {exportingPdf ? "Exporting..." : "\uD83D\uDCC4 Export PDF"}
-              </button>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      {result && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="space-y-6">
+          {/* Birth Details */}
+          <div className="glass-card p-5">
+            <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--champagne)" }}>Birth Details</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               {[
-                { label: "Name", value: result.name },
-                { label: "Date", value: result.birth_date },
-                { label: "Time", value: result.birth_time },
-                { label: "Place", value: result.birth_place },
-                { label: "Ascendant", value: `${zodiacMap[result.asc_sign]?.en} ${result.asc_sign_degree.toFixed(2)}\u00B0` },
-                { label: "Ayanamsa", value: `${result.ayanamsa.toFixed(4)}\u00B0 (Lahiri)` },
-                { label: "Retrograde", value: result.retrograde_planets.join(", ") || "None", color: "var(--danger)" },
-                { label: "Exalted", value: result.exalted_planets.join(", ") || "None", color: "var(--success)" },
-              ].map((item) => (
-                <div key={item.label}>
-                  <span style={{ color: "var(--text-secondary)" }}>{item.label}:</span>{" "}
-                  <strong style={{ color: item.color || "var(--text-primary)" }}>{item.value}</strong>
+                ["Name", result.name || "—"],
+                ["Date", result.birth_date],
+                ["Time", result.birth_time],
+                ["Place", result.birth_place],
+                ["Ascendant", `${SIGN_NAMES[result.asc_sign]} ${result.asc_sign_degree.toFixed(1)}°`],
+                ["Ayanamsa", `${result.ayanamsa.toFixed(2)}°`],
+              ].map(([label, val]) => (
+                <div key={label}>
+                  <div className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: "var(--text-tertiary)" }}>{label}</div>
+                  <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{val}</div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Chart */}
-          <KundliChart chart={result.chart} ascSign={result.asc_sign} />
+          <div className="glass-card p-5">
+            <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--champagne)" }}>Birth Chart</h3>
+            <KundliChart chart={result.chart} ascSign={result.asc_sign} />
+          </div>
 
           {/* Planetary Positions */}
-          <div className="glass-card p-6">
-            <h2 className="text-xl font-bold mb-4">Planetary Positions (Graha Sthiti)</h2>
+          <div className="glass-card p-5">
+            <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--champagne)" }}>Planetary Positions</h3>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                    {["Planet", "Sign", "Degree", "Retrograde", "Dignity"].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left font-semibold" style={{ color: "var(--accent)" }}>{h}</th>
+                    {["Planet", "Sign", "Degree", "Retro", "Dignity"].map((h) => (
+                      <th key={h} className="text-left py-2 px-2 font-medium" style={{ color: "var(--text-tertiary)" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {result.planets.map((p) => (
-                    <tr key={p.planet} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-                      className="transition-colors hover:bg-white/[0.02]">
-                      <td className="px-4 py-3 font-semibold">{p.planet}</td>
-                      <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{p.sign_name}</td>
-                      <td className="px-4 py-3">{p.sign_degree.toFixed(2)}\u00B0</td>
-                      <td className="px-4 py-3">{p.retrograde ? <span className="font-bold" style={{ color: "var(--danger)" }}>Yes (R)</span> : "No"}</td>
-                      <td className="px-4 py-3" style={{ color: "var(--text-secondary)" }}>{p.dignity}</td>
+                    <tr key={p.planet} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td className="py-2 px-2 font-medium" style={{ color: "var(--text-primary)" }}>{p.planet}</td>
+                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.sign_name}</td>
+                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.sign_degree.toFixed(1)}°</td>
+                      <td className="py-2 px-2">
+                        {p.retrograde && <span className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ background: "rgba(232, 93, 93, 0.1)", color: "var(--danger)" }}>R</span>}
+                      </td>
+                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.dignity}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,90 +151,26 @@ export default function KundliPage() {
             </div>
           </div>
 
-          {/* Houses */}
-          <div className="glass-card p-6">
-            <h2 className="text-xl font-bold mb-4">House Placements (Bhava)</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {Object.entries(result.houses).map(([house, planets]) => (
-                <div key={house} className="rounded-xl p-4 transition-all"
-                  style={{
-                    background: planets.length > 0 ? "rgba(147,51,234,0.08)" : "rgba(255,255,255,0.02)",
-                    border: `1px solid ${planets.length > 0 ? "rgba(147,51,234,0.2)" : "var(--border)"}`,
-                  }}>
-                  <div className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}>House {house}</div>
-                  <div className="font-semibold text-sm">
-                    {planets.length > 0 ? planets.join(", ") : <span style={{ color: "var(--text-secondary)" }}>Empty</span>}
+          {/* Dasha */}
+          {result.dasha_info?.current_dasha && (
+            <div className="glass-card p-5">
+              <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--champagne)" }}>Vimshottari Dasha</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { label: "Mahadasha", value: result.dasha_info.current_dasha.mahadasha, period: `${result.dasha_info.current_dasha.mahadasha_start} — ${result.dasha_info.current_dasha.mahadasha_end}` },
+                  { label: "Antardasha", value: result.dasha_info.current_dasha.antardasha || "—", period: result.dasha_info.current_dasha.antardasha ? `${result.dasha_info.current_dasha.antardasha_start} — ${result.dasha_info.current_dasha.antardasha_end}` : "" },
+                  { label: "Pratyantardasha", value: result.dasha_info.current_dasha.pratyantardasha || "—", period: "" },
+                ].map((d) => (
+                  <div key={d.label} className="p-3 rounded-xl" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+                    <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-tertiary)" }}>{d.label}</div>
+                    <div className="text-sm font-medium" style={{ color: "var(--champagne)" }}>{d.value}</div>
+                    {d.period && <div className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>{d.period}</div>}
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Vimshottari Dasha */}
-          {result.dasha_info && (
-            <div className="glass-card p-6">
-              <h2 className="text-xl font-bold mb-4">Vimshottari Dasha</h2>
-              <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
-                Birth Nakshatra: {result.dasha_info.birth_nakshatra.name} (Pada {result.dasha_info.birth_nakshatra.pada})
-                {" "}&mdash; Dasha Lord: {result.dasha_info.birth_nakshatra.lord}
-              </p>
-              {result.dasha_info.current_dasha && (
-                <div className="rounded-xl p-4 mb-4" style={{ background: "rgba(147,51,234,0.08)", border: "1px solid rgba(147,51,234,0.2)" }}>
-                  <h3 className="font-semibold mb-2">Current Dasha Period</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span style={{ color: "var(--text-secondary)" }}>Mahadasha:</span>{" "}
-                      <strong>{result.dasha_info.current_dasha.mahadasha}</strong>
-                      <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
-                        {new Date(result.dasha_info.current_dasha.mahadasha_start).toLocaleDateString()} &mdash;{" "}
-                        {new Date(result.dasha_info.current_dasha.mahadasha_end).toLocaleDateString()}
-                        <br />({result.dasha_info.current_dasha.mahadasha_remaining_years} yrs remaining)
-                      </div>
-                    </div>
-                    {result.dasha_info.current_dasha.antardasha && (
-                      <div>
-                        <span style={{ color: "var(--text-secondary)" }}>Antardasha:</span>{" "}
-                        <strong>{result.dasha_info.current_dasha.antardasha}</strong>
-                        <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
-                          {new Date(result.dasha_info.current_dasha.antardasha_start!).toLocaleDateString()} &mdash;{" "}
-                          {new Date(result.dasha_info.current_dasha.antardasha_end!).toLocaleDateString()}
-                        </div>
-                      </div>
-                    )}
-                    {result.dasha_info.current_dasha.pratyantardasha && (
-                      <div>
-                        <span style={{ color: "var(--text-secondary)" }}>Pratyantardasha:</span>{" "}
-                        <strong>{result.dasha_info.current_dasha.pratyantardasha}</strong>
-                        <div className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
-                          {new Date(result.dasha_info.current_dasha.pratyantardasha_start!).toLocaleDateString()} &mdash;{" "}
-                          {new Date(result.dasha_info.current_dasha.pratyantardasha_end!).toLocaleDateString()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              <h3 className="font-semibold mb-3">All Mahadashas</h3>
-              <div className="flex flex-wrap gap-2">
-                {result.dasha_info.all_mahadashas.slice(0, 9).map((d, i) => {
-                  const isCurrent = result.dasha_info?.current_dasha?.mahadasha === d.lord;
-                  return (
-                    <div key={`${d.lord}-${i}`} className="text-center px-4 py-3 rounded-xl transition-all"
-                      style={{
-                        background: isCurrent ? "linear-gradient(135deg, var(--accent-deep), #6d28d9)" : "rgba(255,255,255,0.04)",
-                        border: `1px solid ${isCurrent ? "var(--border-active)" : "var(--border)"}`,
-                        boxShadow: isCurrent ? "0 0 20px var(--accent-glow)" : "none",
-                        color: isCurrent ? "white" : "var(--text-primary)",
-                      }}>
-                      <div className="text-sm font-semibold">{d.lord}</div>
-                      <div className="text-xs" style={{ color: isCurrent ? "rgba(255,255,255,0.7)" : "var(--text-secondary)" }}>{d.duration_years} yrs</div>
-                    </div>
-                  );
-                })}
+                ))}
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
     </div>
   );

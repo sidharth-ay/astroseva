@@ -1,29 +1,32 @@
 "use client";
 
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
 
 export default function Footer() {
   return (
     <footer className="mt-auto">
       <div className="footer-gradient-border" />
-      <div style={{ background: "rgba(10, 10, 26, 0.9)" }}>
-        <div className="max-w-7xl mx-auto px-4 py-12">
+      <div style={{ background: "rgba(11, 11, 25, 0.95)" }}>
+        <div className="max-w-6xl mx-auto px-5 py-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
-                  style={{ background: "linear-gradient(135deg, var(--accent-deep), var(--accent))" }}>
-                  &#x2728;
+              <div className="flex items-center gap-2.5 mb-4">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, var(--accent-deep), var(--accent))" }}
+                >
+                  <Sparkles size={14} color="var(--ivory)" />
                 </div>
-                <h3 className="font-bold text-lg text-gradient-gold">AstroSeva</h3>
+                <h3 className="font-bold text-lg font-display text-gradient-gold">AstroSeva</h3>
               </div>
               <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                Free Vedic Astrology platform. Get accurate Kundli, matching, predictions, and more.
+                Free Vedic Astrology platform. Accurate Kundli, matching, predictions, and more.
               </p>
             </div>
             <div>
-              <h4 className="font-semibold mb-4" style={{ color: "var(--text-primary)" }}>Quick Links</h4>
-              <ul className="space-y-2.5 text-sm">
+              <h4 className="font-semibold mb-3 text-sm" style={{ color: "var(--text-primary)" }}>Tools</h4>
+              <ul className="space-y-2 text-sm">
                 {[
                   { href: "/kundli", label: "Kundli Generator" },
                   { href: "/matching", label: "Marriage Matching" },
@@ -31,9 +34,9 @@ export default function Footer() {
                   { href: "/predictions", label: "AI Predictions" },
                 ].map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="transition-all duration-200 hover:translate-x-1 inline-block"
+                    <Link href={l.href} className="transition-colors duration-200"
                       style={{ color: "var(--text-secondary)" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--gold)")}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--champagne)")}
                       onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}>
                       {l.label}
                     </Link>
@@ -42,17 +45,17 @@ export default function Footer() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4" style={{ color: "var(--text-primary)" }}>More Tools</h4>
-              <ul className="space-y-2.5 text-sm">
+              <h4 className="font-semibold mb-3 text-sm" style={{ color: "var(--text-primary)" }}>More</h4>
+              <ul className="space-y-2 text-sm">
                 {[
                   { href: "/numerology", label: "Numerology" },
                   { href: "/panchang", label: "Panchang" },
-                  { href: "/ai", label: "AI Astrologer" },
+                  { href: "/chat", label: "AI Astrologer" },
                 ].map((l) => (
                   <li key={l.href}>
-                    <Link href={l.href} className="transition-all duration-200 hover:translate-x-1 inline-block"
+                    <Link href={l.href} className="transition-colors duration-200"
                       style={{ color: "var(--text-secondary)" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--gold)")}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--champagne)")}
                       onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}>
                       {l.label}
                     </Link>
@@ -62,7 +65,7 @@ export default function Footer() {
             </div>
           </div>
           <div className="mt-10 pt-6 text-center text-xs"
-            style={{ borderTop: "1px solid rgba(139, 126, 200, 0.08)", color: "var(--text-secondary)" }}>
+            style={{ borderTop: "1px solid var(--border-subtle)", color: "var(--text-tertiary)" }}>
             <p>AstroSeva &mdash; Vedic Astrology Platform. For educational purposes only. &copy; {new Date().getFullYear()}</p>
           </div>
         </div>

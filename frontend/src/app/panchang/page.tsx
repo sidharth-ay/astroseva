@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { api, PanchangResponse } from "@/lib/api";
+import { motion } from "framer-motion";
+import { MapPin } from "lucide-react";
+import { api, type PanchangResponse } from "@/lib/api";
 import CitySearch from "@/components/CitySearch";
-import { useScrollReveal } from "@/lib/useScrollReveal";
 
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export default function PanchangPage() {
-  const headerRef = useScrollReveal();
-  const formRef = useScrollReveal();
   const [lat, setLat] = useState(28.6139);
   const [lng, setLng] = useState(77.209);
   const [city, setCity] = useState("Delhi");
@@ -24,10 +23,8 @@ export default function PanchangPage() {
 
   const handleFetch = async () => {
     setLoading(true); setError("");
-    try {
-      const data = await api.getPanchang(lat, lng);
-      setResult(data);
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed"); }
+    try { setResult(await api.getPanchang(lat, lng)); }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed"); }
     finally { setLoading(false); }
   };
 
@@ -37,100 +34,92 @@ export default function PanchangPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      <div ref={headerRef} className="scroll-reveal">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2"><span className="text-gradient-gold">Panchang</span></h1>
-        <p className="mb-8" style={{ color: "var(--text-secondary)" }}>Daily Hindu calendar with tithi, nakshatra, yoga &amp; auspicious timings</p>
-      </div>
+    <div className="max-w-5xl mx-auto px-5 py-10">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
+          <span className="text-gradient-gold">Panchang</span>
+        </h1>
+        <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Daily Hindu calendar with tithi, nakshatra, yoga & auspicious timings</p>
+      </motion.div>
 
       {/* Form */}
-      <div ref={formRef} className="glass-card p-6 mb-8 scroll-reveal" style={{ transitionDelay: "100ms" }}>
+      <motion.div className="glass-card p-6 mb-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: "var(--text-secondary)" }}>City</label>
+            <label className="input-label"><MapPin size={12} className="inline mr-1" />City</label>
             <CitySearch value={city} onChange={handleCityChange} placeholder="Search city..." />
           </div>
           <div className="flex items-end">
-            <button onClick={handleFetch} disabled={loading} className="glow-btn-purple">
+            <button onClick={handleFetch} disabled={loading} className="btn-primary">
               {loading ? "Fetching..." : "Get Panchang"}
             </button>
           </div>
         </div>
-        {error && (
-          <div className="mt-4 p-3 rounded-lg text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--danger)" }}>
-            {error}
-          </div>
-        )}
-      </div>
+        {error && <p className="text-xs mt-3" style={{ color: "var(--danger)" }}>{error}</p>}
+      </motion.div>
 
       {result && (
-        <div className="space-y-6 animate-fade-in-up">
+        <motion.div className="space-y-6" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           {/* Header */}
           <div className="glass-card p-6 text-center">
-            <h2 className="text-2xl font-bold mb-1">{formatDate(result.date)}</h2>
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{city} &bull; {lat.toFixed(2)}\u00B0N, {lng.toFixed(2)}\u00B0E</p>
+            <h2 className="text-xl font-display font-bold mb-1">{formatDate(result.date)}</h2>
+            <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{city} &bull; {lat.toFixed(2)}°N, {lng.toFixed(2)}°E</p>
           </div>
 
           {/* Main grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="glass-card p-5">
-              <div className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>Tithi</div>
-              <div className="text-lg font-bold mb-1">{result.tithi.tithi_name}</div>
-              <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Day {result.tithi.tithi_number} &bull; {result.tithi.paksha}</div>
-            </div>
-            <div className="glass-card p-5">
-              <div className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>Nakshatra</div>
-              <div className="text-lg font-bold mb-1">{result.nakshatra.nakshatra_name}</div>
-              <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Pada {result.nakshatra.pada}</div>
-            </div>
-            <div className="glass-card p-5">
-              <div className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>Yoga</div>
-              <div className="text-lg font-bold mb-1">{result.yoga.yoga_name}</div>
-            </div>
-            <div className="glass-card p-5">
-              <div className="text-xs font-medium mb-2" style={{ color: "var(--accent)" }}>Karana</div>
-              <div className="text-lg font-bold mb-1">{result.karana.karana_name}</div>
-            </div>
+            {[
+              { label: "Tithi", value: result.tithi.tithi_name, sub: `Day ${result.tithi.tithi_number} • ${result.tithi.paksha}` },
+              { label: "Nakshatra", value: result.nakshatra.nakshatra_name, sub: `Pada ${result.nakshatra.pada}` },
+              { label: "Yoga", value: result.yoga.yoga_name, sub: "" },
+              { label: "Karana", value: result.karana.karana_name, sub: "" },
+            ].map((item) => (
+              <div key={item.label} className="glass-card p-5">
+                <div className="text-[10px] uppercase tracking-wider mb-2 font-medium" style={{ color: "var(--champagne)" }}>{item.label}</div>
+                <div className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{item.value}</div>
+                {item.sub && <div className="text-sm mt-1" style={{ color: "var(--text-tertiary)" }}>{item.sub}</div>}
+              </div>
+            ))}
           </div>
 
           {/* Var */}
           <div className="glass-card p-5 text-center">
-            <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Vara (Day)</div>
-            <div className="font-bold">{result.vara.vara_name} &mdash; Lord: {result.vara.vara_lord}</div>
+            <div className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--text-tertiary)" }}>Vara (Day)</div>
+            <div className="font-bold" style={{ color: "var(--champagne)" }}>{result.vara.vara_name} — Lord: {result.vara.vara_lord}</div>
           </div>
 
-          {/* Rahu Kaal - highlighted red */}
+          {/* Rahu Kaal */}
           <div className="glass-card p-6">
-            <h3 className="font-semibold mb-4" style={{ color: "var(--accent)" }}>Rahu Kaal &amp; Gulika Kaal</h3>
+            <h3 className="font-semibold mb-4 text-sm" style={{ color: "var(--champagne)" }}>Rahu Kaal & Gulika Kaal</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                <div className="text-xs font-medium mb-1" style={{ color: "var(--danger)" }}>Rahu Kaal</div>
-                <div className="text-sm font-bold">{result.rahu_kaal.start} \u2014 {result.rahu_kaal.end}</div>
+              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(232, 93, 93, 0.06)", border: "1px solid rgba(232, 93, 93, 0.12)" }}>
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--danger)" }}>Rahu Kaal</div>
+                <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{result.rahu_kaal.start} — {result.rahu_kaal.end}</div>
               </div>
-              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)" }}>
-                <div className="text-xs font-medium mb-1" style={{ color: "var(--gold)" }}>Gulika Kaal</div>
-                <div className="text-sm font-bold">{result.gulika_kaal.start} \u2014 {result.gulika_kaal.end}</div>
+              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(214, 184, 117, 0.06)", border: "1px solid rgba(214, 184, 117, 0.12)" }}>
+                <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--champagne)" }}>Gulika Kaal</div>
+                <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{result.gulika_kaal.start} — {result.gulika_kaal.end}</div>
               </div>
             </div>
           </div>
 
           {/* Sun times */}
           <div className="glass-card p-6">
-            <h3 className="font-semibold mb-4" style={{ color: "var(--accent)" }}>Sunrise &amp; Sunset</h3>
+            <h3 className="font-semibold mb-4 text-sm" style={{ color: "var(--champagne)" }}>Sunrise & Sunset</h3>
             <div className="flex justify-center gap-8">
               <div className="text-center">
-                <div className="text-2xl mb-1">{'\u{1F305}'}</div>
-                <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Sunrise</div>
-                <div className="font-bold">{result.sunrise}</div>
+                <div className="text-2xl mb-1">☀</div>
+                <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sunrise</div>
+                <div className="font-bold" style={{ color: "var(--text-primary)" }}>{result.sunrise}</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl mb-1">{'\u{1F307}'}</div>
-                <div className="text-sm" style={{ color: "var(--text-secondary)" }}>Sunset</div>
-                <div className="font-bold">{result.sunset}</div>
+                <div className="text-2xl mb-1">☾</div>
+                <div className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sunset</div>
+                <div className="font-bold" style={{ color: "var(--text-primary)" }}>{result.sunset}</div>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
