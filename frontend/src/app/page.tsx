@@ -1,8 +1,11 @@
 "use client";
 
+import { useRef, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import ZodiacWheel from "@/components/ZodiacWheel";
 import { useScrollReveal } from "@/lib/useScrollReveal";
+import { useTilt } from "@/lib/useTilt";
+import { useMagnetic } from "@/lib/useMagnetic";
 
 const features = [
   { title: "Kundli Generator", description: "Generate your Vedic birth chart with planetary positions, houses, and analysis.", href: "/kundli", icon: "\u{1F52E}", color: "#f97316", element: "fire" },
@@ -35,16 +38,90 @@ const elementColors: Record<string, string> = {
   water: "#06b6d4",
 };
 
+function FeatureCard({ f, index }: { f: typeof features[0]; index: number }) {
+  const { ref: tiltRef, onMouseMove, onMouseLeave } = useTilt(6);
+  const iconDelays = ["", "icon-idle-pulse-delay-1", "icon-idle-pulse-delay-2", "icon-idle-pulse-delay-3", "icon-idle-pulse-delay-4", "icon-idle-pulse-delay-5"];
+
+  return (
+    <div
+      ref={tiltRef}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      style={{ transformStyle: "preserve-3d" }}
+    >
+      <Link href={f.href}
+        className="glass-card p-6 group scroll-reveal block"
+        style={{ textDecoration: "none", transitionDelay: `${index * 80}ms` }}>
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-4 icon-idle-pulse ${iconDelays[index]}`}
+          style={{ background: `${f.color}15`, color: f.color }}>
+          {f.icon}
+        </div>
+        <h3 className="text-lg font-bold mb-2 group-hover:text-white transition-colors" style={{ color: "var(--text-primary)" }}>{f.title}</h3>
+        <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{f.description}</p>
+        <div className="mt-4 text-xs font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{ color: elementColors[f.element] }}>
+          Learn more <span className="transition-transform group-hover:translate-x-1">&rarr;</span>
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+function RippleButton({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const ripple = document.createElement("span");
+    ripple.className = "ripple";
+    const size = Math.max(rect.width, rect.height);
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+    ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+    props.onClick?.(e);
+  }, [props]);
+
+  return (
+    <button ref={btnRef} className={`${className} ripple-container`} onClick={handleClick} {...props}>
+      {children}
+    </button>
+  );
+}
+
 export default function HomePage() {
   const heroRef = useScrollReveal();
-  const featuresRef = useScrollReveal();
-  const zodiacRef = useScrollReveal();
+  const featuresHeaderRef = useScrollReveal();
+  const featuresGridRef = useScrollReveal();
+  const zodiacHeaderRef = useScrollReveal();
+  const zodiacGridRef = useScrollReveal();
   const aboutRef = useScrollReveal();
+
+  const mag1 = useMagnetic<HTMLDivElement>(0.25, 120);
+  const mag2 = useMagnetic<HTMLDivElement>(0.2, 100);
+
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const onScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div>
       {/* Hero */}
       <section className="relative py-20 md:py-28 overflow-hidden">
+        {/* Floating background orbs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="hero-orb hero-orb-1" />
+          <div className="hero-orb hero-orb-2" />
+          <div className="hero-orb hero-orb-3" />
+        </div>
+
         {/* Background layers */}
         <div className="absolute inset-0"
           style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(120,60,220,0.15) 0%, rgba(124,58,237,0.05) 40%, transparent 70%)" }} />
@@ -52,85 +129,89 @@ export default function HomePage() {
           style={{ background: "radial-gradient(ellipse at 80% 60%, rgba(251,191,36,0.04) 0%, transparent 50%)" }} />
 
         <div className="max-w-7xl mx-auto px-4 text-center relative">
-          <div ref={heroRef} className="scroll-reveal">
-            <ZodiacWheel />
+          <div ref={heroRef} className="scroll-reveal" style={{ transform: `translateY(${scrollY * 0.15}px)` }}>
+            <div className="hero-wheel-enter">
+              <ZodiacWheel />
+            </div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mt-8 mb-6 tracking-tight">
-              <span className="text-gradient-gold">AstroSeva</span>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold font-display mt-8 mb-6 tracking-tight text-glow-gold">
+              <span className="text-gradient-gold heading-underline">AstroSeva</span>
             </h1>
 
-            <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed hero-subtitle" style={{ color: "var(--text-secondary)" }}>
               Free <span className="text-gradient-purple" style={{ WebkitTextFillColor: "unset" }}>Vedic Astrology</span> Platform
               <br className="hidden md:block" />
               Kundli &middot; Marriage Matching &middot; AI Predictions &middot; and more
             </p>
           </div>
 
-          <div ref={featuresRef} className="flex flex-wrap justify-center gap-4 scroll-reveal" style={{ transitionDelay: "150ms" }}>
-            <Link href="/kundli" className="glow-btn text-lg">Generate Kundli</Link>
-            <Link href="/matching" className="glow-btn-outline text-lg">Marriage Matching</Link>
+          <div ref={featuresHeaderRef} className="flex flex-wrap justify-center gap-4 scroll-reveal hero-buttons" style={{ transitionDelay: "200ms" }}>
+            <div ref={mag1.ref} onMouseMove={mag1.onMouseMove} onMouseLeave={mag1.onMouseLeave}>
+              <RippleButton className="glow-btn text-lg">Generate Kundli</RippleButton>
+            </div>
+            <div ref={mag2.ref} onMouseMove={mag2.onMouseMove} onMouseLeave={mag2.onMouseLeave}>
+              <Link href="/matching" className="glow-btn-outline text-lg inline-block">Marriage Matching</Link>
+            </div>
           </div>
         </div>
       </section>
 
+      <div className="section-divider" />
+
       {/* Features */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
-            Our <span className="text-gradient-purple">Services</span>
-          </h2>
-          <p className="text-center mb-14 max-w-lg mx-auto" style={{ color: "var(--text-secondary)" }}>
-            Ancient wisdom meets modern technology. Explore our suite of Vedic astrology tools.
-          </p>
+          <div ref={featuresGridRef} className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4 scroll-reveal">
+              Our <span className="text-gradient-purple text-glow">Services</span>
+            </h2>
+            <p className="max-w-lg mx-auto scroll-reveal" style={{ color: "var(--text-secondary)", transitionDelay: "100ms" }}>
+              Ancient wisdom meets modern technology. Explore our suite of Vedic astrology tools.
+            </p>
+          </div>
 
-          <div ref={zodiacRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scroll-stagger">
-            {features.map((f) => (
-              <Link key={f.href} href={f.href}
-                className="glass-card p-6 group scroll-reveal"
-                style={{ textDecoration: "none" }}>
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
-                  style={{ background: `${f.color}15`, color: f.color }}>
-                  {f.icon}
-                </div>
-                <h3 className="text-lg font-bold mb-2 group-hover:text-white transition-colors" style={{ color: "var(--text-primary)" }}>{f.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{f.description}</p>
-                <div className="mt-4 text-xs font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ color: elementColors[f.element] }}>
-                  Learn more <span className="transition-transform group-hover:translate-x-1">&rarr;</span>
-                </div>
-              </Link>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scroll-stagger">
+            {features.map((f, i) => (
+              <FeatureCard key={f.href} f={f} index={i} />
             ))}
           </div>
         </div>
       </section>
 
+      <div className="section-divider" />
+
       {/* Zodiac Signs */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
-            Daily <span className="text-gradient-gold">Horoscope</span>
-          </h2>
-          <p className="text-center mb-14 max-w-lg mx-auto" style={{ color: "var(--text-secondary)" }}>
-            Select your zodiac sign to view today&apos;s prediction
-          </p>
+          <div ref={zodiacHeaderRef} className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4 scroll-reveal">
+              Daily <span className="text-gradient-gold text-glow-gold">Horoscope</span>
+            </h2>
+            <p className="max-w-lg mx-auto scroll-reveal" style={{ color: "var(--text-secondary)", transitionDelay: "100ms" }}>
+              Select your zodiac sign to view today&apos;s prediction
+            </p>
+          </div>
 
-          <div ref={aboutRef} className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 scroll-stagger">
-            {zodiacSigns.map((z) => (
+          <div ref={zodiacGridRef} className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 scroll-stagger">
+            {zodiacSigns.map((z, i) => (
               <Link key={z.sign} href={`/horoscope?sign=${z.sign}`}
-                className="text-center p-5 rounded-xl scroll-reveal group"
-                style={{ border: "1px solid transparent", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)" }}
+                className="text-center p-5 rounded-xl scroll-reveal group zodiac-sign-card"
+                style={{ border: "1px solid transparent", transition: "all 0.35s cubic-bezier(0.16, 1, 0.3, 1)", animationDelay: `${i * 60}ms` }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = `${elementColors[z.element]}40`;
                   e.currentTarget.style.background = `${elementColors[z.element]}08`;
-                  e.currentTarget.style.boxShadow = `0 0 25px ${elementColors[z.element]}15`;
+                  e.currentTarget.style.boxShadow = `0 0 30px ${elementColors[z.element]}20`;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = "transparent";
                   e.currentTarget.style.background = "transparent";
                   e.currentTarget.style.boxShadow = "none";
                 }}>
-                <div className="text-4xl mb-2 transition-transform duration-300 group-hover:scale-125"
-                  style={{ filter: `drop-shadow(0 0 8px ${elementColors[z.element]}60)` }}>
+                <div className="text-4xl mb-2 transition-all duration-300 group-hover:scale-125 zodiac-sign-float"
+                  style={{
+                    filter: `drop-shadow(0 0 8px ${elementColors[z.element]}60)`,
+                    animationDelay: `${i * 0.3}s`,
+                  }}>
                   {z.symbol}
                 </div>
                 <div className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{z.name}</div>
@@ -140,20 +221,24 @@ export default function HomePage() {
         </div>
       </section>
 
+      <div className="section-divider" />
+
       {/* About */}
       <section className="py-20">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            About <span className="text-gradient-gold">AstroSeva</span>
-          </h2>
-          <p className="text-lg mb-4 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            AstroSeva is a free Vedic Astrology platform that provides accurate birth chart generation,
-            marriage matching, AI-powered predictions, and all essential astrology tools.
-          </p>
-          <p className="text-lg mb-10 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-            Our calculations are based on the ancient Vedic astrology system with <span className="text-gradient-purple" style={{ WebkitTextFillColor: "unset" }}>Lahiri ayanamsa</span>.
-          </p>
-          <Link href="/kundli" className="glow-btn inline-block text-lg">Get Your Kundli Now</Link>
+          <div ref={aboutRef} className="scroll-reveal">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-6">
+              About <span className="text-gradient-gold text-glow-gold">AstroSeva</span>
+            </h2>
+            <p className="text-lg mb-4 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              AstroSeva is a free Vedic Astrology platform that provides accurate birth chart generation,
+              marriage matching, AI-powered predictions, and all essential astrology tools.
+            </p>
+            <p className="text-lg mb-10 leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              Our calculations are based on the ancient Vedic astrology system with <span className="text-gradient-purple" style={{ WebkitTextFillColor: "unset" }}>Lahiri ayanamsa</span>.
+            </p>
+            <RippleButton className="glow-btn text-lg">Get Your Kundli Now</RippleButton>
+          </div>
         </div>
       </section>
     </div>

@@ -739,3 +739,294 @@ body::after {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ============================================================
+   NOISE TEXTURE OVERLAY
+   ============================================================ */
+
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.025;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+
+/* ============================================================
+   FONT DISPLAY UTILITY
+   ============================================================ */
+
+.font-display {
+  font-family: var(--font-cinzel), Georgia, "Times New Roman", serif;
+}
+
+/* ============================================================
+   TEXT GLOW
+   ============================================================ */
+
+.text-glow {
+  text-shadow:
+    0 0 20px rgba(180, 142, 255, 0.3),
+    0 0 40px rgba(120, 60, 220, 0.15),
+    0 0 80px rgba(120, 60, 220, 0.08);
+}
+
+.text-glow-gold {
+  text-shadow:
+    0 0 20px rgba(251, 191, 36, 0.3),
+    0 0 40px rgba(217, 119, 6, 0.15);
+}
+
+/* ============================================================
+   ICON IDLE PULSE
+   ============================================================ */
+
+@keyframes icon-breathe {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.08); filter: brightness(1.15); }
+}
+
+.icon-idle-pulse {
+  animation: icon-breathe 3s ease-in-out infinite;
+}
+
+.icon-idle-pulse-delay-1 { animation-delay: 0.5s; }
+.icon-idle-pulse-delay-2 { animation-delay: 1s; }
+.icon-idle-pulse-delay-3 { animation-delay: 1.5s; }
+.icon-idle-pulse-delay-4 { animation-delay: 2s; }
+.icon-idle-pulse-delay-5 { animation-delay: 2.5s; }
+
+/* ============================================================
+   BUTTON CLICK RIPPLE
+   ============================================================ */
+
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(0);
+  animation: ripple-expand 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes ripple-expand {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* ============================================================
+   ZODIAC WHEEL ENHANCEMENTS
+   ============================================================ */
+
+.zodiac-wheel-symbol.near .zodiac-wheel-glyph {
+  filter: drop-shadow(0 0 14px currentColor) drop-shadow(0 0 24px currentColor);
+  transform: scale(1.35);
+}
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -100; }
+}
+
+.zodiac-connection-line {
+  stroke-dasharray: 4 8;
+  animation: dash-flow 25s linear infinite;
+}
+
+/* ============================================================
+   CURTAIN LOGO PULSE
+   ============================================================ */
+
+@keyframes curtain-logo-pulse {
+  0%, 100% { box-shadow: 0 0 30px rgba(120,60,220,0.3); }
+  50% { box-shadow: 0 0 50px rgba(120,60,220,0.5), 0 0 80px rgba(120,60,220,0.2); }
+}
+
+/* ============================================================
+   HEADING DECORATIVE UNDERLINE
+   ============================================================ */
+
+.heading-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.heading-underline::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), var(--accent), var(--gold), transparent);
+  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1), left 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 1px;
+}
+
+.heading-underline:hover::after {
+  width: 120%;
+  left: -10%;
+}
+
+/* ============================================================
+   SECTION DIVIDER
+   ============================================================ */
+
+.section-divider {
+  height: 1px;
+  margin: 0 auto;
+  max-width: 600px;
+  background: linear-gradient(90deg, transparent, rgba(180, 142, 255, 0.15), rgba(251, 191, 36, 0.1), rgba(180, 142, 255, 0.15), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 4s ease-in-out infinite;
+}
+
+/* ============================================================
+   HERO FLOATING ORBS
+   ============================================================ */
+
+@keyframes drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -20px) scale(1.05); }
+  50% { transform: translate(-20px, 15px) scale(0.95); }
+  75% { transform: translate(15px, 25px) scale(1.02); }
+}
+
+@keyframes drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-40px, 20px) scale(1.08); }
+  66% { transform: translate(25px, -30px) scale(0.96); }
+}
+
+@keyframes drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(20px, 30px) scale(1.04); }
+}
+
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-orb-1 {
+  width: 500px;
+  height: 500px;
+  top: -10%;
+  left: 10%;
+  background: radial-gradient(circle, rgba(120, 60, 220, 0.06), transparent 70%);
+  animation: drift-1 25s ease-in-out infinite;
+}
+
+.hero-orb-2 {
+  width: 400px;
+  height: 400px;
+  bottom: -5%;
+  right: 5%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.04), transparent 70%);
+  animation: drift-2 30s ease-in-out infinite;
+}
+
+.hero-orb-3 {
+  width: 300px;
+  height: 300px;
+  top: 40%;
+  left: 60%;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.03), transparent 70%);
+  animation: drift-3 20s ease-in-out infinite;
+}
+
+/* ============================================================
+   HERO ENTRANCE ANIMATIONS
+   ============================================================ */
+
+@keyframes hero-wheel-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-30deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+.hero-wheel-enter {
+  animation: hero-wheel-enter 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+@keyframes hero-title-enter {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0% 0 0);
+  }
+}
+
+.hero-title-enter {
+  animation: hero-title-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+
+@keyframes hero-subtitle-enter {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-subtitle {
+  animation: hero-subtitle-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
+}
+
+@keyframes hero-buttons-enter {
+  from {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-buttons {
+  animation: hero-buttons-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) 1s both;
+}
+
+/* ============================================================
+   ZODIAC SIGN FLOAT
+   ============================================================ */
+
+@keyframes zodiac-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.zodiac-sign-float {
+  animation: zodiac-float 4s ease-in-out infinite;
+}
+
+/* ============================================================
+   ZODIAC SIGN CARD HOVER
+   ============================================================ */
+
+.zodiac-sign-card {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
