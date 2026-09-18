@@ -12,21 +12,16 @@ async function fetchWithTimeout(url: string, init?: RequestInit, timeout = REQUE
   }
 }
 
-export const cities = [
-  { name: "Delhi", lat: 28.6139, lng: 77.209, tz: 5.5 },
-  { name: "Mumbai", lat: 19.076, lng: 72.8777, tz: 5.5 },
-  { name: "Kolkata", lat: 22.5726, lng: 88.3639, tz: 5.5 },
-  { name: "Chennai", lat: 13.0827, lng: 80.2707, tz: 5.5 },
-  { name: "Bangalore", lat: 12.9716, lng: 77.5946, tz: 5.5 },
-  { name: "Hyderabad", lat: 17.385, lng: 78.4867, tz: 5.5 },
-  { name: "Pune", lat: 18.5204, lng: 73.8567, tz: 5.5 },
-  { name: "Jaipur", lat: 26.9124, lng: 75.7873, tz: 5.5 },
-  { name: "Lucknow", lat: 26.8467, lng: 80.9462, tz: 5.5 },
-  { name: "Ahmedabad", lat: 23.0225, lng: 72.5714, tz: 5.5 },
-  { name: "New York", lat: 40.7128, lng: -74.006, tz: -4 },
-  { name: "London", lat: 51.5074, lng: -0.1278, tz: 1 },
-  { name: "Sydney", lat: -33.8688, lng: 151.2093, tz: 10 },
-];
+export interface CityEntry {
+  name: string;
+  lat: number;
+  lng: number;
+  tz: number;
+  state?: string;
+}
+
+import citiesJson from "./cities.json";
+export const cities: CityEntry[] = citiesJson as CityEntry[];
 
 export interface BirthData {
   name: string;

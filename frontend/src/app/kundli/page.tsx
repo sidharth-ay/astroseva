@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { api, cities, KundliResponse } from "@/lib/api";
+import { api, KundliResponse } from "@/lib/api";
 import KundliChart from "@/components/KundliChart";
+import CitySearch from "@/components/CitySearch";
 
 const zodiacMap: Record<number, { en: string; hi: string }> = {
   0: { en: "Aries", hi: "मेष" }, 1: { en: "Taurus", hi: "वृषभ" },
@@ -28,11 +29,8 @@ export default function KundliPage() {
   const [error, setError] = useState("");
   const [exportingPdf, setExportingPdf] = useState(false);
 
-  const handleCityChange = (cityName: string) => {
-    const city = cities.find((c) => c.name === cityName);
-    if (city) {
-      setForm({ ...form, city: cityName, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
-    }
+  const handleCityChange = (city: { name: string; lat: number; lng: number; tz: number }) => {
+    setForm({ ...form, city: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
   };
 
   const handleGenerate = async () => {
@@ -107,10 +105,7 @@ export default function KundliPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Birth City</label>
-            <select value={form.city} onChange={(e) => handleCityChange(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500">
-              {cities.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-            </select>
+            <CitySearch value={form.city} onChange={handleCityChange} placeholder="Search your city..." />
           </div>
           <div className="flex items-end gap-2">
             <button onClick={handleGenerate} disabled={loading}

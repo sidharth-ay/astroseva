@@ -1,20 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { api, cities, PanchangResponse } from "@/lib/api";
+import { api, PanchangResponse } from "@/lib/api";
+import CitySearch from "@/components/CitySearch";
+
+const defaultCity = { name: "Delhi", lat: 28.6139, lng: 77.209, tz: 5.5 };
 
 export default function PanchangPage() {
   const [data, setData] = useState<PanchangResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [city, setCity] = useState("Delhi");
-
-  const selectedCity = cities.find((c) => c.name === city) || cities[0];
+  const [selected, setSelected] = useState(defaultCity);
 
   const fetchPanchang = () => {
     setLoading(true);
     setError("");
-    api.getPanchang(selectedCity.lat, selectedCity.lng)
+    api.getPanchang(selected.lat, selected.lng)
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load panchang"))
       .finally(() => setLoading(false));
@@ -22,7 +23,7 @@ export default function PanchangPage() {
 
   useEffect(() => {
     fetchPanchang();
-  }, [city]);
+  }, [selected]);
 
   if (loading) return <div className="text-center py-20 text-gray-700">Loading...</div>;
 
@@ -33,11 +34,8 @@ export default function PanchangPage() {
 
       {/* City Selector */}
       <div className="bg-white rounded-xl shadow-md p-4 mb-6">
-        <label htmlFor="panchang-city" className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-        <select id="panchang-city" value={city} onChange={(e) => setCity(e.target.value)}
-          className="w-full md:w-64 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500">
-          {cities.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-        </select>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+        <CitySearch value={selected.name} onChange={setSelected} placeholder="Search city..." className="w-full md:w-64" />
       </div>
 
       {error && (

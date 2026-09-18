@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { api, cities, MatchingResponse } from "@/lib/api";
+import { api, MatchingResponse } from "@/lib/api";
+import CitySearch from "@/components/CitySearch";
 
 export default function MatchingPage() {
   const [boy, setBoy] = useState({ name: "", birth_date: "1990-01-01", birth_time: "10:00", birth_place: "Delhi", latitude: 28.6139, longitude: 77.209, timezone_offset: 5.5 });
@@ -10,9 +11,8 @@ export default function MatchingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleCity = (setter: typeof setBoy, city: string) => {
-    const c = cities.find((x) => x.name === city);
-    if (c) setter((prev) => ({ ...prev, birth_place: city, latitude: c.lat, longitude: c.lng, timezone_offset: c.tz }));
+  const handleCity = (setter: typeof setBoy, city: { name: string; lat: number; lng: number; tz: number }) => {
+    setter((prev) => ({ ...prev, birth_place: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz }));
   };
 
   const handleAnalyze = async () => {
@@ -60,10 +60,7 @@ export default function MatchingPage() {
             </div>
             <div>
               <label htmlFor="boy-city" className="block text-sm font-medium text-gray-700 mb-1">Birth City</label>
-              <select id="boy-city" value={boy.birth_place} onChange={(e) => handleCity(setBoy, e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500">
-                {cities.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-              </select>
+              <CitySearch value={boy.birth_place} onChange={(c) => handleCity(setBoy, c)} placeholder="Search city..." />
             </div>
           </div>
         </div>
@@ -89,10 +86,7 @@ export default function MatchingPage() {
             </div>
             <div>
               <label htmlFor="girl-city" className="block text-sm font-medium text-gray-700 mb-1">Birth City</label>
-              <select id="girl-city" value={girl.birth_place} onChange={(e) => handleCity(setGirl, e.target.value)}
-                className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500">
-                {cities.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-              </select>
+              <CitySearch value={girl.birth_place} onChange={(c) => handleCity(setGirl, c)} placeholder="Search city..." />
             </div>
           </div>
         </div>

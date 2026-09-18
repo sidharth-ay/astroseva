@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { api, cities } from "@/lib/api";
+import { api } from "@/lib/api";
+import CitySearch from "@/components/CitySearch";
 
 const types = [
   { id: "career", label: "Career", icon: " " },
@@ -22,9 +23,8 @@ export default function PredictionsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleCity = (city: string) => {
-    const c = cities.find((x) => x.name === city);
-    if (c) setForm((p) => ({ ...p, city, latitude: c.lat, longitude: c.lng, timezone_offset: c.tz }));
+  const handleCity = (city: { name: string; lat: number; lng: number; tz: number }) => {
+    setForm((p) => ({ ...p, city: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz }));
   };
 
   const handleGenerate = async () => {
@@ -70,10 +70,7 @@ export default function PredictionsPage() {
           </div>
           <div>
             <label htmlFor="pred-city" className="block text-sm font-medium text-gray-700 mb-1">Birth City</label>
-            <select id="pred-city" value={form.city} onChange={(e) => handleCity(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-purple-500">
-              {cities.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-            </select>
+            <CitySearch value={form.city} onChange={handleCity} placeholder="Search city..." />
           </div>
         </div>
       </div>
