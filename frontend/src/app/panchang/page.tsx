@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useReducedMotion, staggerContainer, staggerItem, slideUp } from "@/lib/motion";
 import { MapPin } from "lucide-react";
 import { api, type PanchangResponse } from "@/lib/api";
 import CitySearch from "@/components/CitySearch";
@@ -16,6 +17,7 @@ export default function PanchangPage() {
   const [result, setResult] = useState<PanchangResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const reduced = useReducedMotion();
 
   const handleCityChange = (c: { name: string; lat: number; lng: number; tz: number }) => {
     setCity(c.name); setLat(c.lat); setLng(c.lng);
@@ -35,7 +37,7 @@ export default function PanchangPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div variants={slideUp} initial={reduced ? false : "hidden"} animate="visible">
         <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
           <span className="text-gradient-gold">Panchang</span>
         </h1>
@@ -43,7 +45,7 @@ export default function PanchangPage() {
       </motion.div>
 
       {/* Form */}
-      <motion.div className="glass-card p-6 mb-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+      <motion.div className="glass-card p-6 mb-8" variants={slideUp}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="input-label"><MapPin size={12} className="inline mr-1" />City</label>
@@ -59,12 +61,12 @@ export default function PanchangPage() {
       </motion.div>
 
       {result && (
-        <motion.div className="space-y-6" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <motion.div className="space-y-6" variants={staggerContainer} initial={reduced ? false : "hidden"} animate="visible">
           {/* Header */}
-          <div className="glass-card p-6 text-center">
+          <motion.div variants={staggerItem} className="glass-card p-6 text-center">
             <h2 className="text-xl font-display font-bold mb-1">{formatDate(result.date)}</h2>
             <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>{city} &bull; {lat.toFixed(2)}°N, {lng.toFixed(2)}°E</p>
-          </div>
+          </motion.div>
 
           {/* Main grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -74,22 +76,22 @@ export default function PanchangPage() {
               { label: "Yoga", value: result.yoga.yoga_name, sub: "" },
               { label: "Karana", value: result.karana.karana_name, sub: "" },
             ].map((item) => (
-              <div key={item.label} className="glass-card p-5">
+              <motion.div key={item.label} variants={staggerItem} className="glass-card p-5">
                 <div className="text-[10px] uppercase tracking-wider mb-2 font-medium" style={{ color: "var(--champagne)" }}>{item.label}</div>
                 <div className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{item.value}</div>
                 {item.sub && <div className="text-sm mt-1" style={{ color: "var(--text-tertiary)" }}>{item.sub}</div>}
-              </div>
+              </motion.div>
             ))}
           </div>
 
           {/* Var */}
-          <div className="glass-card p-5 text-center">
+          <motion.div variants={staggerItem} className="glass-card p-5 text-center">
             <div className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--text-tertiary)" }}>Vara (Day)</div>
             <div className="font-bold" style={{ color: "var(--champagne)" }}>{result.vara.vara_name} — Lord: {result.vara.vara_lord}</div>
-          </div>
+          </motion.div>
 
           {/* Rahu Kaal */}
-          <div className="glass-card p-6">
+          <motion.div variants={staggerItem} className="glass-card p-6">
             <h3 className="font-semibold mb-4 text-sm" style={{ color: "var(--champagne)" }}>Rahu Kaal & Gulika Kaal</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-xl p-4 text-center" style={{ background: "rgba(232, 93, 93, 0.06)", border: "1px solid rgba(232, 93, 93, 0.12)" }}>
@@ -101,10 +103,10 @@ export default function PanchangPage() {
                 <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{result.gulika_kaal.start} — {result.gulika_kaal.end}</div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Sun times */}
-          <div className="glass-card p-6">
+          <motion.div variants={staggerItem} className="glass-card p-6">
             <h3 className="font-semibold mb-4 text-sm" style={{ color: "var(--champagne)" }}>Sunrise & Sunset</h3>
             <div className="flex justify-center gap-8">
               <div className="text-center">
@@ -118,7 +120,7 @@ export default function PanchangPage() {
                 <div className="font-bold" style={{ color: "var(--text-primary)" }}>{result.sunset}</div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
       )}
     </div>

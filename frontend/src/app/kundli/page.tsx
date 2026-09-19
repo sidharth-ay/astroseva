@@ -6,6 +6,15 @@ import { Calendar, Clock, MapPin, User, Download, ChevronRight } from "lucide-re
 import CitySearch from "@/components/CitySearch";
 import KundliChart from "@/components/KundliChart";
 import { api, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
+import {
+  useReducedMotion,
+  staggerContainer,
+  staggerItem,
+  slideUp,
+  fadeIn,
+  duration,
+  ease,
+} from "@/lib/motion";
 
 const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
 
@@ -17,6 +26,7 @@ export default function KundliPage() {
   const [result, setResult] = useState<KundliResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const reduced = useReducedMotion();
 
   const handleCity = (city: CityEntry) => {
     setForm({ ...form, birth_place: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
@@ -93,9 +103,14 @@ export default function KundliPage() {
 
       {/* Results */}
       {result && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-6">
+        <motion.div
+          variants={staggerContainer}
+          initial={reduced ? false : "hidden"}
+          animate="visible"
+          className="space-y-6"
+        >
           {/* Birth Details */}
-          <div className="glass-card p-4">
+          <motion.div className="glass-card p-4" variants={staggerItem}>
             <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Birth Details</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               {[
@@ -112,16 +127,16 @@ export default function KundliPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Chart */}
-          <div className="glass-card p-5">
+          <motion.div className="glass-card p-5" variants={staggerItem}>
             <h3 className="text-xs font-semibold mb-4 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Birth Chart — North Indian Style</h3>
             <KundliChart chart={result.chart} ascSign={result.asc_sign} />
-          </div>
+          </motion.div>
 
           {/* Planetary Positions */}
-          <div className="glass-card p-4">
+          <motion.div className="glass-card p-4" variants={staggerItem}>
             <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Planetary Positions</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -147,11 +162,11 @@ export default function KundliPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </motion.div>
 
           {/* Dasha */}
           {result.dasha_info?.current_dasha && (
-            <div className="glass-card p-4">
+            <motion.div className="glass-card p-4" variants={staggerItem}>
               <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Vimshottari Dasha</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
@@ -166,7 +181,7 @@ export default function KundliPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           )}
         </motion.div>
       )}

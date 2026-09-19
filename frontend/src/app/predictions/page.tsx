@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useReducedMotion, staggerContainer, staggerItem, slideUp } from "@/lib/motion";
 import { Brain, ChevronRight, User, Calendar, Clock, MapPin } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 import { api, type BirthData, type CityEntry } from "@/lib/api";
@@ -26,6 +27,7 @@ export default function PredictionsPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const reduced = useReducedMotion();
 
   const handleCityChange = (city: CityEntry) => {
     setForm({ ...form, city: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
@@ -59,7 +61,7 @@ export default function PredictionsPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div variants={slideUp} initial="hidden" animate={reduced ? false : "visible"}>
         <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
           AI <span className="text-gradient-gold">Predictions</span>
         </h1>
@@ -67,7 +69,7 @@ export default function PredictionsPage() {
       </motion.div>
 
       {/* Form */}
-      <motion.div className="glass-card p-6 mb-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+      <motion.div className="glass-card p-6 mb-8" variants={slideUp} initial="hidden" animate={reduced ? false : "visible"}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="input-label"><User size={12} className="inline mr-1" />Name</label>
@@ -141,23 +143,27 @@ export default function PredictionsPage() {
         </div>
       )}
 
-      {!generating && predictions[activeCategory] && (
-        <motion.div className="max-w-3xl mx-auto" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <div className="glass-card p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: `${categories.find((c) => c.key === activeCategory)?.color}10`, color: categories.find((c) => c.key === activeCategory)?.color }}>
-                <Brain size={18} />
+      {!generating && (
+        <AnimatePresence mode="wait">
+          {predictions[activeCategory] && (
+            <motion.div key={activeCategory} className="max-w-3xl mx-auto" variants={slideUp} initial="hidden" animate={reduced ? false : "visible"} exit="exit">
+              <div className="glass-card p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: `${categories.find((c) => c.key === activeCategory)?.color}10`, color: categories.find((c) => c.key === activeCategory)?.color }}>
+                    <Brain size={18} />
+                  </div>
+                  <h3 className="text-base font-semibold capitalize" style={{ color: "var(--text-primary)" }}>
+                    {activeCategory === "all" ? "Complete Life Overview" : activeCategory} Prediction
+                  </h3>
+                </div>
+                <div className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--text-secondary)" }}>
+                  {predictions[activeCategory]}
+                </div>
               </div>
-              <h3 className="text-base font-semibold capitalize" style={{ color: "var(--text-primary)" }}>
-                {activeCategory === "all" ? "Complete Life Overview" : activeCategory} Prediction
-              </h3>
-            </div>
-            <div className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--text-secondary)" }}>
-              {predictions[activeCategory]}
-            </div>
-          </div>
-        </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
 
       {/* Quick links */}

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Cinzel } from "next/font/google";
+import PageTransition from "@/components/PageTransition";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <rect width="100%" height="100%" filter="url(#noiseFilter)" />
           </svg>
         </div>
-        <main className="flex-1 relative z-10">{children}</main>
+        <main className="flex-1 relative z-10">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </body>
     </html>
   );

@@ -1,10 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Clock, MapPin, User, Heart, Shield } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 import { api, type MatchingResponse, type BirthData, type CityEntry } from "@/lib/api";
+import {
+  useReducedMotion,
+  staggerContainer,
+  staggerItem,
+  slideInLeft,
+  slideInRight,
+  slideUp,
+  duration,
+  ease,
+} from "@/lib/motion";
 
 const defaultForm = (name: string, date: string, time: string): BirthData => ({
   name, birth_date: date, birth_time: time, birth_place: "New Delhi", latitude: 28.6139, longitude: 77.209, timezone_offset: 5.5,
@@ -16,6 +26,25 @@ export default function MatchingPage() {
   const [result, setResult] = useState<MatchingResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const reduced = useReducedMotion();
+  const [displayScore, setDisplayScore] = useState(0);
+  const animFrame = useRef<number>(0);
+
+  useEffect(() => {
+    if (!result) { setDisplayScore(0); return; }
+    const target = result.total_score;
+    const start = performance.now();
+    const durationMs = 1000;
+    const step = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / durationMs, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayScore(Math.round(eased * target));
+      if (progress < 1) animFrame.current = requestAnimationFrame(step);
+    };
+    animFrame.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animFrame.current);
+  }, [result]);
 
   const updateBoy = (patch: Partial<BirthData>) => setBoy({ ...boy, ...patch });
   const updateGirl = (patch: Partial<BirthData>) => setGirl({ ...girl, ...patch });
@@ -67,7 +96,7 @@ export default function MatchingPage() {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <motion.div className="glass-card p-5" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+        <motion.div className="glass-card p-5" variants={slideInLeft} initial="hidden" animate="visible">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(181, 164, 244, 0.1)", color: "var(--lavender)" }}>
               <Heart size={14} />
@@ -76,7 +105,7 @@ export default function MatchingPage() {
           </div>
           <FormFields data={boy} update={updateBoy} />
         </motion.div>
-        <motion.div className="glass-card p-5" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <motion.div className="glass-card p-5" variants={slideInRight} initial="hidden" animate="visible">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(232, 160, 191, 0.1)", color: "#E8A0BF" }}>
               <Heart size={14} />
@@ -94,15 +123,15 @@ export default function MatchingPage() {
       </button>
 
       {result && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-6">
           {/* Score Card */}
-          <div className="glass-card p-6 text-center">
+          <motion.div variants={staggerItem} className="glass-card p-6 text-center">
             <div className="flex items-center justify-center gap-2 mb-3">
               <Shield size={16} style={{ color: "var(--champagne)" }} />
               <h3 className="text-sm font-semibold" style={{ color: "var(--champagne)" }}>Compatibility Score</h3>
             </div>
             <div className="text-5xl font-bold mb-1" style={{ color: "var(--champagne)" }}>
-              {result.total_score}<span className="text-lg font-normal" style={{ color: "var(--text-tertiary)" }}>/{result.max_score}</span>
+              {displayScore}<span className="text-lg font-normal" style={{ color: "var(--text-tertiary)" }}>/{result.max_score}</span>
             </div>
             <div className="text-sm font-medium mb-3" style={{ color: "var(--text-secondary)" }}>{result.compatibility_percentage}% Compatible</div>
             <p className="text-sm max-w-md mx-auto" style={{ color: "var(--text-secondary)" }}>{result.recommendation}</p>
@@ -112,10 +141,10 @@ export default function MatchingPage() {
                 ⚠ Nadi Dosha Detected
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Kootas */}
-          <div className="glass-card p-5">
+          <motion.div variants={staggerItem} className="glass-card p-5">
             <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--champagne)" }}>Ashtakoot Analysis</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {Object.entries(result.kootas).map(([key, val]) => {
@@ -128,13 +157,19 @@ export default function MatchingPage() {
                       <span className="text-xs font-semibold" style={{ color: scoreColor(k.score, k.max_points) }}>{k.score}/{k.max_points}</span>
                     </div>
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: scoreColor(k.score, k.max_points) }} />
+                      <motion.div
+                        className="h-full rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: duration.slow, ease: ease.decelerate }}
+                        style={{ background: scoreColor(k.score, k.max_points) }}
+                      />
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
         </motion.div>
       )}
     </div>

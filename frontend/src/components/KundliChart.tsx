@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { planetColors } from "@/components/icons/PlanetIcons";
 
 interface KundliChartProps {
@@ -52,6 +54,17 @@ const CENTER_LINES = [
 ];
 
 export default function KundliChart({ chart, ascSign }: KundliChartProps) {
+  const [mounted, setMounted] = useState(false);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  const lineDur = reduced ? 0 : 0.8;
+  const labelDur = reduced ? 0 : 0.3;
+
   return (
     <div className="w-full max-w-[400px] mx-auto">
       <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
@@ -66,27 +79,33 @@ export default function KundliChart({ chart, ascSign }: KundliChartProps) {
 
           return (
             <g key={h.house}>
-              <polygon
+              <motion.polygon
                 points={h.points}
                 fill={isAsc ? "rgba(214, 184, 117, 0.06)" : "transparent"}
                 stroke="rgba(166, 165, 184, 0.12)"
                 strokeWidth="0.8"
+                initial={reduced ? undefined : { opacity: 0 }}
+                animate={mounted ? { opacity: 1 } : undefined}
+                transition={{ duration: 0.4, delay: h.house * 0.03 }}
               />
 
               {/* House number */}
-              <text
+              <motion.text
                 x={h.labelX}
                 y={h.labelY}
                 textAnchor={h.textAnchor}
                 fontSize="8"
                 fill="rgba(166, 165, 184, 0.35)"
                 fontFamily="inherit"
+                initial={reduced ? undefined : { opacity: 0 }}
+                animate={mounted ? { opacity: 1 } : undefined}
+                transition={{ duration: labelDur, delay: 0.6 + h.house * 0.04 }}
               >
                 {h.house}{isAsc ? " Asc" : ""}
-              </text>
+              </motion.text>
 
               {/* Sign abbreviation */}
-              <text
+              <motion.text
                 x={h.labelX}
                 y={h.labelY + 12}
                 textAnchor={h.textAnchor}
@@ -94,13 +113,16 @@ export default function KundliChart({ chart, ascSign }: KundliChartProps) {
                 fill="rgba(166, 165, 184, 0.55)"
                 fontFamily="inherit"
                 fontWeight="500"
+                initial={reduced ? undefined : { opacity: 0 }}
+                animate={mounted ? { opacity: 1 } : undefined}
+                transition={{ duration: labelDur, delay: 0.7 + h.house * 0.04 }}
               >
                 {SIGN_SHORT[signIdx]}
-              </text>
+              </motion.text>
 
               {/* Planets */}
               {planets.map((p, pi) => (
-                <text
+                <motion.text
                   key={p}
                   x={h.labelX}
                   y={h.labelY + 24 + pi * 11}
@@ -109,42 +131,54 @@ export default function KundliChart({ chart, ascSign }: KundliChartProps) {
                   fill={planetColors[p] || "#A6A5B8"}
                   fontFamily="inherit"
                   fontWeight="600"
+                  initial={reduced ? undefined : { opacity: 0 }}
+                  animate={mounted ? { opacity: 1 } : undefined}
+                  transition={{ duration: labelDur, delay: 0.9 + h.house * 0.04 + pi * 0.05 }}
                 >
                   {p.substring(0, 3)}
-                </text>
+                </motion.text>
               ))}
             </g>
           );
         })}
 
-        {/* Center diamond */}
-        <polygon
+        {/* Center diamond — animated line drawing */}
+        <motion.polygon
           points={DIAMOND}
           fill="none"
           stroke="rgba(166, 165, 184, 0.15)"
           strokeWidth="1"
+          initial={reduced ? undefined : { pathLength: 0, opacity: 0 }}
+          animate={mounted ? { pathLength: 1, opacity: 1 } : undefined}
+          transition={{ duration: lineDur, ease: [0.16, 1, 0.3, 1] }}
         />
 
-        {/* Center cross lines */}
+        {/* Center cross lines — animated line drawing */}
         {CENTER_LINES.map((line, i) => {
           const [x1, y1, x2, y2] = line.split(" ").join(",").split(",").map(Number);
           return (
-            <line
+            <motion.line
               key={i}
               x1={x1} y1={y1} x2={x2} y2={y2}
               stroke="rgba(166, 165, 184, 0.10)"
               strokeWidth="0.6"
+              initial={reduced ? undefined : { pathLength: 0, opacity: 0 }}
+              animate={mounted ? { pathLength: 1, opacity: 1 } : undefined}
+              transition={{ duration: lineDur * 0.6, delay: 0.3 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
             />
           );
         })}
 
-        {/* Outer frame */}
-        <rect
+        {/* Outer frame — animated line drawing */}
+        <motion.rect
           x="0.5" y="0.5" width="399" height="399"
           fill="none"
           stroke="rgba(166, 165, 184, 0.15)"
           strokeWidth="1"
           rx="4"
+          initial={reduced ? undefined : { pathLength: 0, opacity: 0 }}
+          animate={mounted ? { pathLength: 1, opacity: 1 } : undefined}
+          transition={{ duration: lineDur * 1.2, ease: [0.16, 1, 0.3, 1] }}
         />
       </svg>
     </div>

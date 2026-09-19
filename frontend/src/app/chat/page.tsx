@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useReducedMotion, slideUp } from "@/lib/motion";
 import { Send, Trash2, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -28,6 +29,7 @@ interface KundliProfile {
 }
 
 export default function ChatPage() {
+  const reduced = useReducedMotion();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -174,7 +176,10 @@ export default function ChatPage() {
       <div className="flex-1 min-h-0 overflow-y-auto rounded-xl p-4 mb-4 space-y-4"
         style={{ background: "var(--bg-primary)", border: "1px solid var(--border-subtle)" }}>
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <motion.div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              initial={reduced ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i === messages.length - 1 ? 0.02 * i : 0 }}>
             <div className="max-w-[85%] rounded-xl px-4 py-3"
               style={{
                 background: msg.role === "user" ? "rgba(181, 164, 244, 0.12)" : "var(--bg-surface)",
@@ -186,7 +191,7 @@ export default function ChatPage() {
               </div>
               <div className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</div>
             </div>
-          </div>
+          </motion.div>
         ))}
         {loading && (
           <div className="flex justify-start">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger, ease } from "@/lib/motion";
 
 const lifePathExplanations: Record<number, string> = {
   1: "Natural-born leader with strong will and independence. Pioneering spirit, ambitious, confident, determined.",
@@ -16,6 +17,7 @@ const lifePathExplanations: Record<number, string> = {
 };
 
 export default function NumerologyPage() {
+  const reduced = useReducedMotion();
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [result, setResult] = useState<{ lifePath: number; destiny: number; soulUrge: number; personality: number } | null>(null);
@@ -41,7 +43,7 @@ export default function NumerologyPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div variants={slideUp} initial={reduced ? false : "hidden"} animate="visible">
         <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
           <span className="text-gradient-gold">Numerology</span> Calculator
         </h1>
@@ -49,7 +51,8 @@ export default function NumerologyPage() {
       </motion.div>
 
       {/* Form */}
-      <motion.div className="glass-card p-6 mb-10" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+      <motion.div variants={staggerContainerCustom(stagger.normal, 0.1)}>
+        <motion.div className="glass-card p-6 mb-10" variants={slideUp}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="input-label">Full Name</label>
@@ -64,19 +67,27 @@ export default function NumerologyPage() {
           </div>
         </div>
       </motion.div>
+      </motion.div>
 
       {/* Result */}
       {result && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <motion.div variants={slideUp} initial={reduced ? false : "hidden"} animate="visible">
           {/* Number orbs */}
-          <div className="flex flex-wrap justify-center items-center gap-6 mb-10 py-8">
+          <motion.div variants={staggerContainerCustom(stagger.normal, 0.1)} className="flex flex-wrap justify-center items-center gap-6 mb-10 py-8">
             {[
               { num: result.lifePath, label: "Life Path", color: "var(--lavender)", size: 120 },
               { num: result.destiny, label: "Destiny", color: "var(--champagne)", size: 100 },
               { num: result.soulUrge, label: "Soul Urge", color: "#E8A0BF", size: 90 },
               { num: result.personality, label: "Personality", color: "#8AA8F4", size: 80 },
             ].map((o) => (
-              <div key={o.label} className="text-center" style={{ animationDelay: `${0 * 200}ms` }}>
+              <motion.div
+                key={o.label}
+                variants={staggerItem}
+                whileHover={reduced ? undefined : { scale: 1.08 }}
+                whileTap={reduced ? undefined : { scale: 0.95 }}
+                className="text-center"
+                style={{ animationDelay: `${0 * 200}ms` }}
+              >
                 <div className="rounded-full flex items-center justify-center mx-auto mb-3"
                   style={{
                     width: o.size, height: o.size,
@@ -86,26 +97,26 @@ export default function NumerologyPage() {
                   <span className="text-3xl font-bold" style={{ color: o.color }}>{o.num}</span>
                 </div>
                 <div className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{o.label}</div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           {/* Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto">
+          <motion.div variants={staggerContainerCustom(stagger.normal, 0.1)} className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto">
             {[
               { num: result.lifePath, title: "Life Path Number", desc: "Your life purpose and journey path." },
               { num: result.destiny, title: "Destiny Number", desc: "Your life goal and what you're meant to achieve." },
               { num: result.soulUrge, title: "Soul Urge Number", desc: "Your inner self and deepest desires." },
               { num: result.personality, title: "Personality Number", desc: "How others perceive you." },
             ].map((item) => (
-              <div key={item.title} className="glass-card p-6">
+              <motion.div key={item.title} variants={staggerItem} className="glass-card p-6">
                 <div className="text-3xl font-bold mb-1" style={{ color: "var(--champagne)" }}>{item.num}</div>
                 <h3 className="font-bold mb-2 text-sm" style={{ color: "var(--text-primary)" }}>{item.title}</h3>
                 <p className="text-sm mb-3" style={{ color: "var(--text-secondary)" }}>{item.desc}</p>
                 <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{lifePathExplanations[item.num] || `Number ${item.num} carries unique energy and significance.`}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </motion.div>
       )}
     </div>

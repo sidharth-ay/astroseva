@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useReducedMotion, slideUp, staggerContainerCustom, staggerItem, stagger } from "@/lib/motion";
 import { Brain, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -14,6 +15,7 @@ const quickQuestions = [
 ];
 
 export default function AiPage() {
+  const reduced = useReducedMotion();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,7 +37,7 @@ export default function AiPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-5 py-10">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div variants={slideUp} initial={reduced ? false : "hidden"} animate="visible">
         <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
           AI <span className="text-gradient-gold">Astrologer</span>
         </h1>
@@ -45,21 +47,21 @@ export default function AiPage() {
       {/* Quick Questions */}
       <div className="mb-6">
         <p className="text-xs font-medium mb-3" style={{ color: "var(--text-tertiary)" }}>Quick questions:</p>
-        <div className="flex flex-wrap gap-2">
+        <motion.div variants={staggerContainerCustom(stagger.fast, 0)} initial={reduced ? false : "hidden"} animate="visible" className="flex flex-wrap gap-2">
           {quickQuestions.map((q, i) => (
-            <button key={i} onClick={() => handleAsk(q)} disabled={loading}
+            <motion.button key={i} variants={staggerItem} onClick={() => handleAsk(q)} disabled={loading}
               className="text-left text-xs px-3 py-2 rounded-xl transition-all duration-200"
               style={{ border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--champagne)30"; e.currentTarget.style.background = "rgba(214, 184, 117, 0.04)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.background = "transparent"; }}>
               {q}
-            </button>
+            </motion.button>
           ))}
-        </div>
+        </motion.div>
       </div>
 
       {/* Input */}
-      <motion.div className="glass-card p-4 mb-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+      <motion.div className="glass-card p-4 mb-6" variants={slideUp} initial={reduced ? false : "hidden"} animate="visible" transition={{ delay: 0.05 }}>
         <div className="flex gap-3">
           <input type="text" placeholder="Ask anything about Vedic astrology..." value={question}
             onChange={(e) => setQuestion(e.target.value)}
@@ -81,8 +83,9 @@ export default function AiPage() {
         </div>
       )}
 
+      <AnimatePresence mode="wait">
       {!loading && answer && (
-        <motion.div className="glass-card p-6 mb-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <motion.div key={answer} className="glass-card p-6 mb-8" variants={slideUp} initial={reduced ? false : "hidden"} animate="visible" exit="exit">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: "rgba(214, 184, 117, 0.1)", color: "var(--champagne)" }}>
@@ -95,6 +98,7 @@ export default function AiPage() {
           </div>
         </motion.div>
       )}
+      </AnimatePresence>
 
       {/* History */}
       {history.length > 1 && (
