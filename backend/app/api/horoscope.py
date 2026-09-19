@@ -45,10 +45,18 @@ async def _warm_sign(sign: str, language: str = "en") -> bool:
     """Background: call Gemini and cache the result. Returns False on quota exhaustion."""
     try:
         result = await generate_horoscope(sign, language)
+        # Only cache AI-generated responses, not local fallbacks
+        if result.get("model") == "astroseva-local":
+            logger.info(f"Got local fallback for {sign}, not caching")
+            return False
+        prediction = result.get("prediction", "")
+        if len(prediction) < 100:
+            logger.warning(f"Gemini returned short horoscope for {sign} ({len(prediction)} chars), not caching")
+            return False
         response = HoroscopeResponse(
             zodiac_sign=sign,
             date=date.today().isoformat(),
-            prediction=result["prediction"],
+            prediction=prediction,
             love_rating=result.get("love_rating", 4),
             career_rating=result.get("career_rating", 4),
             health_rating=result.get("health_rating", 4),
@@ -58,7 +66,8 @@ async def _warm_sign(sign: str, language: str = "en") -> bool:
         )
         cache_key = f"horoscope:{sign}:{date.today().isoformat()}:{language}"
         await cache_service.set(cache_key, response.model_dump(), expiry=86400)
-        return result.get("model") != "astroseva-local"
+        logger.info(f"Cached AI horoscope for {sign}")
+        return True
     except Exception as e:
         logger.warning(f"Background warm failed for {sign}: {e}")
         return False
@@ -92,13 +101,17 @@ async def get_daily_horoscope(sign: str, language: str = "en"):
     cache_key = f"horoscope:{sign}:{date.today().isoformat()}:{language}"
     cached = await cache_service.get(cache_key)
 
-    if cached and cached.get("prediction"):
+    if cached and cached.get("prediction") and len(cached["prediction"]) >= 100:
         is_ai = cached.get("ai_model") and cached.get("ai_model") != "astroseva-local"
         if is_ai:
             return _build_response(sign, cached)
         # Local cached — serve + retry in background
         asyncio.create_task(_warm_sign(sign, language))
         return _build_response(sign, cached)
+
+    # Stale/short cache entry — treat as cache miss
+    if cached:
+        logger.warning(f"Cache for {sign} has short prediction ({len(cached.get('prediction', ''))} chars), regenerating")
 
     # First request — serve local instantly, fire AI in background
     local = _local_response(sign)
@@ -142,7 +155,7 @@ async def _get_one(sign: str, language: str) -> dict:
     """Get one sign — cache or local."""
     cache_key = f"horoscope:{sign}:{date.today().isoformat()}:{language}"
     cached = await cache_service.get(cache_key)
-    if cached and cached.get("prediction"):
+    if cached and cached.get("prediction") and len(cached["prediction"]) >= 100:
         return _build_response(sign, cached).model_dump()
     return _local_response(sign).model_dump()
 

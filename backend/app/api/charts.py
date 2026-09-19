@@ -1,6 +1,6 @@
 """Saved Charts API endpoints."""
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import List
@@ -62,11 +62,14 @@ async def save_chart(
 
 @router.get("/list")
 async def list_charts(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get all saved charts for the user."""
-    charts = db.query(SavedChart).filter(SavedChart.user_id == user.id).order_by(SavedChart.created_at.desc()).all()
+    charts = db.query(SavedChart).filter(SavedChart.user_id == user.id).order_by(SavedChart.created_at.desc()).offset(skip).limit(limit).all()
+    total = db.query(SavedChart).filter(SavedChart.user_id == user.id).count()
 
     return {
         "charts": [
@@ -80,7 +83,7 @@ async def list_charts(
             }
             for c in charts
         ],
-        "total": len(charts),
+        "total": total,
     }
 
 

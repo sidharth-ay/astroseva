@@ -1,0 +1,10 @@
+{
+  "name": "AstroSeva - Vedic Astrology Platform",
+  "short_name": "AstroSeva",
+  "description": "Free Vedic Astrology platform with AI-powered predictions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060610",
+  "theme_color": "#C8956D",
+  "icons": []
+}

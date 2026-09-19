@@ -87,7 +87,7 @@ async def analyze_marriage_matching(matching_data: MatchingData):
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Error analyzing matching: {str(e)}"
+            detail="Error analyzing matching. Please try again."
         )
 
 

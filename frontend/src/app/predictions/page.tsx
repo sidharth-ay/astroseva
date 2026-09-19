@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useReducedMotion, staggerContainer, staggerItem, slideUp } from "@/lib/motion";
 import { Brain, ChevronRight, User, Calendar, Clock, MapPin } from "lucide-react";
@@ -9,11 +9,11 @@ import { api, type BirthData, type CityEntry } from "@/lib/api";
 
 const categories = [
   { key: "all", label: "All Areas", icon: "✦", color: "var(--champagne)" },
-  { key: "career", label: "Career", icon: "◆", color: "#8AA8F4" },
-  { key: "marriage", label: "Marriage", icon: "♥", color: "#E8A0BF" },
+  { key: "career", label: "Career", icon: "◆", color: "#B0BEC5" },
+  { key: "marriage", label: "Marriage", icon: "♥", color: "#E8B88A" },
   { key: "health", label: "Health", icon: "✚", color: "#5DC88F" },
   { key: "finance", label: "Finance", icon: "◇", color: "var(--champagne)" },
-  { key: "education", label: "Education", icon: "△", color: "var(--lavender)" },
+  { key: "education", label: "Education", icon: "△", color: "var(--accent)" },
 ];
 
 export default function PredictionsPage() {
@@ -28,41 +28,66 @@ export default function PredictionsPage() {
   const [error, setError] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const reduced = useReducedMotion();
+  const fetchedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    document.title = "AI Predictions | AstroSeva";
+  }, []);
 
   const handleCityChange = (city: CityEntry) => {
-    setForm({ ...form, city: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
+    setForm((prev) => ({ ...prev, city: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz }));
   };
 
   const handleGenerate = async () => {
     if (!form.name) { setError("Please enter your name"); return; }
-    setLoading(true); setError(""); setPredictions({});
+    setLoading(true); setError(""); setPredictions({}); fetchedRef.current.clear();
     try {
       await api.generateKundli({
         name: form.name, birth_date: form.birth_date, birth_time: form.birth_time,
         birth_place: form.city, latitude: form.latitude, longitude: form.longitude, timezone_offset: form.timezone_offset,
       });
-      setBirthData({
+      const bd: BirthData = {
         name: form.name, birth_date: form.birth_date, birth_time: form.birth_time,
         birth_place: form.city, latitude: form.latitude, longitude: form.longitude, timezone_offset: form.timezone_offset,
-      });
+      };
+      setBirthData(bd);
     } catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed"); }
     finally { setLoading(false); }
   };
 
-  const handleGetPrediction = async (category: string) => {
-    if (!birthData) return;
-    setGenerating(true); setError("");
+  const fetchPrediction = async (category: string, bd: BirthData) => {
+    if (fetchedRef.current.has(category)) return;
+    fetchedRef.current.add(category);
     try {
-      const resp = await api.generatePrediction(birthData, category === "all" ? "general" : category);
+      const resp = await api.generatePrediction(bd, category === "all" ? "general" : category);
       setPredictions((prev) => ({ ...prev, [category]: resp.content }));
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed to get prediction"); }
-    finally { setGenerating(false); }
+    } catch (e: unknown) {
+      setPredictions((prev) => ({ ...prev, [category]: "Prediction unavailable. Please try again." }));
+    }
   };
+
+  // Pre-fetch all categories when birthData is set
+  useEffect(() => {
+    if (!birthData) return;
+    setGenerating(true);
+    const tasks = categories.map((cat) => fetchPrediction(cat.key, birthData));
+    Promise.all(tasks).finally(() => setGenerating(false));
+  }, [birthData]);
+
+  const handleCategoryClick = (key: string) => {
+    setActiveCategory(key);
+    if (!predictions[key] && birthData && !fetchedRef.current.has(key)) {
+      setGenerating(true);
+      fetchPrediction(key, birthData).finally(() => setGenerating(false));
+    }
+  };
+
+  const activeCat = categories.find((c) => c.key === activeCategory);
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
       <motion.div variants={slideUp} initial="hidden" animate={reduced ? false : "visible"}>
-        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
+        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1 heading-display">
           AI <span className="text-gradient-gold">Predictions</span>
         </h1>
         <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Generate your birth chart, then get AI-powered predictions</p>
@@ -72,20 +97,20 @@ export default function PredictionsPage() {
       <motion.div className="glass-card p-6 mb-8" variants={slideUp} initial="hidden" animate={reduced ? false : "visible"}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="input-label"><User size={12} className="inline mr-1" />Name</label>
-            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" placeholder="Enter your name" />
+            <label className="input-label" htmlFor="pred-name"><User size={12} className="inline mr-1" />Name</label>
+            <input id="pred-name" type="text" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} className="input-field" placeholder="Enter your name" />
           </div>
           <div>
-            <label className="input-label"><Calendar size={12} className="inline mr-1" />Birth Date</label>
-            <input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} className="input-field" style={{ colorScheme: "dark" }} />
+            <label className="input-label" htmlFor="pred-date"><Calendar size={12} className="inline mr-1" />Birth Date</label>
+            <input id="pred-date" type="date" value={form.birth_date} onChange={(e) => setForm((prev) => ({ ...prev, birth_date: e.target.value }))} className="input-field" style={{ colorScheme: "dark" }} />
           </div>
           <div>
-            <label className="input-label"><Clock size={12} className="inline mr-1" />Birth Time</label>
-            <input type="time" value={form.birth_time} onChange={(e) => setForm({ ...form, birth_time: e.target.value })} className="input-field" style={{ colorScheme: "dark" }} />
+            <label className="input-label" htmlFor="pred-time"><Clock size={12} className="inline mr-1" />Birth Time</label>
+            <input id="pred-time" type="time" value={form.birth_time} onChange={(e) => setForm((prev) => ({ ...prev, birth_time: e.target.value }))} className="input-field" style={{ colorScheme: "dark" }} />
           </div>
           <div>
-            <label className="input-label"><MapPin size={12} className="inline mr-1" />Birth City</label>
-            <CitySearch value={form.city} onChange={handleCityChange} placeholder="Search city..." />
+            <label className="input-label" htmlFor="pred-city"><MapPin size={12} className="inline mr-1" />Birth City</label>
+            <CitySearch id="pred-city" value={form.city} onChange={handleCityChange} placeholder="Search city..." />
           </div>
           <div className="flex items-end">
             <button onClick={handleGenerate} disabled={loading} className="btn-primary">
@@ -122,7 +147,7 @@ export default function PredictionsPage() {
           <h3 className="text-sm font-semibold mb-4 text-center" style={{ color: "var(--champagne)" }}>Get Predictions For</h3>
           <div className="flex flex-wrap justify-center gap-2">
             {categories.map((cat) => (
-              <button key={cat.key} onClick={() => { setActiveCategory(cat.key); if (!predictions[cat.key]) handleGetPrediction(cat.key); }}
+              <button key={cat.key} onClick={() => handleCategoryClick(cat.key)}
                 className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
                 style={{
                   background: activeCategory === cat.key ? `${cat.color}10` : "transparent",
@@ -140,17 +165,18 @@ export default function PredictionsPage() {
       {generating && (
         <div className="glass-card p-8 text-center">
           <div className="shimmer h-32 w-full rounded-xl" />
+          <p className="text-xs mt-3" style={{ color: "var(--text-tertiary)" }}>Generating predictions...</p>
         </div>
       )}
 
-      {!generating && (
+      {!generating && birthData && (
         <AnimatePresence mode="wait">
-          {predictions[activeCategory] && (
+          {predictions[activeCategory] ? (
             <motion.div key={activeCategory} className="max-w-3xl mx-auto" variants={slideUp} initial="hidden" animate={reduced ? false : "visible"} exit="exit">
               <div className="glass-card p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: `${categories.find((c) => c.key === activeCategory)?.color}10`, color: categories.find((c) => c.key === activeCategory)?.color }}>
+                    style={{ background: `${activeCat?.color}10`, color: activeCat?.color }}>
                     <Brain size={18} />
                   </div>
                   <h3 className="text-base font-semibold capitalize" style={{ color: "var(--text-primary)" }}>
@@ -162,6 +188,12 @@ export default function PredictionsPage() {
                 </div>
               </div>
             </motion.div>
+          ) : (
+            <div className="glass-card p-8 text-center">
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                Click a category above to view predictions
+              </p>
+            </div>
           )}
         </AnimatePresence>
       )}

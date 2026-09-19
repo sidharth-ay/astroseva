@@ -5,65 +5,91 @@ load_dotenv()
 
 import asyncio
 import logging
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 import os
+import time
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
-from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+from .core.rate_limit import limiter
+
+from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities
 from .db.database import init_db
 
+# Logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
-
-# Rate limiting
-limiter = Limiter(key_func=get_remote_address)
 
 # Initialize database
 init_db()
 
+# CORS origins from environment
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+
+# Docs visibility
+ENABLE_DOCS = os.getenv("ENABLE_DOCS", "false").lower() == "true"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: warm all 12 horoscopes in background (non-blocking)
-    asyncio.create_task(_warm_horoscopes())
+    logger.info("AstroSeva API starting up...")
+    # Clear any stale horoscope cache entries on startup
+    try:
+        from .services.cache_service import cache_service
+        deleted = await cache_service.clear_pattern("horoscope:*")
+        if deleted:
+            logger.info(f"Cleared {deleted} stale horoscope cache entries")
+    except Exception as e:
+        logger.warning(f"Cache clear on startup failed: {e}")
     yield
+    logger.info("AstroSeva API shutting down...")
 
 
 async def _warm_horoscopes():
-    """Warm all 12 horoscope caches at startup."""
-    try:
-        await asyncio.sleep(2)  # let server fully start first
-        from .api.horoscope import warm_all_horoscopes
-        await warm_all_horoscopes()
-    except Exception as e:
-        logger.warning(f"Startup horoscope warm failed: {e}")
+    """Warm horoscope caches on first request (not at startup to save quota)."""
+    pass
 
 
-# Create FastAPI app
 app = FastAPI(
     title="AstroSeva API",
     description="Vedic Astrology Platform - Kundli, Matching, Predictions, Horoscope, Panchang, Numerology, Chat",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/docs" if ENABLE_DOCS else None,
+    redoc_url="/redoc" if ENABLE_DOCS else None,
     lifespan=lifespan,
 )
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled error: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal server error"},
+    )
+
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify allowed origins
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+
 
 # Include routers
 app.include_router(kundli.router)
@@ -76,32 +102,63 @@ app.include_router(doshas.router)
 app.include_router(auth.router)
 app.include_router(charts.router)
 app.include_router(chat.router)
+app.include_router(cities.router)
 
 
 @app.get("/")
 async def root():
-    """Root endpoint with API information."""
     return {
         "name": "AstroSeva API",
         "version": "1.0.0",
         "description": "Vedic Astrology Platform",
-        "endpoints": {
-            "docs": "/docs",
-            "redoc": "/redoc",
-            "kundli": "/api/v1/kundli/generate",
-            "matching": "/api/v1/matching/analyze",
-            "predictions": "/api/v1/predictions/generate",
-            "horoscope": "/api/v1/horoscope/daily/{sign}",
-            "panchang": "/api/v1/panchang/daily",
-            "numerology": "/api/v1/numerology/analyze",
-            "doshas": "/api/v1/doshas/detect",
-            "auth": "/api/v1/auth/login",
-            "chat": "/api/v1/chat/send",
-        },
     }
 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "AstroSeva API"}
+    """Real health check — verifies DB, Redis, and reports status."""
+    from .services.cache_service import cache_service
+    from .db.database import SessionLocal
+    from sqlalchemy import text
+
+    checks = {}
+    status_code = 200
+
+    # Database check
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = f"error: {type(e).__name__}"
+        status_code = 503
+
+    # Redis check
+    try:
+        if cache_service.is_connected():
+            checks["redis"] = "ok"
+        else:
+            checks["redis"] = "degraded (using fallback)"
+    except Exception:
+        checks["redis"] = "error"
+        status_code = 503
+
+    overall = "healthy" if status_code == 200 else "degraded"
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": overall,
+            "service": "AstroSeva API",
+            "checks": checks,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
+
+@app.post("/api/v1/admin/clear-cache")
+async def clear_cache(pattern: str = "*"):
+    """Clear cache entries matching a pattern."""
+    from .services.cache_service import cache_service
+    deleted = await cache_service.clear_pattern(pattern)
+    return {"cleared": deleted, "pattern": pattern}

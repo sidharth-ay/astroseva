@@ -46,6 +46,10 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    document.title = "AI Chat | AstroSeva";
+  }, []);
+
+  useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("kundli_history") || "[]");
       setProfiles(saved.slice(0, 10));
@@ -101,7 +105,7 @@ export default function ChatPage() {
     <div className="max-w-3xl mx-auto px-4 h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <div className="flex justify-between items-center py-3 shrink-0">
-        <h1 className="text-xl font-display font-bold">
+        <h1 className="text-xl font-display font-bold heading-display">
           <span className="text-gradient-gold">Chat</span> with AstroSeva AI
         </h1>
         <div className="flex items-center gap-3">
@@ -109,12 +113,12 @@ export default function ChatPage() {
           <div className="flex rounded-lg p-0.5" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
             <button onClick={() => setLanguage("en")}
               className="px-3 py-1 text-xs font-medium rounded-md transition-colors"
-              style={{ background: language === "en" ? "var(--lavender)" : "transparent", color: language === "en" ? "#0B0B19" : "var(--text-secondary)" }}>
+              style={{ background: language === "en" ? "var(--accent)" : "transparent", color: language === "en" ? "white" : "var(--text-secondary)" }}>
               English
             </button>
             <button onClick={() => setLanguage("hi")}
               className="px-3 py-1 text-xs font-medium rounded-md transition-colors"
-              style={{ background: language === "hi" ? "var(--lavender)" : "transparent", color: language === "hi" ? "#0B0B19" : "var(--text-secondary)" }}>
+              style={{ background: language === "hi" ? "var(--accent)" : "transparent", color: language === "hi" ? "white" : "var(--text-secondary)" }}>
               हिन्दी
             </button>
           </div>
@@ -145,9 +149,9 @@ export default function ChatPage() {
                   onClick={() => setSelectedProfile(selectedProfile?.name === p.name && selectedProfile?.birth_date === p.birth_date ? null : p)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-colors"
                   style={{
-                    background: selectedProfile?.name === p.name && selectedProfile?.birth_date === p.birth_date ? "rgba(181, 164, 244, 0.15)" : "transparent",
-                    border: `1px solid ${selectedProfile?.name === p.name && selectedProfile?.birth_date === p.birth_date ? "var(--lavender)" : "var(--border-subtle)"}`,
-                    color: selectedProfile?.name === p.name && selectedProfile?.birth_date === p.birth_date ? "var(--lavender)" : "var(--text-secondary)",
+                    background: selectedProfile?.name === p.name && selectedProfile?.birth_date === p.birth_date ? "rgba(200, 149, 109, 0.15)" : "transparent",
+                    border: `1px solid ${selectedProfile?.name === p.name && selectedProfile?.birth_date === p.birth_date ? "var(--accent)" : "var(--border-subtle)"}`,
+                    color: selectedProfile?.name === p.name && selectedProfile?.birth_date === p.birth_date ? "var(--accent)" : "var(--text-secondary)",
                   }}>
                   <span className="font-medium">{p.name}</span>
                   <span style={{ opacity: 0.6 }}>{p.asc_sign_name}</span>
@@ -157,8 +161,8 @@ export default function ChatPage() {
             </div>
           )}
           {selectedProfile && (
-            <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--lavender)" }}>
-              <span className="w-2 h-2 rounded-full" style={{ background: "var(--success)" }} />
+            <div className="mt-2 flex items-center gap-2 text-xs" style={{ color: "var(--accent)" }}>
+              <span className="w-2 h-2 rounded-full" style={{ background: "var(--accent)" }} />
               Analyzing as: {selectedProfile.name} ({selectedProfile.asc_sign_name} Ascendant)
             </div>
           )}
@@ -182,11 +186,11 @@ export default function ChatPage() {
               transition={{ delay: i === messages.length - 1 ? 0.02 * i : 0 }}>
             <div className="max-w-[85%] rounded-xl px-4 py-3"
               style={{
-                background: msg.role === "user" ? "rgba(181, 164, 244, 0.12)" : "var(--bg-surface)",
-                border: `1px solid ${msg.role === "user" ? "rgba(181, 164, 244, 0.2)" : "var(--border-subtle)"}`,
+                background: msg.role === "user" ? "rgba(200, 149, 109, 0.12)" : "var(--bg-surface)",
+                border: `1px solid ${msg.role === "user" ? "rgba(200, 149, 109, 0.2)" : "var(--border-subtle)"}`,
                 color: "var(--text-primary)",
               }}>
-              <div className="text-[10px] font-medium mb-1" style={{ color: msg.role === "user" ? "var(--lavender)" : "var(--champagne)" }}>
+              <div className="text-[10px] font-medium mb-1" style={{ color: msg.role === "user" ? "var(--accent)" : "var(--champagne)" }}>
                 {msg.role === "user" ? "You" : "AstroSeva AI"}
               </div>
               <div className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</div>
@@ -214,9 +218,9 @@ export default function ChatPage() {
           {suggestions.map((s, i) => (
             <button key={i} onClick={() => handleSend(s)}
               className="text-xs px-3 py-2 rounded-xl transition-colors"
-              style={{ background: "rgba(181, 164, 244, 0.06)", border: "1px solid rgba(181, 164, 244, 0.15)", color: "var(--lavender)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(181, 164, 244, 0.12)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(181, 164, 244, 0.06)"; }}>
+              style={{ background: "rgba(200, 149, 109, 0.06)", border: "1px solid rgba(200, 149, 109, 0.15)", color: "var(--accent)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(200, 149, 109, 0.12)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(200, 149, 109, 0.06)"; }}>
               {s}
             </button>
           ))}

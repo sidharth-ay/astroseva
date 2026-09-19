@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger, ease } from "@/lib/motion";
 
@@ -21,6 +21,10 @@ export default function NumerologyPage() {
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [result, setResult] = useState<{ lifePath: number; destiny: number; soulUrge: number; personality: number } | null>(null);
+
+  useEffect(() => {
+    document.title = "Numerology Calculator | AstroSeva";
+  }, []);
 
   const reduceToSingle = (n: number): number => {
     while (n > 9 && n !== 11 && n !== 22 && n !== 33) {
@@ -44,7 +48,7 @@ export default function NumerologyPage() {
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
       <motion.div variants={slideUp} initial={reduced ? false : "hidden"} animate="visible">
-        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
+        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1 heading-display">
           <span className="text-gradient-gold">Numerology</span> Calculator
         </h1>
         <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Calculate your Life Path, Destiny, Soul Urge & Personality numbers</p>
@@ -55,12 +59,12 @@ export default function NumerologyPage() {
         <motion.div className="glass-card p-6 mb-10" variants={slideUp}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="input-label">Full Name</label>
-            <input type="text" placeholder="Enter full name" value={name} onChange={(e) => setName(e.target.value)} className="input-field" />
+            <label className="input-label" htmlFor="numerology-name">Full Name</label>
+            <input id="numerology-name" type="text" placeholder="Enter full name" value={name} onChange={(e) => setName(e.target.value)} className="input-field" />
           </div>
           <div>
-            <label className="input-label">Birth Date</label>
-            <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="input-field" style={{ colorScheme: "dark" }} />
+            <label className="input-label" htmlFor="numerology-date">Birth Date</label>
+            <input id="numerology-date" type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="input-field" style={{ colorScheme: "dark" }} />
           </div>
           <div className="flex items-end">
             <button onClick={calculate} className="btn-primary">Calculate</button>
@@ -75,10 +79,10 @@ export default function NumerologyPage() {
           {/* Number orbs */}
           <motion.div variants={staggerContainerCustom(stagger.normal, 0.1)} className="flex flex-wrap justify-center items-center gap-6 mb-10 py-8">
             {[
-              { num: result.lifePath, label: "Life Path", color: "var(--lavender)", size: 120 },
+              { num: result.lifePath, label: "Life Path", color: "var(--accent)", size: 120 },
               { num: result.destiny, label: "Destiny", color: "var(--champagne)", size: 100 },
-              { num: result.soulUrge, label: "Soul Urge", color: "#E8A0BF", size: 90 },
-              { num: result.personality, label: "Personality", color: "#8AA8F4", size: 80 },
+              { num: result.soulUrge, label: "Soul Urge", color: "#E8B88A", size: 90 },
+              { num: result.personality, label: "Personality", color: "#B0BEC5", size: 80 },
             ].map((o) => (
               <motion.div
                 key={o.label}

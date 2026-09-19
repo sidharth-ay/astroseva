@@ -1,6 +1,6 @@
 """Panchang API endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from datetime import date, datetime
 import logging
 
@@ -16,8 +16,8 @@ router = APIRouter(prefix="/api/v1/panchang", tags=["panchang"])
 
 @router.get("/daily", response_model=PanchangResponse)
 async def get_daily_panchang(
-    latitude: float = 28.6139,
-    longitude: float = 77.2090,
+    latitude: float = Query(28.6139, ge=-90, le=90),
+    longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
     timezone_offset: float = 5.5,
     sunrise_hour: float = 6.0,
@@ -94,8 +94,8 @@ async def get_daily_panchang(
 
 @router.get("/muhurat")
 async def get_muhurat(
-    latitude: float = 28.6139,
-    longitude: float = 77.2090,
+    latitude: float = Query(28.6139, ge=-90, le=90),
+    longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
 ):
     """Get auspicious timings (Muhurat) for the day."""

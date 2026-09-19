@@ -1,22 +1,28 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { cities, type CityEntry } from "@/lib/api";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Search, MapPin, X } from "lucide-react";
+import type { CityEntry } from "@/lib/api";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 interface CitySearchProps {
+  id?: string;
   value: string;
   onChange: (city: CityEntry) => void;
   placeholder?: string;
 }
 
-export default function CitySearch({ value, onChange, placeholder = "Search city..." }: CitySearchProps) {
+export default function CitySearch({ id, value, onChange, placeholder = "Search city..." }: CitySearchProps) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<CityEntry[]>([]);
   const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
 
@@ -28,15 +34,39 @@ export default function CitySearch({ value, onChange, placeholder = "Search city
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const search = (q: string) => {
+  const search = useCallback((q: string) => {
     setQuery(q);
     setHighlightedIndex(-1);
-    if (q.length < 2) { setResults([]); setOpen(false); return; }
-    const lower = q.toLowerCase();
-    const matched = cities.filter((c) => c.name.toLowerCase().includes(lower)).slice(0, 8);
-    setResults(matched);
-    setOpen(matched.length > 0);
-  };
+    if (q.length < 2) {
+      setResults([]);
+      setOpen(false);
+      setSearching(false);
+      return;
+    }
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+    abortRef.current?.abort();
+    setSearching(true);
+
+    timerRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      abortRef.current = controller;
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/v1/cities?q=${encodeURIComponent(q)}`,
+          { signal: controller.signal }
+        );
+        const data = await res.json();
+        setResults(data.cities || []);
+        setOpen(true);
+      } catch {
+        setResults([]);
+        setOpen(false);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+  }, []);
 
   const select = (city: CityEntry) => {
     setQuery(city.name);
@@ -59,7 +89,7 @@ export default function CitySearch({ value, onChange, placeholder = "Search city
       setHighlightedIndex((prev) => (prev + 1) % results.length);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlightedIndex((prev) => (prev <= 0 ? results.length - 1 : prev - 1));
+      setHighlightedIndex((prev) => (prev <= 0 ? results.length - 1 : prev));
     } else if (e.key === "Enter" && highlightedIndex >= 0) {
       e.preventDefault();
       select(results[highlightedIndex]);
@@ -74,6 +104,7 @@ export default function CitySearch({ value, onChange, placeholder = "Search city
         <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-tertiary)" }} />
         <input
           ref={inputRef}
+          id={id}
           type="text"
           value={query}
           onChange={(e) => search(e.target.value)}
@@ -99,7 +130,7 @@ export default function CitySearch({ value, onChange, placeholder = "Search city
         )}
       </div>
 
-      {open && results.length > 0 && (
+      {open && (
         <div
           className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto"
           style={{
@@ -110,17 +141,27 @@ export default function CitySearch({ value, onChange, placeholder = "Search city
           }}
           role="listbox"
         >
-          {results.map((c, i) => (
+          {searching && (
+            <div className="px-4 py-3 text-xs text-center" style={{ color: "var(--text-tertiary)" }}>
+              Searching...
+            </div>
+          )}
+          {!searching && results.length === 0 && (
+            <div className="px-4 py-3 text-xs text-center" style={{ color: "var(--text-tertiary)" }}>
+              No cities found
+            </div>
+          )}
+          {!searching && results.map((c, i) => (
             <button
-              key={`${c.name}-${i}`}
+              key={`${c.name}-${c.lat}-${i}`}
               className="w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2"
               style={{
                 color: highlightedIndex === i ? "var(--text-primary)" : "var(--text-secondary)",
-                background: highlightedIndex === i ? "rgba(244, 240, 232, 0.04)" : "transparent",
+                background: highlightedIndex === i ? "rgba(200, 149, 109, 0.08)" : "transparent",
               }}
               onMouseEnter={(e) => {
                 setHighlightedIndex(i);
-                e.currentTarget.style.background = "rgba(244, 240, 232, 0.04)";
+                e.currentTarget.style.background = "rgba(200, 149, 109, 0.08)";
                 e.currentTarget.style.color = "var(--text-primary)";
               }}
               onMouseLeave={(e) => {

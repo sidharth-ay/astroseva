@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useReducedMotion, staggerContainer, staggerItem, slideUp } from "@/lib/motion";
 import { MapPin } from "lucide-react";
@@ -18,6 +18,10 @@ export default function PanchangPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const reduced = useReducedMotion();
+
+  useEffect(() => {
+    document.title = "Panchang | AstroSeva";
+  }, []);
 
   const handleCityChange = (c: { name: string; lat: number; lng: number; tz: number }) => {
     setCity(c.name); setLat(c.lat); setLng(c.lng);
@@ -38,7 +42,7 @@ export default function PanchangPage() {
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
       <motion.div variants={slideUp} initial={reduced ? false : "hidden"} animate="visible">
-        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
+        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1 heading-display">
           <span className="text-gradient-gold">Panchang</span>
         </h1>
         <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Daily Hindu calendar with tithi, nakshatra, yoga & auspicious timings</p>
@@ -48,8 +52,8 @@ export default function PanchangPage() {
       <motion.div className="glass-card p-6 mb-8" variants={slideUp}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="input-label"><MapPin size={12} className="inline mr-1" />City</label>
-            <CitySearch value={city} onChange={handleCityChange} placeholder="Search city..." />
+            <label className="input-label" htmlFor="panchang-city"><MapPin size={12} className="inline mr-1" />City</label>
+            <CitySearch id="panchang-city" value={city} onChange={handleCityChange} placeholder="Search city..." />
           </div>
           <div className="flex items-end">
             <button onClick={handleFetch} disabled={loading} className="btn-primary">
@@ -94,11 +98,11 @@ export default function PanchangPage() {
           <motion.div variants={staggerItem} className="glass-card p-6">
             <h3 className="font-semibold mb-4 text-sm" style={{ color: "var(--champagne)" }}>Rahu Kaal & Gulika Kaal</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(232, 93, 93, 0.06)", border: "1px solid rgba(232, 93, 93, 0.12)" }}>
+              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(200, 149, 109, 0.06)", border: "1px solid rgba(200, 149, 109, 0.12)" }}>
                 <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--danger)" }}>Rahu Kaal</div>
                 <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{result.rahu_kaal.start} — {result.rahu_kaal.end}</div>
               </div>
-              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(214, 184, 117, 0.06)", border: "1px solid rgba(214, 184, 117, 0.12)" }}>
+              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(200, 149, 109, 0.06)", border: "1px solid rgba(200, 149, 109, 0.12)" }}>
                 <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--champagne)" }}>Gulika Kaal</div>
                 <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{result.gulika_kaal.start} — {result.gulika_kaal.end}</div>
               </div>

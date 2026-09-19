@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
+import asyncio
 import logging
 
 from ..services.ai_service import configure_gemini, get_model_name, SYSTEM_PROMPT
@@ -209,7 +210,7 @@ def build_chat_prompt(message: str, history: list, language: str = "en", birth_c
 # Generate response
 # ---------------------------------------------------------------------------
 
-def generate_chat_response(message: str, history: list, language: str = "en", birth_details: dict = None) -> str:
+async def generate_chat_response(message: str, history: list, language: str = "en", birth_details: dict = None) -> str:
     """Generate a chat response with intent detection and feature handling."""
     intent = detect_user_intent(message)
 
@@ -236,10 +237,14 @@ def generate_chat_response(message: str, history: list, language: str = "en", bi
 
     try:
         from google.generativeai.types import GenerationConfig
-        response = model.generate_content(
-            prompt,
-            generation_config=GenerationConfig(max_output_tokens=500, temperature=0.7)
-        )
+
+        def _call_gemini():
+            return model.generate_content(
+                prompt,
+                generation_config=GenerationConfig(max_output_tokens=500, temperature=0.7)
+            )
+
+        response = await asyncio.to_thread(_call_gemini)
         return response.text
     except Exception as e:
         logger.error(f"Gemini error: {type(e).__name__}: {e}")
@@ -776,7 +781,7 @@ async def send_chat_message(request: ChatRequest):
     """Send a chat message to AstroSeva AI."""
     try:
         history_data = [msg.model_dump() for msg in (request.history or [])]
-        response = generate_chat_response(
+        response = await generate_chat_response(
             message=request.message,
             history=history_data,
             language=request.language or "en",

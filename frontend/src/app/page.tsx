@@ -3,8 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, Heart, Brain, Star, Hash, Calendar, ChevronRight } from "lucide-react";
+import {
+  ArrowRight,
+  Sparkles,
+  Heart,
+  Star,
+  Brain,
+  Hash,
+  BookOpen,
+  ChevronRight,
+} from "lucide-react";
 import HoroscopePopup from "@/components/HoroscopePopup";
+import StatsStrip from "@/components/StatsStrip";
 import { zodiacSymbols } from "@/components/icons/ZodiacIcons";
 import {
   useReducedMotion,
@@ -12,40 +22,236 @@ import {
   staggerContainerCustom,
   staggerItem,
   slideUp,
-  hoverLift,
-  tapScale,
-  duration,
-  ease,
+  slideInLeft,
+  slideInRight,
   stagger,
 } from "@/lib/motion";
 
-const features = [
-  { title: "Kundli Generator", description: "Generate your Vedic birth chart with precise planetary positions, houses, and analysis.", href: "/kundli", icon: Sparkles, color: "#D6B875" },
-  { title: "Marriage Matching", description: "Ashtakoot gun milan for marriage compatibility analysis.", href: "/matching", icon: Heart, color: "#E8A0BF" },
-  { title: "AI Predictions", description: "Personalized predictions powered by AI for career, marriage, health, and more.", href: "/predictions", icon: Brain, color: "#B5A4F4" },
-  { title: "Daily Horoscope", description: "Your daily horoscope with love, career, and health ratings.", href: "/horoscope", icon: Star, color: "#D6B875" },
-  { title: "Numerology", description: "Calculate your life path, destiny, and soul urge numbers.", href: "/numerology", icon: Hash, color: "#5DC88F" },
-  { title: "Panchang", description: "Daily panchang with tithi, nakshatra, yoga, and auspicious timings.", href: "/panchang", icon: Calendar, color: "#A6A5B8" },
-];
-
 const zodiacSigns = [
-  { name: "Aries", sign: "aries", element: "fire" },
-  { name: "Taurus", sign: "taurus", element: "earth" },
-  { name: "Gemini", sign: "gemini", element: "air" },
-  { name: "Cancer", sign: "cancer", element: "water" },
-  { name: "Leo", sign: "leo", element: "fire" },
-  { name: "Virgo", sign: "virgo", element: "earth" },
-  { name: "Libra", sign: "libra", element: "air" },
-  { name: "Scorpio", sign: "scorpio", element: "water" },
-  { name: "Sagittarius", sign: "sagittarius", element: "fire" },
-  { name: "Capricorn", sign: "capricorn", element: "earth" },
-  { name: "Aquarius", sign: "aquarius", element: "air" },
-  { name: "Pisces", sign: "pisces", element: "water" },
+  { name: "aries", symbol: "♈", angle: 0 },
+  { name: "taurus", symbol: "♉", angle: 30 },
+  { name: "gemini", symbol: "♊", angle: 60 },
+  { name: "cancer", symbol: "♋", angle: 90 },
+  { name: "leo", symbol: "♌", angle: 120 },
+  { name: "virgo", symbol: "♍", angle: 150 },
+  { name: "libra", symbol: "♎", angle: 180 },
+  { name: "scorpio", symbol: "♏", angle: 210 },
+  { name: "sagittarius", symbol: "♐", angle: 240 },
+  { name: "capricorn", symbol: "♑", angle: 270 },
+  { name: "aquarius", symbol: "♒", angle: 300 },
+  { name: "pisces", symbol: "♓", angle: 330 },
 ];
 
-const elementColors: Record<string, string> = {
-  fire: "#E85D5D", earth: "#5DC88F", air: "#8AA8F4", water: "#5DC4C8",
-};
+const heroServices = [
+  { label: "Kundli", icon: Sparkles },
+  { label: "Matching", icon: Heart },
+  { label: "Horoscope", icon: Star },
+  { label: "Predictions", icon: Brain },
+  { label: "Numerology", icon: Hash },
+];
+
+const servicesGrid = [
+  {
+    title: "Kundli Generator",
+    description:
+      "Generate your Vedic birth chart with precise planetary positions, houses, and detailed analysis.",
+    href: "/kundli",
+    icon: Sparkles,
+    color: "#C8956D",
+  },
+  {
+    title: "Marriage Matching",
+    description:
+      "Ashtakoot gun milan for marriage compatibility analysis with detailed scoring and recommendations.",
+    href: "/matching",
+    icon: Heart,
+    color: "#E8B88A",
+  },
+  {
+    title: "AI Predictions",
+    description:
+      "Personalized predictions powered by AI for career, marriage, health, and life guidance.",
+    href: "/predictions",
+    icon: Brain,
+    color: "#D4A574",
+  },
+  {
+    title: "Daily Horoscope",
+    description:
+      "Your daily horoscope with love, career, and health ratings to guide your day.",
+    href: "/horoscope",
+    icon: Star,
+    color: "#C8956D",
+  },
+  {
+    title: "Numerology",
+    description:
+      "Calculate your life path number, destiny number, and soul urge number from your birth date.",
+    href: "/numerology",
+    icon: Hash,
+    color: "#E8B88A",
+  },
+  {
+    title: "Panchang",
+    description:
+      "Access today's Panchang with Tithi, Nakshatra, Yoga, Karana, and auspicious muhurat timings.",
+    href: "/panchang",
+    icon: BookOpen,
+    color: "#D4A574",
+  },
+];
+
+const whyChooseUs = [
+  {
+    title: "AI Powered",
+    icon: Brain,
+    color: "#C8956D",
+    description:
+      "Advanced AI algorithms analyze your birth chart for accurate, personalized insights.",
+  },
+  {
+    title: "100% Free",
+    icon: Heart,
+    color: "#E8B88A",
+    description:
+      "Access all astrology services completely free. No hidden charges or premium tiers.",
+  },
+  {
+    title: "Expert Analysis",
+    icon: Star,
+    color: "#D4A574",
+    description:
+      "Traditional Vedic astrology principles combined with modern analytical precision.",
+  },
+];
+
+function ZodiacWheel() {
+  const outerR = 150;
+  const midR = 115;
+  const innerR = 80;
+  const center = 190;
+  const svgSize = 380;
+
+  return (
+    <div className="relative" style={{ width: svgSize, height: svgSize }}>
+      <motion.div
+        className="absolute inset-0"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
+      >
+        <svg
+          viewBox={`0 0 ${svgSize} ${svgSize}`}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-full h-full"
+        >
+          <defs>
+            <radialGradient id="wheelGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#C8956D" stopOpacity="0.15" />
+              <stop offset="60%" stopColor="#C8956D" stopOpacity="0.05" />
+              <stop offset="100%" stopColor="#C8956D" stopOpacity="0" />
+            </radialGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Glow background */}
+          <circle cx={center} cy={center} r={outerR + 30} fill="url(#wheelGlow)" />
+
+          {/* Outer circle */}
+          <circle
+            cx={center}
+            cy={center}
+            r={outerR}
+            stroke="#C8956D"
+            strokeWidth="1"
+            opacity="0.4"
+          />
+          {/* Middle circle */}
+          <circle
+            cx={center}
+            cy={center}
+            r={midR}
+            stroke="#E8B88A"
+            strokeWidth="0.6"
+            opacity="0.25"
+          />
+          {/* Inner circle */}
+          <circle
+            cx={center}
+            cy={center}
+            r={innerR}
+            stroke="#D4A574"
+            strokeWidth="0.6"
+            opacity="0.2"
+          />
+
+          {/* Radial lines for each sign */}
+          {zodiacSigns.map((sign) => {
+            const rad = (sign.angle * Math.PI) / 180;
+            const x1 = center + innerR * Math.cos(rad);
+            const y1 = center + innerR * Math.sin(rad);
+            const x2 = center + outerR * Math.cos(rad);
+            const y2 = center + outerR * Math.sin(rad);
+            return (
+              <line
+                key={sign.name}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke="#C8956D"
+                strokeWidth="0.5"
+                opacity="0.2"
+              />
+            );
+          })}
+
+          {/* Zodiac symbols around the wheel */}
+          {zodiacSigns.map((sign) => {
+            const symbolR = outerR + 22;
+            const rad = (sign.angle * Math.PI) / 180;
+            const x = center + symbolR * Math.cos(rad);
+            const y = center + symbolR * Math.sin(rad);
+            return (
+              <text
+                key={sign.name}
+                x={x}
+                y={y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="#C8956D"
+                fontSize="18"
+                opacity="0.6"
+                filter="url(#glow)"
+              >
+                {sign.symbol}
+              </text>
+            );
+          })}
+
+          {/* Center dot */}
+          <circle cx={center} cy={center} r="3" fill="#C8956D" opacity="0.5" />
+        </svg>
+      </motion.div>
+
+      {/* Non-rotating center symbol */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <span
+          className="text-4xl font-bold"
+          style={{ color: "#C8956D", opacity: 0.35 }}
+        >
+          ☉
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const [popupSign, setPopupSign] = useState<string | null>(null);
@@ -53,96 +259,179 @@ export default function HomePage() {
 
   return (
     <div>
-      {popupSign && <HoroscopePopup sign={popupSign} onClose={() => setPopupSign(null)} />}
+      {popupSign && (
+        <HoroscopePopup
+          sign={popupSign}
+          onClose={() => setPopupSign(null)}
+        />
+      )}
 
-      {/* HERO */}
-      <section className="relative min-h-[85vh] min-h-[85dvh] flex items-center justify-center overflow-hidden px-5">
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 60% 40% at 50% 40%, rgba(214, 184, 117, 0.04) 0%, transparent 70%)" }} />
+      {/* ================================================================
+          HERO SECTION
+          ================================================================ */}
+      <section className="relative min-h-[90vh] flex items-center overflow-hidden px-5">
+        {/* Background glow */}
+        <div
+          className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[500px] h-[500px] rounded-full pointer-events-none"
+          style={{
+            background: "radial-gradient(circle, rgba(200,149,109,0.08) 0%, transparent 70%)",
+          }}
+        />
 
-        <motion.div
-          className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto"
-          variants={staggerContainer}
-          initial={reduced ? false : "hidden"}
-          animate="visible"
-        >
-          <motion.h1
-            className="font-display font-bold mb-5"
-            style={{ fontSize: "clamp(2.25rem, 5vw, 3.5rem)", letterSpacing: "-0.02em", lineHeight: 1.05 }}
-            variants={slideUp}
-          >
-            <span className="text-gradient-gold">AstroSeva</span>
-          </motion.h1>
-
-          <motion.p
-            className="mb-8 max-w-md"
-            style={{ fontSize: "clamp(0.9rem, 2vw, 1.05rem)", color: "var(--text-secondary)", lineHeight: 1.7, fontWeight: 300 }}
-            variants={slideUp}
-          >
-            Free <span style={{ color: "var(--lavender)", fontWeight: 500 }}>Vedic Astrology</span> platform.
-            Kundli, marriage matching, predictions, and more.
-          </motion.p>
-
+        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
+          {/* Left: Text */}
           <motion.div
-            className="flex flex-wrap justify-center gap-3"
-            variants={slideUp}
+            className="flex flex-col"
+            variants={staggerContainer}
+            initial={reduced ? false : "hidden"}
+            animate="visible"
           >
-            <Link href="/kundli" className="btn-primary">
-              Generate Kundli <ArrowRight size={15} />
-            </Link>
-            <Link href="/matching" className="btn-secondary">
-              Marriage Matching
-            </Link>
+            <motion.h1
+              className="heading-display text-gradient-white font-bold mb-6"
+              style={{
+                fontSize: "clamp(2.2rem, 5vw, 4rem)",
+                letterSpacing: "-0.03em",
+                lineHeight: 1.05,
+              }}
+              variants={slideUp}
+            >
+              YOUR PATH TO UNDERSTANDING ZODIAC
+            </motion.h1>
+
+            <motion.p
+              className="mb-10 max-w-md"
+              style={{
+                fontSize: "clamp(0.95rem, 2vw, 1.1rem)",
+                color: "var(--text-secondary)",
+                lineHeight: 1.7,
+                fontWeight: 300,
+              }}
+              variants={slideUp}
+            >
+              Free <span style={{ color: "#C8956D", fontWeight: 500 }}>Vedic Astrology</span> platform.
+              Kundli, marriage matching, predictions, horoscope, and more.
+            </motion.p>
+
+            <motion.div variants={slideUp}>
+              <Link href="/services" className="btn-primary">
+                Explore Now <ArrowRight size={15} />
+              </Link>
+            </motion.div>
           </motion.div>
+
+          {/* Right: Zodiac Wheel */}
+          <motion.div
+            className="flex items-center justify-center"
+            variants={slideInRight}
+            initial={reduced ? false : "hidden"}
+            animate="visible"
+          >
+            <ZodiacWheel />
+          </motion.div>
+        </div>
+
+        {/* Service Icons Row */}
+        <motion.div
+          className="absolute bottom-10 left-0 right-0 flex justify-center gap-6 sm:gap-8 px-5"
+          variants={staggerContainerCustom(stagger.normal, 0.3)}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+        >
+          {heroServices.map((s) => (
+            <motion.div
+              key={s.label}
+              className="flex flex-col items-center gap-2"
+              variants={staggerItem}
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  border: "1.5px solid #C8956D",
+                  background: "rgba(200, 149, 109, 0.06)",
+                  color: "#C8956D",
+                }}
+              >
+                <s.icon size={16} />
+              </div>
+              <span
+                className="text-[10px] font-medium"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {s.label}
+              </span>
+            </motion.div>
+          ))}
         </motion.div>
       </section>
 
-      {/* FEATURES */}
-      <section className="py-20 px-5">
+      {/* ================================================================
+          SERVICES GRID
+          ================================================================ */}
+      <section className="py-20 px-5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
         <div className="max-w-5xl mx-auto">
           <motion.div
-            className="text-center mb-12"
+            className="text-center mb-14"
             variants={slideUp}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-40px" }}
           >
-            <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
-              Our <span style={{ color: "var(--lavender)" }}>Services</span>
+            <p className="heading-section mb-3">OUR SERVICES</p>
+            <h2
+              className="heading-display font-bold"
+              style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.4rem)" }}
+            >
+              WHAT WE <span className="text-gradient-gold">OFFER</span>
             </h2>
-            <p className="max-w-md mx-auto" style={{ color: "var(--text-secondary)", lineHeight: 1.6, fontSize: "0.9rem" }}>
-              Ancient wisdom meets modern technology.
-            </p>
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-            variants={staggerContainerCustom(stagger.normal, 0.1)}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+            variants={staggerContainerCustom(stagger.normal, 0.08)}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-30px" }}
           >
-            {features.map((f) => (
-              <motion.div key={f.href} variants={staggerItem}>
-                <Link href={f.href} className="glass-card block p-5 group" style={{ textDecoration: "none" }}>
-                  <motion.div
-                    whileHover={reduced ? undefined : hoverLift}
-                    whileTap={reduced ? undefined : tapScale}
+            {servicesGrid.map((s) => (
+              <motion.div key={s.href} variants={staggerItem}>
+                <Link
+                  href={s.href}
+                  className="glass-card block p-6 group"
+                  style={{ textDecoration: "none" }}
+                >
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+                    style={{ background: `${s.color}12`, color: s.color }}
                   >
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
-                      style={{ background: `${f.color}10`, color: f.color }}>
-                      <f.icon size={18} />
-                    </div>
-                    <h3 className="text-sm font-semibold mb-1.5" style={{ color: "var(--text-primary)" }}>{f.title}</h3>
-                    <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-secondary)" }}>{f.description}</p>
-                    <span className="text-xs font-medium flex items-center gap-1 transition-all duration-150"
-                      style={{ color: f.color, opacity: 0.6 }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.gap = "0.4rem"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; e.currentTarget.style.gap = "0.25rem"; }}
-                    >
-                      Learn more <ChevronRight size={12} />
-                    </span>
-                  </motion.div>
+                    <s.icon size={20} />
+                  </div>
+                  <h3
+                    className="text-base font-semibold mb-2"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {s.title}
+                  </h3>
+                  <p
+                    className="text-sm leading-relaxed mb-4"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {s.description}
+                  </p>
+                  <span
+                    className="text-sm font-medium flex items-center gap-1 transition-all duration-150"
+                    style={{ color: s.color, opacity: 0.6 }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = "1";
+                      e.currentTarget.style.gap = "0.5rem";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = "0.6";
+                      e.currentTarget.style.gap = "0.25rem";
+                    }}
+                  >
+                    Learn more <ChevronRight size={13} />
+                  </span>
                 </Link>
               </motion.div>
             ))}
@@ -150,66 +439,68 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ZODIAC SIGNS — Daily Horoscope */}
+      {/* ================================================================
+          STATS STRIP
+          ================================================================ */}
+      <StatsStrip />
+
+      {/* ================================================================
+          WHY CHOOSE US
+          ================================================================ */}
       <section className="py-20 px-5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <motion.div
-            className="text-center mb-10"
+            className="text-center mb-14"
             variants={slideUp}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-40px" }}
           >
-            <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
-              Daily <span className="text-gradient-gold">Horoscope</span>
+            <p className="heading-section mb-3">WHY CHOOSE US</p>
+            <h2
+              className="heading-display font-bold"
+              style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.4rem)" }}
+            >
+              WHY CHOOSE <span className="text-gradient-gold">ASTROSEVA</span>
             </h2>
-            <p className="max-w-sm mx-auto" style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-              Select your zodiac sign to view today&apos;s prediction
-            </p>
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5"
-            variants={staggerContainerCustom(stagger.fast, 0.05)}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-5"
+            variants={staggerContainerCustom(stagger.normal, 0.1)}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-20px" }}
+            viewport={{ once: true, margin: "-30px" }}
           >
-            {zodiacSigns.map((z) => (
-              <motion.button
-                key={z.sign}
-                onClick={() => setPopupSign(z.sign)}
-                className="text-center p-3.5 rounded-xl cursor-pointer transition-all duration-150"
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--border-subtle)",
-                }}
+            {whyChooseUs.map((f) => (
+              <motion.div
+                key={f.title}
+                className="glass-card p-6 text-center"
                 variants={staggerItem}
-                whileHover={reduced ? undefined : {
-                  scale: 1.05,
-                  borderColor: `${elementColors[z.element]}30`,
-                  background: `${elementColors[z.element]}08`,
-                  transition: { duration: 0.15, ease: ease.standard },
-                }}
-                whileTap={reduced ? undefined : { scale: 0.95 }}
-                onMouseEnter={(e) => {
-                  if (reduced) {
-                    e.currentTarget.style.borderColor = `${elementColors[z.element]}25`;
-                    e.currentTarget.style.background = `${elementColors[z.element]}05`;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (reduced) {
-                    e.currentTarget.style.borderColor = "var(--border-subtle)";
-                    e.currentTarget.style.background = "transparent";
-                  }
-                }}
               >
-                <div className="text-2xl mb-1.5" style={{ color: elementColors[z.element] }}>
-                  {zodiacSymbols[z.sign]}
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
+                  style={{
+                    background: `${f.color}12`,
+                    color: f.color,
+                    border: `1.5px solid ${f.color}30`,
+                  }}
+                >
+                  <f.icon size={24} />
                 </div>
-                <div className="text-[10px] font-medium" style={{ color: "var(--text-secondary)" }}>{z.name}</div>
-              </motion.button>
+                <h3
+                  className="text-base font-semibold mb-2"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {f.title}
+                </h3>
+                <p
+                  className="text-sm leading-relaxed"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {f.description}
+                </p>
+              </motion.div>
             ))}
           </motion.div>
         </div>

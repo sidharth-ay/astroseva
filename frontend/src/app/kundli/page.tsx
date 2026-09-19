@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Calendar, Clock, MapPin, User, Download, ChevronRight } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 import KundliChart from "@/components/KundliChart";
+
 import { api, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
 import {
   useReducedMotion,
@@ -27,6 +28,10 @@ export default function KundliPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const reduced = useReducedMotion();
+
+  useEffect(() => {
+    document.title = "Kundli Generator | AstroSeva";
+  }, []);
 
   const handleCity = (city: CityEntry) => {
     setForm({ ...form, birth_place: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
@@ -59,7 +64,7 @@ export default function KundliPage() {
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
+        <h1 className="heading-display text-2xl md:text-3xl mb-1">
           Kundli <span className="text-gradient-gold">Generator</span>
         </h1>
         <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Enter birth details to generate your Vedic birth chart</p>
@@ -69,19 +74,19 @@ export default function KundliPage() {
       <motion.div className="glass-card p-5 mb-8" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="input-label"><User size={11} className="inline mr-1" />Name</label>
-            <input className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter name" />
+            <label className="input-label" htmlFor="kundli-name"><User size={11} className="inline mr-1" />Name</label>
+            <input id="kundli-name" className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter name" />
           </div>
           <div>
-            <label className="input-label"><Calendar size={11} className="inline mr-1" />Birth Date</label>
-            <input type="date" className="input-field" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} style={{ colorScheme: "dark" }} />
+            <label className="input-label" htmlFor="kundli-date"><Calendar size={11} className="inline mr-1" />Birth Date</label>
+            <input id="kundli-date" type="date" className="input-field" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} style={{ colorScheme: "dark" }} />
           </div>
           <div>
-            <label className="input-label"><Clock size={11} className="inline mr-1" />Birth Time</label>
-            <input type="time" className="input-field" value={form.birth_time} onChange={(e) => setForm({ ...form, birth_time: e.target.value })} style={{ colorScheme: "dark" }} />
+            <label className="input-label" htmlFor="kundli-time"><Clock size={11} className="inline mr-1" />Birth Time</label>
+            <input id="kundli-time" type="time" className="input-field" value={form.birth_time} onChange={(e) => setForm({ ...form, birth_time: e.target.value })} style={{ colorScheme: "dark" }} />
           </div>
           <div>
-            <label className="input-label"><MapPin size={11} className="inline mr-1" />Birth City</label>
+            <label className="input-label" htmlFor="kundli-city"><MapPin size={11} className="inline mr-1" />Birth City</label>
             <CitySearch value={form.birth_place} onChange={handleCity} />
           </div>
         </div>
@@ -111,7 +116,7 @@ export default function KundliPage() {
         >
           {/* Birth Details */}
           <motion.div className="glass-card p-4" variants={staggerItem}>
-            <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Birth Details</h3>
+            <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Birth Details</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               {[
                 ["Name", result.name || "—"],
@@ -131,13 +136,13 @@ export default function KundliPage() {
 
           {/* Chart */}
           <motion.div className="glass-card p-5" variants={staggerItem}>
-            <h3 className="text-xs font-semibold mb-4 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Birth Chart — North Indian Style</h3>
+            <h3 className="text-xs font-semibold mb-4 uppercase tracking-wider" style={{ color: "#C8956D" }}>Birth Chart — North Indian Style</h3>
             <KundliChart chart={result.chart} ascSign={result.asc_sign} />
           </motion.div>
 
           {/* Planetary Positions */}
           <motion.div className="glass-card p-4" variants={staggerItem}>
-            <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Planetary Positions</h3>
+            <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Planetary Positions</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
@@ -154,7 +159,7 @@ export default function KundliPage() {
                       <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.sign_name}</td>
                       <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.sign_degree.toFixed(1)}°</td>
                       <td className="py-2 px-2">
-                        {p.retrograde && <span className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ background: "rgba(232, 93, 93, 0.08)", color: "var(--danger)" }}>R</span>}
+                        {p.retrograde && <span className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ background: "rgba(200, 149, 109, 0.08)", color: "var(--danger)" }}>R</span>}
                       </td>
                       <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.dignity}</td>
                     </tr>
@@ -167,7 +172,7 @@ export default function KundliPage() {
           {/* Dasha */}
           {result.dasha_info?.current_dasha && (
             <motion.div className="glass-card p-4" variants={staggerItem}>
-              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Vimshottari Dasha</h3>
+              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Vimshottari Dasha</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
                   { label: "Mahadasha", value: result.dasha_info.current_dasha.mahadasha, period: `${result.dasha_info.current_dasha.mahadasha_start} — ${result.dasha_info.current_dasha.mahadasha_end}` },
@@ -185,6 +190,8 @@ export default function KundliPage() {
           )}
         </motion.div>
       )}
+
+
     </div>
   );
 }

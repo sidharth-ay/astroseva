@@ -7,7 +7,7 @@ import { api, type HoroscopeResponse } from "@/lib/api";
 import { zodiacSymbols } from "@/components/icons/ZodiacIcons";
 
 const elementGradients: Record<string, string> = {
-  fire: "linear-gradient(135deg, rgba(232, 93, 93, 0.08), rgba(214, 184, 117, 0.04))",
+  fire: "linear-gradient(135deg, rgba(200, 149, 109, 0.08), rgba(232, 184, 138, 0.04))",
   earth: "linear-gradient(135deg, rgba(93, 200, 143, 0.08), rgba(93, 200, 143, 0.03))",
   air: "linear-gradient(135deg, rgba(138, 168, 244, 0.08), rgba(138, 168, 244, 0.03))",
   water: "linear-gradient(135deg, rgba(93, 196, 200, 0.08), rgba(93, 196, 200, 0.03))",
@@ -60,7 +60,7 @@ export default function HoroscopePopup({ sign, onClose }: Props) {
           </button>
 
           <div className="text-center mb-5 p-6 rounded-xl" style={{ background: elementGradients[element] }}>
-            <div className="text-5xl mb-3" style={{ color: element === "fire" ? "#E85D5D" : element === "earth" ? "#5DC88F" : element === "air" ? "#8AA8F4" : "#5DC4C8" }}>
+            <div className="text-5xl mb-3" style={{ color: element === "fire" ? "#C8956D" : element === "earth" ? "#5DC88F" : element === "air" ? "#8AA8F4" : "#5DC4C8" }}>
               {zodiacSymbols[sign]}
             </div>
             <h2 className="text-xl font-display font-bold capitalize" style={{ color: "var(--champagne)" }}>{sign}</h2>

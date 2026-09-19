@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/predictions", label: "Predictions" },
   { href: "/numerology", label: "Numerology" },
   { href: "/panchang", label: "Panchang" },
+  { href: "/services", label: "Services" },
   { href: "/chat", label: "AI Chat" },
 ];
 
@@ -25,20 +26,17 @@ export default function Navbar() {
     <nav
       className="sticky top-0 z-50"
       style={{
-        background: "rgba(11, 11, 25, 0.88)",
+        background: "rgba(10, 10, 15, 0.92)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid var(--border)",
+        borderBottom: "1px solid rgba(200, 149, 109, 0.12)",
       }}
     >
       <div className="max-w-6xl mx-auto px-5">
         <div className="flex items-center justify-between h-14">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-105"
-              style={{ background: "linear-gradient(135deg, var(--accent-deep), var(--accent))" }}
-            >
-              <Sparkles size={16} color="var(--ivory)" />
+            <div className="flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
+              <Sparkles size={20} color="#C8956D" />
             </div>
             <span className="text-lg font-display font-bold text-gradient-gold">AstroSeva</span>
           </Link>
@@ -54,6 +52,14 @@ export default function Navbar() {
               );
             })}
           </div>
+
+          {/* CTA button */}
+          <Link
+            href="/kundli"
+            className="hidden md:inline-flex btn-primary"
+          >
+            Get Kundli
+          </Link>
 
           {/* Mobile toggle */}
           <button
@@ -76,9 +82,9 @@ export default function Navbar() {
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="md:hidden overflow-hidden"
-            style={{ borderTop: "1px solid var(--border)" }}
+            style={{ borderTop: "1px solid rgba(200, 149, 109, 0.15)" }}
           >
-            <div className="px-4 py-2 space-y-0.5" style={{ background: "rgba(11, 11, 25, 0.95)" }}>
+            <div className="px-4 py-2 space-y-0.5" style={{ background: "rgba(10, 10, 15, 0.96)" }}>
               {navLinks.map((link) => {
                 const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
                 return (
@@ -88,6 +94,15 @@ export default function Navbar() {
                   </Link>
                 );
               })}
+              <div className="pt-2 pb-1">
+                <Link
+                  href="/kundli"
+                  onClick={() => setOpen(false)}
+                  className="btn-primary block text-center"
+                >
+                  Get Kundli
+                </Link>
+              </div>
             </div>
           </motion.div>
         )}

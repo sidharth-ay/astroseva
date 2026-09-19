@@ -92,7 +92,7 @@ async def generate_ai_prediction(request: PredictionRequest):
         )
 
         # Cache for 24 hours
-        await cache_service.set(cache_key, response.dict(), expiry=86400)
+        await cache_service.set(cache_key, response.model_dump(), expiry=86400)
 
         return response
 

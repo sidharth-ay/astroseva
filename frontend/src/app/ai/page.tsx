@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useReducedMotion, slideUp, staggerContainerCustom, staggerItem, stagger } from "@/lib/motion";
 import { Brain, ChevronRight } from "lucide-react";
@@ -22,6 +22,10 @@ export default function AiPage() {
   const [error, setError] = useState("");
   const [history, setHistory] = useState<{ q: string; a: string }[]>([]);
 
+  useEffect(() => {
+    document.title = "AI Astrologer | AstroSeva";
+  }, []);
+
   const handleAsk = async (q?: string) => {
     const query = q || question;
     if (!query.trim()) return;
@@ -38,7 +42,7 @@ export default function AiPage() {
   return (
     <div className="max-w-4xl mx-auto px-5 py-10">
       <motion.div variants={slideUp} initial={reduced ? false : "hidden"} animate="visible">
-        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
+        <h1 className="text-2xl md:text-3xl font-display font-bold mb-1 heading-display">
           AI <span className="text-gradient-gold">Astrologer</span>
         </h1>
         <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Ask questions about Vedic astrology, your chart, or predictions</p>
@@ -52,7 +56,7 @@ export default function AiPage() {
             <motion.button key={i} variants={staggerItem} onClick={() => handleAsk(q)} disabled={loading}
               className="text-left text-xs px-3 py-2 rounded-xl transition-all duration-200"
               style={{ border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--champagne)30"; e.currentTarget.style.background = "rgba(214, 184, 117, 0.04)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--champagne)30"; e.currentTarget.style.background = "rgba(200, 149, 109, 0.04)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.background = "transparent"; }}>
               {q}
             </motion.button>
@@ -88,11 +92,11 @@ export default function AiPage() {
         <motion.div key={answer} className="glass-card p-6 mb-8" variants={slideUp} initial={reduced ? false : "hidden"} animate="visible" exit="exit">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(214, 184, 117, 0.1)", color: "var(--champagne)" }}>
+              style={{ background: "rgba(200, 149, 109, 0.1)", color: "#C8956D" }}>
               <Brain size={18} />
             </div>
             <div>
-              <div className="text-xs font-medium mb-2" style={{ color: "var(--champagne)" }}>AI Astrologer</div>
+              <div className="text-xs font-medium mb-2" style={{ color: "#C8956D" }}>AI Astrologer</div>
               <div className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--text-secondary)" }}>{answer}</div>
             </div>
           </div>

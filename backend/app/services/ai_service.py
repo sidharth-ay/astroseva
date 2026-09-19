@@ -8,6 +8,12 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+import time as _time
+
+# Quota exhaustion tracking — skip Gemini calls when we know they'll fail
+_gemini_quota_exhausted = False
+_quota_retry_after = 0.0
+
 try:
     import google.generativeai as genai
     GEMINI_AVAILABLE = True
@@ -301,16 +307,18 @@ async def generate_prediction(
     language: str = "en",
 ) -> dict:
     """Generate AI prediction using Gemini with fallback."""
+    global _gemini_quota_exhausted, _quota_retry_after
+
+    # If quota is exhausted and retry time hasn't passed, skip Gemini entirely
+    if _gemini_quota_exhausted and _time.time() < _quota_retry_after:
+        content = generate_fallback_prediction(birth_details, prediction_type)
+        return {"content": content, "model": "astroseva-local", "tokens_used": None}
+
     model = configure_gemini()
 
     if model is None:
-        # Fallback to local prediction
         content = generate_fallback_prediction(birth_details, prediction_type)
-        return {
-            "content": content,
-            "model": "astroseva-local",
-            "tokens_used": None,
-        }
+        return {"content": content, "model": "astroseva-local", "tokens_used": None}
 
     prompt = f"""Generate a detailed {prediction_type} prediction based on these Vedic astrology birth details:
 
@@ -341,13 +349,22 @@ Respond as AstroSeva AI."""
 
     try:
         response = await asyncio.to_thread(_call_gemini, model, prompt)
+        # Reset quota flag on success
+        _gemini_quota_exhausted = False
         return {
             "content": response.text,
             "model": get_model_name(),
             "tokens_used": response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else None,
         }
     except Exception as e:
-        # Fallback to local prediction
+        # Detect quota exhaustion (429) and set flag
+        err_str = str(e).lower()
+        if "429" in err_str or "quota" in err_str or "resourceexhausted" in type(e).__name__.lower():
+            _gemini_quota_exhausted = True
+            _quota_retry_after = _time.time() + 86400  # retry after 24h
+            logger.warning("Gemini quota exhausted — predictions will use local fallback for 24h")
+        else:
+            logger.error(f"Prediction AI error: {type(e).__name__}: {e}")
         content = generate_fallback_prediction(birth_details, prediction_type)
         return {
             "content": content,
@@ -365,13 +382,39 @@ def _call_gemini(model, prompt, generation_config=None):
 
 async def generate_horoscope(zodiac_sign: str, language: str = "en") -> dict:
     """Generate daily horoscope using Gemini with fallback."""
+    global _gemini_quota_exhausted, _quota_retry_after
+
+    # Skip Gemini if quota is known exhausted
+    if _gemini_quota_exhausted and _time.time() < _quota_retry_after:
+        result = generate_fallback_horoscope(zodiac_sign)
+        return {
+            "prediction": result["prediction"],
+            "model": "astroseva-local",
+            "love_rating": result["love_rating"],
+            "career_rating": result["career_rating"],
+            "health_rating": result["health_rating"],
+            "lucky_numbers": result["lucky_numbers"],
+            "lucky_color": result["lucky_color"],
+        }
+
     model = configure_gemini()
 
     if model is not None:
-        prompt = f"""Generate a daily horoscope for {zodiac_sign} for today.
+        prompt = f"""You are AstroSeva AI, an expert Vedic astrologer. Write a DETAILED daily horoscope for {zodiac_sign}.
+
 Language: {'Hindi' if language == 'hi' else 'English'}
-Respond as AstroSeva AI. Be concise (2-3 paragraphs).
-After the prediction, add on separate lines:
+
+Write AT LEAST 4-5 sentences (minimum 200 words) covering:
+- Today's cosmic energy and planetary influences for {zodiac_sign}
+- Love, romance, and relationships outlook
+- Career, business, and financial forecast  
+- Health, wellness, and vitality advice
+- Lucky numbers, colors, and a practical remedy
+
+Make it SPECIFIC to {zodiac_sign}. Mention ruling planet, element, and house influences.
+Be insightful, detailed, and actionable. NOT generic.
+
+After the prediction text, add these on SEPARATE lines:
 LOVE_RATING: <1-5>
 CAREER_RATING: <1-5>
 HEALTH_RATING: <1-5>
@@ -382,7 +425,7 @@ LUCKY_COLOR: <one color>"""
             from google.generativeai.types import GenerationConfig
             response = await asyncio.to_thread(
                 _call_gemini, model, prompt,
-                GenerationConfig(max_output_tokens=300, temperature=0.7),
+                GenerationConfig(max_output_tokens=800, temperature=0.7),
             )
             text = response.text
 
@@ -399,6 +442,11 @@ LUCKY_COLOR: <one color>"""
             # Clean prediction text (remove metadata lines)
             clean = re.sub(r'LOVE_RATING:.*', '', text, flags=re.DOTALL).strip()
 
+            # Quality check: if prediction is too short, treat as failure
+            if len(clean) < 150:
+                logger.warning(f"Gemini returned short horoscope for {zodiac_sign} ({len(clean)} chars), using fallback")
+                raise ValueError("Prediction too short")
+
             return {
                 "prediction": clean,
                 "model": get_model_name(),
@@ -409,7 +457,13 @@ LUCKY_COLOR: <one color>"""
                 "lucky_color": lucky_color,
             }
         except Exception as e:
-            logger.error(f"Gemini horoscope error: {type(e).__name__}: {e}")
+            err_str = str(e).lower()
+            if "429" in err_str or "quota" in err_str or "resourceexhausted" in type(e).__name__.lower():
+                _gemini_quota_exhausted = True
+                _quota_retry_after = _time.time() + 86400
+                logger.warning("Gemini quota exhausted — horoscopes will use local fallback for 24h")
+            else:
+                logger.error(f"Gemini horoscope error: {type(e).__name__}: {e}")
 
     # Fallback to local horoscope
     result = generate_fallback_horoscope(zodiac_sign)
