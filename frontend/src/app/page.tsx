@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Heart, Brain, Star, Hash, Calendar, ChevronRight } from "lucide-react";
-import ZodiacWheel from "@/components/ZodiacWheel";
 import HoroscopePopup from "@/components/HoroscopePopup";
 import { zodiacSymbols } from "@/components/icons/ZodiacIcons";
 
@@ -33,15 +32,7 @@ const zodiacSigns = [
 ];
 
 const elementColors: Record<string, string> = {
-  fire: "#E85D5D",
-  earth: "#5DC88F",
-  air: "#8AA8F4",
-  water: "#5DC4C8",
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.1, duration: 0.5, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] } }),
+  fire: "#E85D5D", earth: "#5DC88F", air: "#8AA8F4", water: "#5DC4C8",
 };
 
 export default function HomePage() {
@@ -51,50 +42,41 @@ export default function HomePage() {
     <div>
       {popupSign && <HoroscopePopup sign={popupSign} onClose={() => setPopupSign(null)} />}
 
-      {/* ===== HERO ===== */}
-      <section className="relative min-h-[100vh] min-h-[100dvh] flex items-center justify-center overflow-hidden px-5">
-        {/* Background gradient */}
+      {/* HERO */}
+      <section className="relative min-h-[85vh] min-h-[85dvh] flex items-center justify-center overflow-hidden px-5">
         <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 70% 50% at 50% 45%, rgba(107, 92, 231, 0.06) 0%, transparent 70%)" }} />
+          style={{ background: "radial-gradient(ellipse 60% 40% at 50% 40%, rgba(214, 184, 117, 0.04) 0%, transparent 70%)" }} />
 
-        <div className="relative z-10 flex flex-col items-center text-center max-w-3xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <ZodiacWheel />
-          </motion.div>
-
+        <div className="relative z-10 flex flex-col items-center text-center max-w-2xl mx-auto">
           <motion.h1
-            className="font-display font-bold mt-10 mb-5"
-            style={{ fontSize: "clamp(2.5rem, 5vw, 4rem)", letterSpacing: "-0.02em", lineHeight: 1.05 }}
-            initial={{ opacity: 0, y: 16 }}
+            className="font-display font-bold mb-5"
+            style={{ fontSize: "clamp(2.25rem, 5vw, 3.5rem)", letterSpacing: "-0.02em", lineHeight: 1.05 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
             <span className="text-gradient-gold">AstroSeva</span>
           </motion.h1>
 
           <motion.p
-            className="mb-8 max-w-lg"
-            style={{ fontSize: "clamp(0.95rem, 2vw, 1.15rem)", color: "var(--text-secondary)", lineHeight: 1.7, fontWeight: 300 }}
-            initial={{ opacity: 0, y: 12 }}
+            className="mb-8 max-w-md"
+            style={{ fontSize: "clamp(0.9rem, 2vw, 1.05rem)", color: "var(--text-secondary)", lineHeight: 1.7, fontWeight: 300 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ delay: 0.15, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
-            Free <span className="text-gradient-lavender" style={{ WebkitTextFillColor: "unset", fontWeight: 500 }}>Vedic Astrology</span> platform.
+            Free <span style={{ color: "var(--lavender)", fontWeight: 500 }}>Vedic Astrology</span> platform.
             Kundli, marriage matching, predictions, and more.
           </motion.p>
 
           <motion.div
             className="flex flex-wrap justify-center gap-3"
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
             <Link href="/kundli" className="btn-primary">
-              Generate Kundli <ArrowRight size={16} />
+              Generate Kundli <ArrowRight size={15} />
             </Link>
             <Link href="/matching" className="btn-secondary">
               Marriage Matching
@@ -103,60 +85,45 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ===== STATS ===== */}
-      <section style={{ padding: "4rem 1.25rem", borderTop: "1px solid var(--border-subtle)", borderBottom: "1px solid var(--border-subtle)" }}>
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {[
-            { value: "10+", label: "Planets" },
-            { value: "12", label: "Houses" },
-            { value: "27", label: "Nakshatras" },
-            { value: "100%", label: "Free" },
-          ].map((s, i) => (
-            <motion.div key={s.label} custom={i} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} variants={fadeUp}>
-              <div className="font-bold" style={{ fontSize: "clamp(2rem, 4vw, 2.75rem)", color: "var(--champagne)", letterSpacing: "-0.02em" }}>{s.value}</div>
-              <div className="mt-1 text-xs font-medium" style={{ color: "var(--text-tertiary)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{s.label}</div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== FEATURES ===== */}
-      <section className="py-24 px-5">
-        <div className="max-w-6xl mx-auto">
+      {/* FEATURES */}
+      <section className="py-20 px-5">
+        <div className="max-w-5xl mx-auto">
           <motion.div
-            className="text-center mb-14"
-            initial={{ opacity: 0, y: 16 }}
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.4 }}
           >
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              Our <span className="text-gradient-lavender" style={{ WebkitTextFillColor: "unset" }}>Services</span>
+            <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
+              Our <span style={{ color: "var(--lavender)" }}>Services</span>
             </h2>
-            <p className="max-w-md mx-auto" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
-              Ancient wisdom meets modern technology. Explore our suite of Vedic astrology tools.
+            <p className="max-w-md mx-auto" style={{ color: "var(--text-secondary)", lineHeight: 1.6, fontSize: "0.9rem" }}>
+              Ancient wisdom meets modern technology.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map((f, i) => (
-              <motion.div key={f.href} custom={i} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }} variants={fadeUp}>
-                <Link href={f.href}
-                  className="glass-card block p-6 group"
-                  style={{ textDecoration: "none" }}
-                >
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+              <motion.div key={f.href}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ delay: i * 0.06, duration: 0.4 }}
+              >
+                <Link href={f.href} className="glass-card block p-5 group" style={{ textDecoration: "none" }}>
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
                     style={{ background: `${f.color}10`, color: f.color }}>
-                    <f.icon size={20} />
+                    <f.icon size={18} />
                   </div>
-                  <h3 className="text-base font-semibold mb-2" style={{ color: "var(--text-primary)" }}>{f.title}</h3>
-                  <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--text-secondary)" }}>{f.description}</p>
-                  <span className="text-xs font-medium flex items-center gap-1 transition-all duration-200"
-                    style={{ color: f.color, opacity: 0.7 }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.gap = "0.5rem"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; e.currentTarget.style.gap = "0.25rem"; }}
+                  <h3 className="text-sm font-semibold mb-1.5" style={{ color: "var(--text-primary)" }}>{f.title}</h3>
+                  <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-secondary)" }}>{f.description}</p>
+                  <span className="text-xs font-medium flex items-center gap-1 transition-all duration-150"
+                    style={{ color: f.color, opacity: 0.6 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.gap = "0.4rem"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; e.currentTarget.style.gap = "0.25rem"; }}
                   >
-                    Learn more <ChevronRight size={14} />
+                    Learn more <ChevronRight size={12} />
                   </span>
                 </Link>
               </motion.div>
@@ -165,81 +132,54 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ===== ZODIAC SIGNS ===== */}
-      <section className="py-24 px-5" style={{ background: "linear-gradient(180deg, var(--bg-primary) 0%, rgba(23, 23, 43, 0.3) 50%, var(--bg-primary) 100%)" }}>
-        <div className="max-w-5xl mx-auto">
+      {/* ZODIAC SIGNS — Daily Horoscope */}
+      <section className="py-20 px-5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+        <div className="max-w-4xl mx-auto">
           <motion.div
-            className="text-center mb-14"
-            initial={{ opacity: 0, y: 16 }}
+            className="text-center mb-10"
+            initial={{ opacity: 0, y: 12 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.4 }}
           >
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
+            <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
               Daily <span className="text-gradient-gold">Horoscope</span>
             </h2>
-            <p className="max-w-md mx-auto" style={{ color: "var(--text-secondary)" }}>
+            <p className="max-w-sm mx-auto" style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
               Select your zodiac sign to view today&apos;s prediction
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
             {zodiacSigns.map((z, i) => (
               <motion.button
                 key={z.sign}
                 onClick={() => setPopupSign(z.sign)}
-                className="text-center p-4 rounded-xl cursor-pointer transition-colors duration-200"
+                className="text-center p-3.5 rounded-xl cursor-pointer transition-all duration-150"
                 style={{
                   background: "transparent",
                   border: "1px solid var(--border-subtle)",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = `${elementColors[z.element]}30`;
-                  e.currentTarget.style.background = `${elementColors[z.element]}06`;
+                  e.currentTarget.style.borderColor = `${elementColors[z.element]}25`;
+                  e.currentTarget.style.background = `${elementColors[z.element]}05`;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = "var(--border-subtle)";
                   e.currentTarget.style.background = "transparent";
                 }}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-20px" }}
-                variants={fadeUp}
+                transition={{ delay: i * 0.03, duration: 0.3 }}
               >
-                <div className="text-3xl mb-2" style={{ color: elementColors[z.element] }}>
+                <div className="text-2xl mb-1.5" style={{ color: elementColors[z.element] }}>
                   {zodiacSymbols[z.sign]}
                 </div>
-                <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{z.name}</div>
+                <div className="text-[10px] font-medium" style={{ color: "var(--text-secondary)" }}>{z.name}</div>
               </motion.button>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ===== ABOUT ===== */}
-      <section className="py-24 px-5">
-        <div className="max-w-2xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-6">
-              About <span className="text-gradient-gold">AstroSeva</span>
-            </h2>
-            <p className="mb-4 leading-relaxed" style={{ color: "var(--text-secondary)", fontSize: "1.05rem" }}>
-              AstroSeva is a free Vedic Astrology platform that provides accurate birth chart generation,
-              marriage matching, AI-powered predictions, and all essential astrology tools.
-            </p>
-            <p className="mb-10 leading-relaxed" style={{ color: "var(--text-secondary)", fontSize: "1.05rem" }}>
-              Calculations based on the ancient Vedic astrology system with <span className="text-gradient-lavender" style={{ WebkitTextFillColor: "unset", fontWeight: 500 }}>Lahiri ayanamsa</span>.
-            </p>
-            <Link href="/kundli" className="btn-primary">
-              Get Your Kundli Now <ArrowRight size={16} />
-            </Link>
-          </motion.div>
         </div>
       </section>
     </div>

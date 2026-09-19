@@ -43,7 +43,7 @@ export default function HoroscopePage() {
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
           Daily <span className="text-gradient-gold">Horoscope</span>
         </h1>
@@ -52,84 +52,78 @@ export default function HoroscopePage() {
 
       {/* Sign selector */}
       <motion.div
-        className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-10"
-        initial={{ opacity: 0, y: 12 }}
+        className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mb-8"
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
       >
         {zodiacSigns.map((z) => (
           <button key={z.sign} onClick={() => setSign(z.sign)}
-            className="p-3 rounded-xl text-center transition-all duration-200"
+            className="p-3 rounded-lg text-center transition-all duration-150"
             style={{
-              background: sign === z.sign ? `${elementColors[z.element]}10` : "transparent",
-              border: `1px solid ${sign === z.sign ? `${elementColors[z.element]}30` : "var(--border-subtle)"}`,
+              background: sign === z.sign ? `${elementColors[z.element]}08` : "transparent",
+              border: `1px solid ${sign === z.sign ? `${elementColors[z.element]}25` : "var(--border-subtle)"}`,
             }}>
             <div className="text-2xl mb-1" style={{ color: elementColors[z.element] }}>{zodiacSymbols[z.sign]}</div>
-            <div className="text-[11px] font-medium" style={{ color: sign === z.sign ? "var(--text-primary)" : "var(--text-secondary)" }}>{z.name}</div>
+            <div className="text-[10px] font-medium" style={{ color: sign === z.sign ? "var(--text-primary)" : "var(--text-secondary)" }}>{z.name}</div>
           </button>
         ))}
       </motion.div>
 
       {loading && (
         <div className="space-y-4">
-          {Array(3).fill(0).map((_, i) => <div key={i} className="glass-card p-6"><div className="shimmer h-24 w-full rounded-xl" /></div>)}
+          {Array(3).fill(0).map((_, i) => <div key={i} className="glass-card p-5"><div className="shimmer h-20 w-full rounded-lg" /></div>)}
         </div>
       )}
 
       {result && !loading && (
         <motion.div
-          className="max-w-4xl mx-auto space-y-6"
-          initial={{ opacity: 0, y: 16 }}
+          className="max-w-3xl mx-auto space-y-5"
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.3 }}
         >
           {/* Summary */}
-          <div className="glass-card p-8 text-center">
-            <div className="text-5xl mb-4" style={{ color: elementColors[selected?.element || "fire"] }}>
+          <div className="glass-card p-6 text-center">
+            <div className="text-4xl mb-3" style={{ color: elementColors[selected?.element || "fire"] }}>
               {zodiacSymbols[sign]}
             </div>
-            <h2 className="text-2xl font-display font-bold mb-2 capitalize" style={{ color: "var(--champagne)" }}>{result.zodiac_sign}</h2>
-            <p className="text-sm mb-4" style={{ color: "var(--text-tertiary)" }}>{result.date} &bull; AI-powered prediction</p>
-            <p className="text-base leading-relaxed" style={{ color: "var(--text-secondary)" }}>{result.prediction}</p>
+            <h2 className="text-xl font-display font-bold mb-1 capitalize" style={{ color: "var(--champagne)" }}>{result.zodiac_sign}</h2>
+            <p className="text-xs mb-4" style={{ color: "var(--text-tertiary)" }}>{result.date}</p>
+            <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{result.prediction}</p>
           </div>
 
           {/* Rating Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {([
-              { label: "Love", icon: "♥", val: result.love_rating, color: "#E8A0BF" },
-              { label: "Career", icon: "◆", val: result.career_rating, color: "var(--champagne)" },
-              { label: "Health", icon: "✚", val: result.health_rating, color: "#5DC88F" },
+              { label: "Love", val: result.love_rating, color: "#E8A0BF" },
+              { label: "Career", val: result.career_rating, color: "var(--champagne)" },
+              { label: "Health", val: result.health_rating, color: "#5DC88F" },
             ]).map((cat) => (
-              <div key={cat.label} className="glass-card p-6 text-center">
-                <div className="text-2xl mb-2" style={{ color: cat.color }}>{cat.icon}</div>
-                <h3 className="font-semibold mb-2 text-sm" style={{ color: "var(--text-primary)" }}>{cat.label}</h3>
-                <div className="flex justify-center gap-1 mb-2">
+              <div key={cat.label} className="glass-card p-4 text-center">
+                <h3 className="font-semibold mb-2 text-xs" style={{ color: "var(--text-primary)" }}>{cat.label}</h3>
+                <div className="flex justify-center gap-0.5 mb-1">
                   {[1, 2, 3, 4, 5].map((n) => (
-                    <span key={n} className="text-lg" style={{ color: n <= cat.val ? cat.color : "var(--border)" }}>
+                    <span key={n} className="text-sm" style={{ color: n <= cat.val ? cat.color : "var(--border)" }}>
                       {n <= cat.val ? "★" : "☆"}
                     </span>
                   ))}
                 </div>
-                <div className="text-sm" style={{ color: "var(--text-tertiary)" }}>{ratingLabels[cat.val]}</div>
+                <div className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{ratingLabels[cat.val]}</div>
               </div>
             ))}
           </div>
 
           {/* Lucky */}
-          <div className="glass-card p-6">
-            <h3 className="font-semibold mb-4 text-center text-sm" style={{ color: "var(--champagne)" }}>Lucky Elements</h3>
+          <div className="glass-card p-4">
             <div className="flex flex-wrap justify-center gap-3">
-              <span className="px-4 py-2 rounded-lg text-sm" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
+              <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
                 Numbers: <span className="font-semibold" style={{ color: "var(--text-primary)" }}>{result.lucky_numbers.join(", ")}</span>
               </span>
-              <span className="px-4 py-2 rounded-lg text-sm" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
+              <span className="px-3 py-1.5 rounded-lg text-xs" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
                 Color: <span className="font-semibold" style={{ color: "var(--champagne)" }}>{result.lucky_color}</span>
               </span>
             </div>
-          </div>
-
-          <div className="text-center text-xs" style={{ color: "var(--text-tertiary)" }}>
-            Generated by: {result.ai_model}
           </div>
         </motion.div>
       )}

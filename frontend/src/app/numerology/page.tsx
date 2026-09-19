@@ -15,8 +15,6 @@ const lifePathExplanations: Record<number, string> = {
   9: "Humanitarian, compassionate, and idealistic. Generous, wise, selfless, global perspective.",
 };
 
-const fadeUp = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } };
-
 export default function NumerologyPage() {
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");

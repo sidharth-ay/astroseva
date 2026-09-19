@@ -15,8 +15,6 @@ const categories = [
   { key: "education", label: "Education", icon: "△", color: "var(--lavender)" },
 ];
 
-const fadeUp = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } };
-
 export default function PredictionsPage() {
   const [form, setForm] = useState({
     name: "", birth_date: "1990-05-15", birth_time: "10:30",

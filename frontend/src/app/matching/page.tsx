@@ -34,7 +34,7 @@ export default function MatchingPage() {
     return "var(--danger)";
   };
 
-  const FormFields = ({ data, update, accent }: { data: BirthData; update: (p: Partial<BirthData>) => void; accent: string }) => (
+  const FormFields = ({ data, update }: { data: BirthData; update: (p: Partial<BirthData>) => void }) => (
     <div className="space-y-3">
       <div>
         <label className="input-label"><User size={12} className="inline mr-1" />Name</label>
@@ -74,7 +74,7 @@ export default function MatchingPage() {
             </div>
             <h3 className="text-sm font-semibold">Groom</h3>
           </div>
-          <FormFields data={boy} update={updateBoy} accent="var(--lavender)" />
+          <FormFields data={boy} update={updateBoy} />
         </motion.div>
         <motion.div className="glass-card p-5" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <div className="flex items-center gap-2 mb-4">
@@ -83,7 +83,7 @@ export default function MatchingPage() {
             </div>
             <h3 className="text-sm font-semibold">Bride</h3>
           </div>
-          <FormFields data={girl} update={updateGirl} accent="#E8A0BF" />
+          <FormFields data={girl} update={updateGirl} />
         </motion.div>
       </div>
 

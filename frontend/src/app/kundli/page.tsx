@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, Clock, MapPin, User, Download, Beaker, ChevronRight } from "lucide-react";
+import { Calendar, Clock, MapPin, User, Download, ChevronRight } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 import KundliChart from "@/components/KundliChart";
 import { api, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
 
 const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
-
-const fadeUp = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } };
 
 export default function KundliPage() {
   const [form, setForm] = useState<BirthData>({
@@ -50,7 +48,7 @@ export default function KundliPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <h1 className="text-2xl md:text-3xl font-display font-bold mb-1">
           Kundli <span className="text-gradient-gold">Generator</span>
         </h1>
@@ -58,36 +56,36 @@ export default function KundliPage() {
       </motion.div>
 
       {/* Form */}
-      <motion.div className="glass-card p-6 mb-8" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}>
+      <motion.div className="glass-card p-5 mb-8" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="input-label"><User size={12} className="inline mr-1" />Name</label>
+            <label className="input-label"><User size={11} className="inline mr-1" />Name</label>
             <input className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Enter name" />
           </div>
           <div>
-            <label className="input-label"><Calendar size={12} className="inline mr-1" />Birth Date</label>
-            <input type="date" className="input-field" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} />
+            <label className="input-label"><Calendar size={11} className="inline mr-1" />Birth Date</label>
+            <input type="date" className="input-field" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} style={{ colorScheme: "dark" }} />
           </div>
           <div>
-            <label className="input-label"><Clock size={12} className="inline mr-1" />Birth Time</label>
-            <input type="time" className="input-field" value={form.birth_time} onChange={(e) => setForm({ ...form, birth_time: e.target.value })} />
+            <label className="input-label"><Clock size={11} className="inline mr-1" />Birth Time</label>
+            <input type="time" className="input-field" value={form.birth_time} onChange={(e) => setForm({ ...form, birth_time: e.target.value })} style={{ colorScheme: "dark" }} />
           </div>
           <div>
-            <label className="input-label"><MapPin size={12} className="inline mr-1" />Birth City</label>
+            <label className="input-label"><MapPin size={11} className="inline mr-1" />Birth City</label>
             <CitySearch value={form.birth_place} onChange={handleCity} />
           </div>
         </div>
         {error && <p className="text-xs mt-3" style={{ color: "var(--danger)" }}>{error}</p>}
-        <div className="flex flex-wrap gap-2 mt-5">
+        <div className="flex flex-wrap gap-2 mt-4">
           <button className="btn-primary" onClick={generate} disabled={loading}>
-            {loading ? "Generating..." : "Generate Kundli"} <ChevronRight size={16} />
+            {loading ? "Generating..." : "Generate Kundli"} <ChevronRight size={15} />
           </button>
           <button className="btn-ghost" onClick={loadSample} disabled={loading}>
-            <Beaker size={14} /> Load Sample
+            Load Sample
           </button>
           {result && (
             <button className="btn-ghost" onClick={exportPdf}>
-              <Download size={14} /> Export PDF
+              <Download size={13} /> Export PDF
             </button>
           )}
         </div>
@@ -95,10 +93,10 @@ export default function KundliPage() {
 
       {/* Results */}
       {result && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} className="space-y-6">
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-6">
           {/* Birth Details */}
-          <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--champagne)" }}>Birth Details</h3>
+          <div className="glass-card p-4">
+            <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Birth Details</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               {[
                 ["Name", result.name || "—"],
@@ -118,13 +116,13 @@ export default function KundliPage() {
 
           {/* Chart */}
           <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--champagne)" }}>Birth Chart</h3>
+            <h3 className="text-xs font-semibold mb-4 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Birth Chart — North Indian Style</h3>
             <KundliChart chart={result.chart} ascSign={result.asc_sign} />
           </div>
 
           {/* Planetary Positions */}
-          <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--champagne)" }}>Planetary Positions</h3>
+          <div className="glass-card p-4">
+            <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Planetary Positions</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
@@ -141,7 +139,7 @@ export default function KundliPage() {
                       <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.sign_name}</td>
                       <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.sign_degree.toFixed(1)}°</td>
                       <td className="py-2 px-2">
-                        {p.retrograde && <span className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ background: "rgba(232, 93, 93, 0.1)", color: "var(--danger)" }}>R</span>}
+                        {p.retrograde && <span className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ background: "rgba(232, 93, 93, 0.08)", color: "var(--danger)" }}>R</span>}
                       </td>
                       <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.dignity}</td>
                     </tr>
@@ -153,15 +151,15 @@ export default function KundliPage() {
 
           {/* Dasha */}
           {result.dasha_info?.current_dasha && (
-            <div className="glass-card p-5">
-              <h3 className="text-sm font-semibold mb-3" style={{ color: "var(--champagne)" }}>Vimshottari Dasha</h3>
+            <div className="glass-card p-4">
+              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "var(--champagne)" }}>Vimshottari Dasha</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
                   { label: "Mahadasha", value: result.dasha_info.current_dasha.mahadasha, period: `${result.dasha_info.current_dasha.mahadasha_start} — ${result.dasha_info.current_dasha.mahadasha_end}` },
                   { label: "Antardasha", value: result.dasha_info.current_dasha.antardasha || "—", period: result.dasha_info.current_dasha.antardasha ? `${result.dasha_info.current_dasha.antardasha_start} — ${result.dasha_info.current_dasha.antardasha_end}` : "" },
                   { label: "Pratyantardasha", value: result.dasha_info.current_dasha.pratyantardasha || "—", period: "" },
                 ].map((d) => (
-                  <div key={d.label} className="p-3 rounded-xl" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+                  <div key={d.label} className="p-3 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
                     <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-tertiary)" }}>{d.label}</div>
                     <div className="text-sm font-medium" style={{ color: "var(--champagne)" }}>{d.value}</div>
                     {d.period && <div className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>{d.period}</div>}

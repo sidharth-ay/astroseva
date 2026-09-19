@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Send, Trash2, ChevronDown, Sparkles } from "lucide-react";
+import { Send, Trash2, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 
 interface Message {
