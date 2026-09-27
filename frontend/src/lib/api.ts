@@ -250,7 +250,6 @@ export interface PanchangResponse {
 
 export interface DoshaResponse {
   manglik: { is_manglik: boolean; severity: string; description?: string };
-  kaal_sarp: { has_dosha: boolean; description?: string; severity?: string };
   sade_sati: { is_active: boolean; description?: string; phase?: string | null; severity?: string };
   pitru_dosha: { has_dosha: boolean; conditions: string[]; description: string };
   total_doshas: number;

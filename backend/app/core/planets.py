@@ -41,7 +41,7 @@ _BODIES = {
     "Pluto": "pluto barycenter",
 }
 
-# Classical Vedic planets (used for Kaal Sarp and dignity-free outer handling)
+# Classical 9 Vedic planets (Sun-Saturn + Rahu/Ketu, excluding Uranus/Neptune/Pluto)
 CLASSICAL_PLANETS = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"}
 
 # Zodiac sign names

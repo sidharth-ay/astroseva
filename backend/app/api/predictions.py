@@ -70,7 +70,6 @@ async def generate_ai_prediction(request: PredictionRequest):
             ]),
             "doshas": "\n".join([
                 f"- Manglik: {'Yes' if doshas['manglik']['is_manglik'] else 'No'}",
-                f"- Kaal Sarp: {'Yes' if doshas['kaal_sarp']['has_dosha'] else 'No'}",
                 f"- Sade Sati: {'Yes' if doshas['sade_sati']['is_active'] else 'No'}",
                 f"- Pitru Dosha: {'Yes' if doshas['pitru_dosha']['has_dosha'] else 'No'}",
             ]),

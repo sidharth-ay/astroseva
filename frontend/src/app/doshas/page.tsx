@@ -119,14 +119,6 @@ export default function DoshasPage() {
             "Caused by Mars in houses 1, 2, 4, 7, 8, or 12. Affects marriage timing and harmony.",
         },
         {
-          title: "Kaal Sarp Dosha",
-          active: result.kaal_sarp?.has_dosha,
-          badge: result.kaal_sarp?.has_dosha ? "Present" : "Absent",
-          description:
-            result.kaal_sarp?.description ||
-            "Forms when all planets sit between Rahu and Ketu. Linked to delays and struggles.",
-        },
-        {
           title: "Sade Sati",
           active: result.sade_sati?.is_active,
           badge: result.sade_sati?.is_active
