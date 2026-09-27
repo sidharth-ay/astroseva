@@ -249,7 +249,17 @@ export interface PanchangResponse {
 }
 
 export interface DoshaResponse {
-  manglik: { is_manglik: boolean; severity: string; description?: string };
+  manglik: {
+    is_manglik: boolean;
+    severity: string;
+    description?: string;
+    has_placement?: boolean;
+    lagna_manglik?: boolean;
+    moon_manglik?: boolean;
+    cancellation?: boolean;
+    cancellation_reason?: string | null;
+    positions?: { house?: number; chart?: string; severity?: string; description?: string }[];
+  };
   sade_sati: { is_active: boolean; description?: string; phase?: string | null; severity?: string };
   pitru_dosha: { has_dosha: boolean; conditions: string[]; description: string };
   total_doshas: number;

@@ -13,6 +13,13 @@ import {
   stagger,
 } from "@/lib/motion";
 
+function ordinalSuffix(n: number): string {
+  if (n === 1) return "st";
+  if (n === 2) return "nd";
+  if (n === 3) return "rd";
+  return "th";
+}
+
 export default function DoshasPage() {
   const [form, setForm] = useState<BirthData>({
     name: "",
@@ -70,7 +77,8 @@ export default function DoshasPage() {
       if (seq !== seqRef.current) return;
       setResult(res);
       const total = res.total_doshas ?? 0;
-      if (total > 0) {
+      const mitigated = !res.manglik?.is_manglik && !!res.manglik?.has_placement;
+      if (total > 0 || mitigated) {
         try {
           const rem = await api.getDoshaRemedies(form, "en", controller.signal);
           if (seq !== seqRef.current) return;
@@ -107,16 +115,37 @@ export default function DoshasPage() {
   };
 
   const totalDoshas = result?.total_doshas ?? 0;
+  const manglikMitigated =
+    !result?.manglik?.is_manglik && !!result?.manglik?.has_placement;
+  const needsRemedies = totalDoshas > 0 || manglikMitigated;
 
   const cards = result
     ? [
         {
           title: "Manglik Dosha",
           active: result.manglik?.is_manglik,
-          badge: result.manglik?.is_manglik ? (result.manglik?.severity || "Present") : "Absent",
+          mitigated: manglikMitigated,
+          badge: result.manglik?.is_manglik
+            ? (result.manglik?.severity || "Present")
+            : manglikMitigated
+              ? "Mitigated"
+              : "Absent",
           description:
             result.manglik?.description ||
             "Caused by Mars in houses 1, 2, 4, 7, 8, or 12. Affects marriage timing and harmony.",
+          extra: manglikMitigated
+            ? [
+                result.manglik?.cancellation_reason || "",
+                (result.manglik?.positions || [])
+                  .map((p: { house?: number; chart?: string }) =>
+                    p.house ? `Mars in ${p.house}${ordinalSuffix(p.house)} house${p.chart ? ` (${p.chart} chart)` : ""}` : ""
+                  )
+                  .filter(Boolean)
+                  .join(" · "),
+              ]
+              .filter(Boolean)
+              .join(" — ")
+            : "",
         },
         {
           title: "Sade Sati",
@@ -238,7 +267,7 @@ export default function DoshasPage() {
           <div
             className="glass-card p-5 mb-5 text-center"
             style={{
-              borderColor: totalDoshas > 0 ? "rgba(229,93,93,0.35)" : "rgba(93,200,143,0.35)",
+              borderColor: totalDoshas > 0 || manglikMitigated ? "rgba(229,93,93,0.35)" : "rgba(93,200,143,0.35)",
             }}
           >
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -247,6 +276,13 @@ export default function DoshasPage() {
                   <AlertTriangle size={15} className="inline mr-1" style={{ color: "var(--danger)" }} />
                   <strong style={{ color: "var(--text-primary)" }}>{totalDoshas}</strong> dosha
                   {totalDoshas > 1 ? "s" : ""} detected in your chart
+                  {manglikMitigated && " (plus one mitigated placement below)"}
+                </>
+              ) : manglikMitigated ? (
+                <>
+                  <AlertTriangle size={15} className="inline mr-1" style={{ color: "var(--champagne)" }} />
+                  No active doshas — but a <strong style={{ color: "var(--text-primary)" }}>mitigated Manglik placement</strong> was
+                  found and is shown below with its remedy note
                 </>
               ) : (
                 <>
@@ -269,7 +305,9 @@ export default function DoshasPage() {
                     style={
                       c.active
                         ? { background: "rgba(229,93,93,0.12)", color: "var(--danger)" }
-                        : { background: "rgba(93,200,143,0.12)", color: "var(--success)" }
+                        : "mitigated" in c && (c as { mitigated?: boolean }).mitigated
+                          ? { background: "rgba(232,184,138,0.12)", color: "var(--champagne)" }
+                          : { background: "rgba(93,200,143,0.12)", color: "var(--success)" }
                     }
                   >
                     {c.badge}
@@ -278,6 +316,11 @@ export default function DoshasPage() {
                 <p className="text-sm" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
                   {c.description}
                 </p>
+                {"extra" in c && typeof (c as { extra?: string }).extra === "string" && (c as { extra: string }).extra && (
+                  <p className="text-xs mt-2" style={{ color: "var(--champagne)", lineHeight: 1.7 }}>
+                    {(c as { extra: string }).extra}
+                  </p>
+                )}
                 {"conditions" in c && Array.isArray((c as { conditions?: string[] }).conditions) &&
                   (c as { conditions: string[] }).conditions.length > 0 && (
                     <ul className="mt-2 space-y-1">

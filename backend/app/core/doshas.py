@@ -16,9 +16,13 @@ MANGLIK_RULES = {
 def detect_manglik(planets: list[dict], asc_sign: int, moon_sign: int | None = None) -> dict:
     """Detect Manglik Dosha (Mars affliction) from Lagna and Moon charts.
 
-    Mirrors AstroSage: Mars in houses 1, 2, 4, 7, 8, 12 counted from the
-    Lagna (ascendant) and from the Moon (Chandra Lagna). Present in both
-    charts = High; in exactly one = Low (Anshik/partial); in neither = None.
+    Mirrors AstroSage: Mars in houses 1, 2, 4, 7, 8, 12 from the Lagna,
+    and houses 1, 4, 7, 8, 12 from the Moon (the 2nd is excluded
+    Moon-side, matching all five published AstroSage verdicts — SRK,
+    Akshay, Ajay, Jolie, Biden — where Moon-2nd Mars reads "not present").
+    Present in both charts = High; in exactly one = Low (Anshik/partial).
+    Cancelled placements are still REPORTED with severity "Mitigated"
+    (never silently hidden); only uncancelled dosha counts as active.
     Cancellations per AstroSage: aspect by Jupiter (5th/7th/9th from itself)
     or Venus (7th from itself). Exalted/own-sign Mars is kept as an
     additional (non-AstroSage) cancellation, flagged in the reason.
@@ -26,13 +30,16 @@ def detect_manglik(planets: list[dict], asc_sign: int, moon_sign: int | None = N
     by_name = {p.get("planet"): p for p in planets}
     mars = by_name.get("Mars", {})
 
-    def _houses_for(ref_sign: int) -> list[dict]:
+    LAGNA_HOUSES = [1, 2, 4, 7, 8, 12]
+    MOON_HOUSES = [1, 4, 7, 8, 12]
+
+    def _houses_for(ref_sign: int | None, allowed: list[int]) -> list[dict]:
         out = []
         mars_sign = mars.get("sign")
         if mars_sign is None or ref_sign is None:
             return out
         house = (mars_sign - ref_sign) % 12 + 1
-        if house in [1, 2, 4, 7, 8, 12]:
+        if house in allowed:
             rule = MANGLIK_RULES.get(f"Mars_in_{house}")
             if rule:
                 out.append({
@@ -42,8 +49,8 @@ def detect_manglik(planets: list[dict], asc_sign: int, moon_sign: int | None = N
                 })
         return out
 
-    lagna_positions = _houses_for(asc_sign)
-    moon_positions = _houses_for(moon_sign) if moon_sign is not None else []
+    lagna_positions = _houses_for(asc_sign, LAGNA_HOUSES)
+    moon_positions = _houses_for(moon_sign, MOON_HOUSES) if moon_sign is not None else []
     manglik_positions = (
         [{**p, "chart": "lagna"} for p in lagna_positions]
         + [{**p, "chart": "moon"} for p in moon_positions]
@@ -77,24 +84,37 @@ def detect_manglik(planets: list[dict], asc_sign: int, moon_sign: int | None = N
 
     lagna_hit = len(lagna_positions) > 0
     moon_hit = len(moon_positions) > 0
-    is_manglik = (lagna_hit or moon_hit) and not cancellation
+    has_placement = lagna_hit or moon_hit
+    is_manglik = has_placement and not cancellation
 
-    if not is_manglik:
+    if not has_placement:
         severity = "None"
+    elif cancellation:
+        # Mitigated placements are SHOWN, never hidden — only the
+        # active verdict and the total count exclude them.
+        severity = "Mitigated"
     elif lagna_hit and moon_hit:
         severity = "High"
     else:
         severity = "Low"
 
+    if is_manglik:
+        description = "Mars in dosha houses from Lagna or Moon causes Manglik Dosha"
+    elif cancellation and has_placement:
+        description = f"Manglik placement found but mitigated: {cancellation_reason}"
+    else:
+        description = "No Manglik Dosha detected"
+
     return {
         "is_manglik": is_manglik,
+        "has_placement": has_placement,
         "positions": manglik_positions,
         "lagna_manglik": lagna_hit,
         "moon_manglik": moon_hit,
         "severity": severity,
         "cancellation": cancellation,
         "cancellation_reason": cancellation_reason,
-        "description": "Mars in 1st, 2nd, 4th, 7th, 8th, or 12th house from Lagna or Moon causes Manglik Dosha" if is_manglik else "No Manglik Dosha detected",
+        "description": description,
     }
 
 

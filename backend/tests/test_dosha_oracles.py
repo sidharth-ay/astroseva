@@ -18,7 +18,67 @@ from app.core.doshas import (
     detect_sade_sati,
     get_transit_saturn_sign,
 )
+from app.core.planets import get_planetary_positions
 from app.models.response import DoshaResponse
+
+
+def _chart_positions(year, month, day, hour, minute, tz, lat, lon):
+    pos = get_planetary_positions(year, month, day, hour, minute, tz, lat, lon)
+    asc = int(pos["ascendant"] / 30)
+    moon = next(p["sign"] for p in pos["planets"] if p["planet"] == "Moon")
+    return pos["planets"], asc, moon
+
+
+def _mars_houses(planets, asc, moon):
+    mars_sign = next(p["sign"] for p in planets if p["planet"] == "Mars")
+    return (mars_sign - asc) % 12 + 1, (mars_sign - moon) % 12 + 1
+
+
+def test_verdict_srk_lagna_only():
+    # SRK: Nov 02 1965 02:30 Delhi — AstroSage: 4th Lagna / 11th Moon, Lagna-only.
+    planets, asc, moon = _chart_positions(1965, 11, 2, 2, 30, 5.5, 28.6139, 77.2090)
+    lagna_h, moon_h = _mars_houses(planets, asc, moon)
+    assert (lagna_h, moon_h) == (4, 11)
+    r = detect_manglik(planets, asc, moon)
+    assert r["lagna_manglik"] is True and r["moon_manglik"] is False
+    assert r["has_placement"] is True  # shown even though own-sign mitigated
+
+
+def test_verdict_akshay_lagna_only():
+    # Akshay: Sep 09 1967 12:05 Amritsar — AstroSage: 1st Lagna / 2nd Moon, Lagna-only.
+    planets, asc, moon = _chart_positions(1967, 9, 9, 12, 5, 5.5, 31.63, 74.87)
+    lagna_h, moon_h = _mars_houses(planets, asc, moon)
+    assert (lagna_h, moon_h) == (1, 2)
+    r = detect_manglik(planets, asc, moon)
+    assert r["lagna_manglik"] is True and r["moon_manglik"] is False
+    # Jupiter aspects Mars -> mitigated but SHOWN (never hidden)
+    assert r["has_placement"] is True and r["severity"] == "Mitigated"
+
+
+def test_verdict_ajay_neither():
+    # Ajay: Apr 02 1969 13:32 Delhi — AstroSage: 5th / 3rd, neither.
+    planets, asc, moon = _chart_positions(1969, 4, 2, 13, 32, 5.5, 28.6139, 77.2090)
+    lagna_h, moon_h = _mars_houses(planets, asc, moon)
+    assert (lagna_h, moon_h) == (5, 3)
+    r = detect_manglik(planets, asc, moon)
+    assert r["is_manglik"] is False and r["has_placement"] is False
+    assert r["severity"] == "None"
+
+
+def test_verdict_jolie_moon_only():
+    # Jolie pattern: Mars 10th Lagna / 1st Moon -> Moon-only Low.
+    # Mars sign 1; asc 4 -> (1-4)%12+1 = 10; moon 1 -> house 1.
+    r = detect_manglik([_mars(1)], 4, 1)
+    assert r["lagna_manglik"] is False and r["moon_manglik"] is True
+    assert r["is_manglik"] is True and r["severity"] == "Low"
+
+
+def test_verdict_biden_moon_only():
+    # Biden pattern: Mars 11th Lagna / 7th Moon -> Moon-only Low.
+    # Mars sign 2; asc 4 -> (2-4)%12+1 = 11; moon 8 -> (2-8)%12+1 = 7.
+    r = detect_manglik([_mars(2)], 4, 8)
+    assert r["lagna_manglik"] is False and r["moon_manglik"] is True
+    assert r["is_manglik"] is True and r["severity"] == "Low"
 
 
 def _mars(sign, dignity="Neutral", own=False):
@@ -53,13 +113,28 @@ def test_manglik_neither():
 
 
 def test_manglik_both_charts_high():
-    # Mars sign 0; asc 11 -> Lagna house 2; moon 11 -> Moon house 2
-    r = detect_manglik([_mars(0)], 11, 11)
+    # Mars sign 0; asc 11 -> Lagna house 2; moon 5 -> Moon house 8
+    r = detect_manglik([_mars(0)], 11, 5)
     assert r["is_manglik"] is True
     assert r["severity"] == "High"
 
 
-def test_manglik_jupiter_aspect_cancels():
+def test_manglik_moon_second_excluded():
+    # AstroSage verdict pattern (Akshay): Moon-2nd Mars reads "not present".
+    # Mars sign 0; asc 9 -> Lagna house 4; moon 11 -> Moon house 2 (excluded).
+    r = detect_manglik([_mars(0)], 9, 11)
+    assert r["lagna_manglik"] is True
+    assert r["moon_manglik"] is False
+    assert r["severity"] == "Low"
+
+
+def test_manglik_mitigated_shown_not_hidden():
+    # Real placement + Jupiter aspect: inactive but REPORTED as Mitigated.
+    r = detect_manglik([_mars(0), {"planet": "Jupiter", "sign": 6}], 9, 3)
+    assert r["is_manglik"] is False
+    assert r["has_placement"] is True
+    assert r["severity"] == "Mitigated"
+    assert len(r["positions"]) > 0
     # Lagna hit but Jupiter aspects Mars (Mars 0, Jupiter 6 -> diff 6 = 7th aspect)
     r = detect_manglik([_mars(0), {"planet": "Jupiter", "sign": 6}], 9, 3)
     assert r["is_manglik"] is False
