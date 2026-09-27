@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import { planetColors } from "@/components/icons/PlanetIcons";
 
 interface KundliChartProps {
   chart: Record<string, { sign: number; planets: string[] }>;
   ascSign: number;
+  chartStyle?: "north" | "south";
 }
 
 const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
@@ -53,14 +54,19 @@ const CENTER_LINES = [
   "400,0 0,400",     // diagonal top-right to bottom-left
 ];
 
-export default function KundliChart({ chart, ascSign }: KundliChartProps) {
+export default function KundliChart({ chart, ascSign, chartStyle = "north" }: KundliChartProps) {
   const [mounted, setMounted] = useState(false);
-  const reduced = useReducedMotion();
+  const reducedRaw = useReducedMotion();
+  const reduced = reducedRaw ?? false;
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 100);
     return () => clearTimeout(t);
   }, []);
+
+  if (chartStyle === "south") {
+    return <SouthIndianChart chart={chart} ascSign={ascSign} mounted={mounted} reduced={reduced} />;
+  }
 
   const lineDur = reduced ? 0 : 0.8;
   const labelDur = reduced ? 0 : 0.3;
@@ -179,6 +185,126 @@ export default function KundliChart({ chart, ascSign }: KundliChartProps) {
           initial={reduced ? undefined : { pathLength: 0, opacity: 0 }}
           animate={mounted ? { pathLength: 1, opacity: 1 } : undefined}
           transition={{ duration: lineDur * 1.2, ease: [0.16, 1, 0.3, 1] }}
+        />
+      </svg>
+    </div>
+  );
+}
+
+// South Indian chart: 4x4 grid with fixed sign positions.
+// Grid cells [row][col] where row 0 = top, col 0 = left.
+// Sign indices: 0=Aries, 1=Taurus, ... 11=Pisces
+const SOUTH_GRID: (number | null)[][] = [
+  [11, 0, 1, 2],   // Pisces, Aries, Taurus, Gemini
+  [10, null, null, 3],  // Aquarius, (empty), (empty), Cancer
+  [9, null, null, 4],   // Capricorn, (empty), (empty), Leo
+  [8, 7, 6, 5],    // Sagittarius, Scorpio, Libra, Virgo
+];
+
+const SOUTH_CELL_SIZE = 100;
+const SOUTH_PADDING = 20;
+
+function SouthIndianChart({
+  chart,
+  ascSign,
+  mounted,
+  reduced,
+}: {
+  chart: Record<string, { sign: number; planets: string[] }>;
+  ascSign: number;
+  mounted: boolean;
+  reduced: boolean;
+}) {
+  const labelDur = reduced ? 0 : 0.3;
+
+  // Build a map: sign_index -> planets
+  const signPlanets: Record<number, string[]> = {};
+  for (const houseStr of Object.keys(chart)) {
+    const entry = chart[houseStr];
+    if (entry?.planets?.length) {
+      signPlanets[entry.sign] = entry.planets;
+    }
+  }
+
+  return (
+    <div className="w-full max-w-[400px] mx-auto">
+      <svg viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+        {/* Background */}
+        <rect x="0" y="0" width="440" height="440" fill="#0F0E1A" rx="4" />
+
+        {SOUTH_GRID.map((row, ri) =>
+          row.map((signIdx, ci) => {
+            if (signIdx === null) return null;
+            const x = SOUTH_PADDING + ci * SOUTH_CELL_SIZE;
+            const y = SOUTH_PADDING + ri * SOUTH_CELL_SIZE;
+            const planets = signPlanets[signIdx] ?? [];
+            const isAsc = signIdx === ascSign;
+
+            return (
+              <g key={`${ri}-${ci}`}>
+                <motion.rect
+                  x={x}
+                  y={y}
+                  width={SOUTH_CELL_SIZE}
+                  height={SOUTH_CELL_SIZE}
+                  fill={isAsc ? "rgba(214, 184, 117, 0.06)" : "transparent"}
+                  stroke="rgba(166, 165, 184, 0.12)"
+                  strokeWidth="0.8"
+                  initial={reduced ? undefined : { opacity: 0 }}
+                  animate={mounted ? { opacity: 1 } : undefined}
+                  transition={{ duration: 0.4, delay: (ri * 4 + ci) * 0.02 }}
+                />
+
+                {/* Sign name label (top of cell) */}
+                <motion.text
+                  x={x + 4}
+                  y={y + 12}
+                  fontSize="8"
+                  fill="rgba(166, 165, 184, 0.45)"
+                  fontFamily="inherit"
+                  initial={reduced ? undefined : { opacity: 0 }}
+                  animate={mounted ? { opacity: 1 } : undefined}
+                  transition={{ duration: labelDur, delay: 0.4 + (ri * 4 + ci) * 0.03 }}
+                >
+                  {SIGN_NAMES[signIdx]}{isAsc ? " (Asc)" : ""}
+                </motion.text>
+
+                {/* Planets */}
+                {planets.map((p, pi) => (
+                  <motion.text
+                    key={p}
+                    x={x + SOUTH_CELL_SIZE / 2}
+                    y={y + SOUTH_CELL_SIZE / 2 + 4 + pi * 12}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill={planetColors[p] || "#A6A5B8"}
+                    fontFamily="inherit"
+                    fontWeight="600"
+                    initial={reduced ? undefined : { opacity: 0 }}
+                    animate={mounted ? { opacity: 1 } : undefined}
+                    transition={{ duration: labelDur, delay: 0.6 + (ri * 4 + ci) * 0.03 + pi * 0.04 }}
+                  >
+                    {p.substring(0, 3)}
+                  </motion.text>
+                ))}
+              </g>
+            );
+          })
+        )}
+
+        {/* Outer frame */}
+        <motion.rect
+          x={SOUTH_PADDING - 0.5}
+          y={SOUTH_PADDING - 0.5}
+          width={SOUTH_CELL_SIZE * 4 + 1}
+          height={SOUTH_CELL_SIZE * 4 + 1}
+          fill="none"
+          stroke="rgba(166, 165, 184, 0.15)"
+          strokeWidth="1"
+          rx="4"
+          initial={reduced ? undefined : { pathLength: 0, opacity: 0 }}
+          animate={mounted ? { pathLength: 1, opacity: 1 } : undefined}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         />
       </svg>
     </div>

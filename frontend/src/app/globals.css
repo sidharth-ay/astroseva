@@ -8,6 +8,7 @@
 }
 
 :root {
+  color-scheme: dark;
   --midnight: #060610;
   --deep-indigo: #0C0C1A;
   --raised: #14142A;
@@ -111,8 +112,16 @@ body::after {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  opacity: 0.015;
+  opacity: 0.01;
   mix-blend-mode: overlay;
+  /* Isolate the turbulence layer so GPU raster bugs can't bleed into content */
+  isolation: isolate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .noise-overlay {
+    display: none;
+  }
 }
 
 .font-display { font-family: var(--font-display); }
@@ -279,6 +288,38 @@ h1, h2, h3, h4, h5, h6 {
 
 .input-field::placeholder { color: var(--text-tertiary); }
 .input-field:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Native controls: force dark rendering so OS panels (select dropdowns,
+   date/time pickers, file buttons) match the theme instead of white. */
+select.input-field option,
+select.input-field optgroup {
+  background-color: var(--raised);
+  color: var(--text-primary);
+}
+
+input[type="file"].input-field::file-selector-button {
+  background: rgba(200, 149, 109, 0.1);
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-sm);
+  color: var(--gold-bright);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  margin-right: 0.75rem;
+  cursor: pointer;
+}
+
+input[type="file"].input-field::file-selector-button:hover {
+  background: rgba(200, 149, 109, 0.2);
+}
+
+/* Input with inner icon(s): padding must beat .input-field shorthand,
+   so it lives here (unlayered author CSS wins over utilities). */
+.input-field-with-icon {
+  padding-left: 2.25rem;
+  padding-right: 2.25rem;
+}
 
 .input-label {
   display: block;

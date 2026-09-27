@@ -5,10 +5,25 @@ const REQUEST_TIMEOUT = 60000;
 async function fetchWithTimeout(url: string, init?: RequestInit, timeout = REQUEST_TIMEOUT): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
+  // Honor a caller-provided AbortSignal (e.g. tab switches) so in-flight
+  // requests are genuinely cancelled instead of piling up.
+  const external = init?.signal as AbortSignal | null | undefined;
+  const onExternalAbort = () => controller.abort();
+  if (external) {
+    if (external.aborted) {
+      controller.abort();
+    } else if (typeof external.addEventListener === "function") {
+      external.addEventListener("abort", onExternalAbort, { once: true });
+    }
+  }
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    const { signal: _externalSignal, ...rest } = init || {};
+    return await fetch(url, { ...rest, signal: controller.signal });
   } finally {
     clearTimeout(id);
+    if (external && typeof external.removeEventListener === "function") {
+      external.removeEventListener("abort", onExternalAbort);
+    }
   }
 }
 
@@ -126,7 +141,98 @@ export interface NumerologyResponse {
   soul_urge: { soul_urge_number: number };
   personality: { personality_number: number };
   birthday: { birthday_number: number };
+  name_number?: { name_number: number };
   lucky_numbers: number[];
+  compatibility?: { number1: number; number2: number; compatibility: string };
+}
+
+export interface Mantra {
+  id: string;
+  deity: string;
+  mantra_hindi: string;
+  transliteration: string;
+  meaning: string;
+  benefits: string;
+  best_time: string;
+  repetitions: number;
+  category: string;
+  purpose: string;
+  planet: string;
+}
+
+export interface Chalisa {
+  id: string;
+  deity: string;
+  author: string;
+  language: string;
+  description: string;
+  verses_hindi: string[];
+  verses_transliteration?: string[];
+}
+
+export interface Aarti {
+  id: string;
+  deity: string;
+  aarti_name: string;
+  language: string;
+  description: string;
+  aarti_hindi: string[];
+  aarti_transliteration: string[];
+}
+
+export interface MantraCategories {
+  deity: { id: string; name: string; description: string; mantra_count: number }[];
+  purpose: { id: string; name: string; description: string; mantra_count: number; related_mantras: string[] }[];
+  planet: { id: string; name: string; description: string; mantra_count: number; related_mantras: string[] }[];
+}
+
+export interface Celebrity {
+  id: string;
+  name: string;
+  birth_date: string;
+  birth_time?: string;
+  birth_place: string;
+  profession: string;
+  famous_for: string;
+  zodiac_sign?: string;
+}
+
+export interface HealingRecommendation {
+  name: string;
+  birth_date: string;
+  recommendation: {
+    sun_sign: string;
+    dominant_chakra: string;
+    recommended_crystals: string[];
+    chakras_to_focus_on: string[];
+    recommended_aromatherapy: string[];
+    recommended_sound_healing: Record<string, unknown>;
+  };
+}
+
+export interface KPResponse {
+  name: string;
+  ascendant: { sign: string; nakshatra: string; nak_lord: string; sub_lord: string; pada: number; degree: number };
+  planets: { planet: string; sign: string; sign_lord: string; nakshatra: string; nak_lord: string; sub_lord: string; pada: number; degree: number; retrograde: boolean }[];
+  ruling_planet: string;
+}
+
+export interface LalKitabResponse {
+  name: string;
+  birth_date: string;
+  birth_time: string;
+  birth_place: string;
+  houses: Record<string, { planet: string; sign: string; degree: number }[]>;
+  planets: { planet: string; house: number; sign: string; degree: number }[];
+  remedies: { planet: string; house: number; sign: string; remedy: string; gemstone?: string; mantra?: string }[];
+}
+
+export interface ReportResponse {
+  report_type: string;
+  content: string;
+  sections?: { title: string; content: string }[];
+  house_analysis?: Record<string, string>;
+  ai_model: string;
 }
 
 export interface PanchangResponse {
@@ -143,14 +249,14 @@ export interface PanchangResponse {
 }
 
 export interface DoshaResponse {
-  manglik: { is_manglik: boolean; severity: string };
-  kaal_sarp: { has_dosha: boolean };
-  sade_sati: { is_active: boolean };
-  pitru_dosha: { has_dosha: boolean };
+  manglik: { is_manglik: boolean; severity: string; description?: string };
+  kaal_sarp: { has_dosha: boolean; description?: string; severity?: string };
+  sade_sati: { is_active: boolean; description?: string; phase?: string | null; severity?: string };
+  pitru_dosha: { has_dosha: boolean; conditions: string[]; description: string };
   total_doshas: number;
 }
 
-async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
@@ -160,9 +266,69 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail || "API request failed");
+    // FastAPI 422 details arrive as an array — humanize them.
+    let message: string;
+    if (Array.isArray(error.detail)) {
+      message = error.detail
+        .map((d: { loc?: (string | number)[]; msg?: string }) => {
+          const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : "input";
+          return `${field}: ${d.msg || "invalid value"}`;
+        })
+        .join("; ");
+    } else {
+      message = error.detail || "API request failed";
+    }
+    const err = new Error(message) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   return res.json();
+}
+
+const TOKEN_KEY = "astroseva_token";
+const USER_KEY = "astroseva_user";
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+}
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function getStoredUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setSession(token: string, user: AuthUser) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export function clearSession() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+export async function fetchAuth<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const token = getToken();
+  if (!token) throw new Error("Please log in to continue.");
+  return fetchAPI<T>(endpoint, {
+    ...options,
+    headers: {
+      ...options?.headers,
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }
 
 export const api = {
@@ -191,11 +357,33 @@ export const api = {
       body: JSON.stringify({ boy, girl }),
     }),
 
-  getDailyHoroscope: (sign: string) =>
-    fetchAPI<HoroscopeResponse>(`/api/v1/horoscope/daily/${sign}?t=${Date.now()}`),
+  exportMatchingPdf: async (boy: BirthData, girl: BirthData) => {
+    const res = await fetch(`${API_BASE}/api/v1/matching/export-pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ boy, girl }),
+    });
+    if (!res.ok) throw new Error("PDF export failed");
+    return res.blob();
+  },
+
+  getDailyHoroscope: (sign: string, signal?: AbortSignal) =>
+    fetchAPI<HoroscopeResponse>(`/api/v1/horoscope/daily/${sign}?t=${Date.now()}`, { signal }),
 
   getAllHoroscopes: () =>
     fetchAPI<{ horoscopes: HoroscopeResponse[] }>("/api/v1/horoscope/daily"),
+
+  getWeeklyHoroscope: (sign: string, signal?: AbortSignal) =>
+    fetchAPI<HoroscopeResponse>(`/api/v1/horoscope/weekly/${sign}?t=${Date.now()}`, { signal }),
+
+  getMonthlyHoroscope: (sign: string, signal?: AbortSignal) =>
+    fetchAPI<HoroscopeResponse>(`/api/v1/horoscope/monthly/${sign}?t=${Date.now()}`, { signal }),
+
+  getYearlyHoroscope: (sign: string, signal?: AbortSignal) =>
+    fetchAPI<HoroscopeResponse>(`/api/v1/horoscope/yearly/${sign}?t=${Date.now()}`, { signal }),
+
+  getLoveHoroscope: (sign: string, signal?: AbortSignal) =>
+    fetchAPI<HoroscopeResponse>(`/api/v1/horoscope/love/${sign}?t=${Date.now()}`, { signal }),
 
   getNumerology: (name: string, birth_date: string) =>
     fetchAPI<NumerologyResponse>("/api/v1/numerology/analyze", {
@@ -206,16 +394,36 @@ export const api = {
   getPanchang: (lat = 28.6139, lng = 77.209) =>
     fetchAPI<PanchangResponse>(`/api/v1/panchang/daily?latitude=${lat}&longitude=${lng}`),
 
+  getChoghadiya: (lat = 28.6139, lng = 77.209) =>
+    fetchAPI<{ date: string; sunrise: string; sunset: string; day_choghadiya: { name: string; start: string; end: string; type: string }[]; night_choghadiya: { name: string; start: string; end: string; type: string }[] }>(`/api/v1/panchang/choghadiya?latitude=${lat}&longitude=${lng}`),
+
+  getHora: (lat = 28.6139, lng = 77.209) =>
+    fetchAPI<{ date: string; day_hora: { planet: string; start: string; end: string; type: string }[]; night_hora: { planet: string; start: string; end: string; type: string }[] }>(`/api/v1/panchang/hora?latitude=${lat}&longitude=${lng}`),
+
+  getGowri: (lat = 28.6139) =>
+    fetchAPI<{ date: string; periods: { name: string; start: string; end: string; nature: string }[] }>(`/api/v1/panchang/gowri?latitude=${lat}`),
+
+  getGhatiMuhurat: (lat = 28.6139, lng = 77.209) =>
+    fetchAPI<{ date: string; muhurats: { start: string; end: string; name: string }[] }>(`/api/v1/panchang/ghati?latitude=${lat}&longitude=${lng}`),
+
   generatePrediction: (data: BirthData, prediction_type: string) =>
     fetchAPI<{ content: string; ai_model: string }>("/api/v1/predictions/generate", {
       method: "POST",
       body: JSON.stringify({ birth_data: data, prediction_type, language: "en" }),
     }),
 
-  detectDoshas: (data: BirthData) =>
+  detectDoshas: (data: BirthData, signal?: AbortSignal) =>
     fetchAPI<DoshaResponse>("/api/v1/doshas/detect", {
       method: "POST",
       body: JSON.stringify(data),
+      signal,
+    }),
+
+  getDoshaRemedies: (data: BirthData, language: string = "en", signal?: AbortSignal) =>
+    fetchAPI<{ doshas: DoshaResponse; remedies: unknown; language: string }>(`/api/v1/doshas/remedies?language=${language}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+      signal,
     }),
 
   chatSend: (message: string, history: { role: string; content: string }[], language: string = "en", birthDetails?: Record<string, any>) =>
@@ -226,4 +434,109 @@ export const api = {
 
   chatSuggestions: () =>
     fetchAPI<{ suggestions: string[] }>("/api/v1/chat/suggestions"),
+
+  getTransit: (signal?: AbortSignal) =>
+    fetchAPI<{ date: string; transits: { planet: string; current_sign: string; current_sign_index: number; retrograde: boolean; speed: number }[]; current_signs: Record<string, string> }>(`/api/v1/transit/today`, { signal }),
+
+  getGemstones: (data: BirthData) =>
+    fetchAPI<{ birth_data: Record<string, unknown>; gemstones: { planet: string; gemstone: string; weight: string; metal: string; finger: string; day: string; alternative: string }[]; recommendations: string }>("/api/v1/gemstones/recommend", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getVarshphal: (data: BirthData, year: number) =>
+    fetchAPI<{ birth_data: Record<string, unknown>; year: number; varshphal_chart: Record<string, unknown>; predictions: Record<string, string>; auspicious_months: string[]; challenging_months: string[] }>("/api/v1/varshphal/calculate", {
+      method: "POST",
+      body: JSON.stringify({ ...data, year }),
+    }),
+
+  getLoveMatch: (data1: BirthData, data2: BirthData) =>
+    fetchAPI<{ partner1: string; partner2: string; overall_score: number; romantic_compatibility: number; emotional_compatibility: number; intellectual_compatibility: number; physical_compatibility: number; recommendations: string }>("/api/v1/matching/love-match", {
+      method: "POST",
+      body: JSON.stringify({ partner1: data1, partner2: data2 }),
+    }),
+
+  getBabyNames: (gender: string, birth_date: string) =>
+    fetchAPI<{ gender: string; names: { name: string; meaning: string; origin: string; lucky_number: number }[]; lucky_numbers: number[]; lucky_letters: string[] }>(`/api/v1/baby-names/suggest?gender=${gender}&birth_date=${birth_date}`),
+
+  getFestivals: (month?: number, year?: number) => {
+    const params = new URLSearchParams();
+    if (month) params.set("month", String(month));
+    if (year) params.set("year", String(year));
+    return fetchAPI<{ month: number; year: number; festivals: { name: string; date: string; description: string; type: string }[] }>(`/api/v1/festivals/list?${params.toString()}`);
+  },
+
+  getDailyMantra: () =>
+    fetchAPI<{ date: string; mantra: Mantra }>("/api/v1/mantra/daily"),
+
+  getChalisas: () =>
+    fetchAPI<{ total: number; chalisas: Chalisa[] }>("/api/v1/mantra/chalisa"),
+
+  getAartis: () =>
+    fetchAPI<{ total: number; aartis: Aarti[] }>("/api/v1/mantra/aarti"),
+
+  getMantraCategories: () =>
+    fetchAPI<MantraCategories>("/api/v1/mantra/categories"),
+
+  getCelebrities: () =>
+    fetchAPI<{ celebrities: Celebrity[] }>("/api/v1/celebrity/list"),
+
+  getCelebritiesByZodiac: (sign: string) =>
+    fetchAPI<{ celebrities: Celebrity[] }>(`/api/v1/celebrity/zodiac/${sign}`),
+
+  getCelebrityDetail: (id: string) =>
+    fetchAPI<Record<string, unknown>>(`/api/v1/celebrity/${id}`),
+
+  getHealingRecommendation: (data: BirthData) =>
+    fetchAPI<HealingRecommendation>("/api/v1/healing/recommend", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getKpChart: (data: BirthData) =>
+    fetchAPI<KPResponse>("/api/v1/kp/chart", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getLalKitabChart: (data: BirthData) =>
+    fetchAPI<LalKitabResponse>("/api/v1/lalkitab/chart", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  generateReport: (birth_data: BirthData, report_type: string) =>
+    fetchAPI<ReportResponse>("/api/v1/reports/generate", {
+      method: "POST",
+      body: JSON.stringify({ birth_data, report_type }),
+    }),
+
+  register: (email: string, name: string, password: string) =>
+    fetchAPI<{ message: string; token: string; user: AuthUser }>("/api/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, name, password }),
+    }),
+
+  login: (email: string, password: string) =>
+    fetchAPI<{ message: string; token: string; user: AuthUser }>("/api/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
+  getMe: () => fetchAuth<{ id: number; email: string; name: string; created_at: string }>("/api/v1/auth/me"),
+
+  saveChart: (data: { name: string; birth_date: string; birth_time: string; birth_place: string; latitude: number; longitude: number; timezone_offset: number; chart_data: Record<string, unknown> }) =>
+    fetchAuth<{ message: string; chart_id: number }>("/api/v1/charts/save", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  listCharts: () =>
+    fetchAuth<{ charts: { id: number; name: string; birth_date: string; birth_time: string; birth_place: string; created_at: string }[]; total: number }>("/api/v1/charts/list"),
+
+  getChart: (id: number) =>
+    fetchAuth<Record<string, unknown>>(`/api/v1/charts/${id}`),
+
+  deleteChart: (id: number) =>
+    fetchAuth<{ message: string }>(`/api/v1/charts/${id}`, { method: "DELETE" }),
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { useReducedMotion, staggerContainer, staggerItem, slideUp } from "@/lib/motion";
 import { Brain, ChevronRight, User, Calendar, Clock, MapPin } from "lucide-react";
 import CitySearch from "@/components/CitySearch";

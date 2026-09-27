@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { api, type HoroscopeResponse } from "@/lib/api";
 import { zodiacSymbols } from "@/components/icons/ZodiacIcons";

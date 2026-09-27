@@ -1,7 +1,7 @@
 """Panchang API endpoints."""
 
 from fastapi import APIRouter, HTTPException, Query
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import logging
 
 from ..models.response import PanchangResponse
@@ -12,6 +12,179 @@ from ..services.cache_service import cache_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/panchang", tags=["panchang"])
+
+# ─── Helper calculation functions ────────────────────────────────────────────
+
+CHOGHADIYA_NAMES = ["Amrit", "Shubh", "Labh", "Char", "Ka", "Rog", "Udveg", "Amrit"]
+CHOGHADIYA_TYPES = ["good", "neutral", "good", "neutral", "bad", "bad", "bad", "good"]
+
+# Starting choghadiya name index for each weekday (0=Sunday)
+_CHOGHADIYA_START = [0, 1, 2, 3, 0, 1, 2]
+
+HORA_PLANETS = ["Sun", "Venus", "Mercury", "Moon", "Saturn", "Jupiter", "Mars"]
+HORA_TYPES = ["good", "neutral", "neutral", "good", "bad", "good", "bad"]
+
+# Starting hora planet index for each weekday (0=Sunday)
+_HORA_START_IDX = [0, 3, 6, 2, 4, 1, 5]
+
+GOWRI_NAMES = ["Dhanam", "Rogam", "Soolam", "Amritam", "Visham", "Laabam", "Thevipai", "Uthi"]
+GOWRI_NATURES = ["good", "bad", "bad", "good", "bad", "good", "neutral", "neutral"]
+
+# Starting gowri index for each weekday (0=Sunday)
+_GOWRI_START_IDX = [7, 0, 1, 3, 5, 4, 2]
+
+
+def _hours_to_time_str(hours: float) -> str:
+    """Convert decimal hours to HH:MM string."""
+    h = int(hours) % 24
+    m = int((hours % 1) * 60)
+    return f"{h:02d}:{m:02d}"
+
+
+def _calculate_choghadiya(sunrise_hour: float, sunset_hour: float, day_of_week: int) -> list:
+    """Calculate Choghadiya periods for the day.
+
+    Returns 16 periods: 8 day choghadiyas (sunrise–sunset) + 8 night choghadiyas (sunset–next sunrise).
+    """
+    results = []
+
+    # --- Day choghadiya (sunrise to sunset) ---
+    day_duration = sunset_hour - sunrise_hour
+    chog_duration = day_duration / 8
+    start_idx = _CHOGHADIYA_START[day_of_week]
+
+    for i in range(8):
+        idx = (start_idx + i) % 8
+        start = sunrise_hour + i * chog_duration
+        end = sunrise_hour + (i + 1) * chog_duration
+        results.append({
+            "name": CHOGHADIYA_NAMES[idx],
+            "start": _hours_to_time_str(start),
+            "end": _hours_to_time_str(end),
+            "type": CHOGHADIYA_TYPES[idx],
+            "period": "day",
+        })
+
+    # --- Night choghadiya (sunset to next sunrise → treat next sunrise as sunset + night_duration) ---
+    night_duration = 24.0 - day_duration  # hours from sunset to next sunrise
+    night_chog_duration = night_duration / 8
+
+    # Night starting choghadiya is the one after the day's last starting choghadiya
+    night_start_idx = (start_idx + 8) % 8  # effectively next in cycle
+
+    for i in range(8):
+        idx = (night_start_idx + i) % 8
+        start = sunset_hour + i * night_chog_duration
+        end = sunset_hour + (i + 1) * night_chog_duration
+        # Wrap past midnight
+        results.append({
+            "name": CHOGHADIYA_NAMES[idx],
+            "start": _hours_to_time_str(start),
+            "end": _hours_to_time_str(end),
+            "type": CHOGHADIYA_TYPES[idx],
+            "period": "night",
+        })
+
+    return results
+
+
+def _calculate_hora(sunrise_hour: float, sunset_hour: float, day_of_week: int) -> list:
+    """Calculate Hora periods for the day.
+
+    24 horas: 12 day (sunrise–sunset) + 12 night (sunset–next sunrise).
+    Each day's first hora is ruled by the weekday ruler (Sun–Sat).
+    """
+    results = []
+
+    # --- Day horas ---
+    day_duration = sunset_hour - sunrise_hour
+    hora_duration = day_duration / 12
+    start_planet_idx = _HORA_START_IDX[day_of_week]
+
+    for i in range(12):
+        planet_idx = (start_planet_idx + i) % 7
+        start = sunrise_hour + i * hora_duration
+        end = sunrise_hour + (i + 1) * hora_duration
+        results.append({
+            "planet": HORA_PLANETS[planet_idx],
+            "start": _hours_to_time_str(start),
+            "end": _hours_to_time_str(end),
+            "type": HORA_TYPES[planet_idx],
+            "period": "day",
+        })
+
+    # --- Night horas ---
+    night_duration = 24.0 - day_duration
+    night_hora_duration = night_duration / 12
+    night_start_planet_idx = (start_planet_idx + 12) % 7
+
+    for i in range(12):
+        planet_idx = (night_start_planet_idx + i) % 7
+        start = sunset_hour + i * night_hora_duration
+        end = sunset_hour + (i + 1) * night_hora_duration
+        results.append({
+            "planet": HORA_PLANETS[planet_idx],
+            "start": _hours_to_time_str(start),
+            "end": _hours_to_time_str(end),
+            "type": HORA_TYPES[planet_idx],
+            "period": "night",
+        })
+
+    return results
+
+
+def _calculate_gowri(sunrise_hour: float, day_of_week: int) -> list:
+    """Calculate Gowri Panchangam periods.
+
+    8 periods from sunrise, each ~90 minutes (day duration / 8).
+    Good: Dhanam, Amritam, Laabam. Bad: Rogam, Soolam, Visham. Neutral: Thevipai, Uthi.
+    """
+    start_idx = _GOWRI_START_IDX[day_of_week]
+    gowri_duration = 12.0 / 8  # 1.5 hours each (approximate day = 12h)
+    results = []
+
+    for i in range(8):
+        idx = (start_idx + i) % 8
+        start = sunrise_hour + i * gowri_duration
+        end = sunrise_hour + (i + 1) * gowri_duration
+        results.append({
+            "name": GOWRI_NAMES[idx],
+            "start": _hours_to_time_str(start),
+            "end": _hours_to_time_str(end),
+            "nature": GOWRI_NATURES[idx],
+        })
+
+    return results
+
+
+def _calculate_ghati_muhurat(sunrise_hour: float, sunset_hour: float) -> list:
+    """Calculate Do Ghati Muhurat windows.
+
+    A ghati = 24 minutes. A Do Ghati muhurat = 2 ghati = ~48 minutes.
+    We calculate ~8 muhurats across the day (simplified approximate model).
+    """
+    day_duration = sunset_hour - sunrise_hour
+    total_minutes = day_duration * 60
+    muhurat_minutes = 48  # 2 ghati
+    # Number of muhurats that fit in the day
+    count = max(1, int(total_minutes // muhurat_minutes))
+
+    results = []
+    # Space muhurats evenly across the day with slight offsets for variety
+    gap = day_duration / (count + 1)
+
+    for i in range(count):
+        start = sunrise_hour + (i + 0.5) * gap
+        end = start + (muhurat_minutes / 60.0)
+        if end > sunset_hour:
+            end = sunset_hour
+        results.append({
+            "start": _hours_to_time_str(start),
+            "end": _hours_to_time_str(end),
+            "name": f"Do Ghati Muhurat {i + 1}",
+        })
+
+    return results
 
 
 @router.get("/daily", response_model=PanchangResponse)
@@ -132,3 +305,271 @@ async def get_muhurat(
             status_code=500,
             detail="Error calculating Muhurat. Please try again."
         )
+
+
+@router.get("/choghadiya")
+async def get_choghadiya(
+    latitude: float = Query(28.6139, ge=-90, le=90),
+    longitude: float = Query(77.2090, ge=-180, le=180),
+    date_str: str = None,
+    timezone_offset: float = 5.5,
+):
+    """Get Choghadiya periods (auspicious/inauspicious time slots) for the day."""
+    if date_str is None:
+        date_str = date.today().isoformat()
+
+    cache_key = f"choghadiya:{date_str}:{latitude}:{longitude}"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        day_of_week = target_date.weekday()  # 0=Monday … 6=Sunday
+        # Convert to Sunday=0 convention for Vedic calculations
+        vedic_day = (day_of_week + 1) % 7
+
+        # Approximate sunrise/sunset from latitude (rough estimate)
+        sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
+        sunset_hour = 18.0 + (abs(latitude) - 28.0) * 0.02
+
+        all_periods = _calculate_choghadiya(sunrise_hour, sunset_hour, vedic_day)
+
+        day_choghadiya = [p for p in all_periods if p["period"] == "day"]
+        night_choghadiya = [p for p in all_periods if p["period"] == "night"]
+
+        result = {
+            "date": date_str,
+            "sunrise": _hours_to_time_str(sunrise_hour),
+            "sunset": _hours_to_time_str(sunset_hour),
+            "day_choghadiya": day_choghadiya,
+            "night_choghadiya": night_choghadiya,
+        }
+
+        await cache_service.set(cache_key, result, expiry=86400)
+        return result
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    except Exception as e:
+        logger.error(f"Choghadiya error: {e}")
+        raise HTTPException(status_code=500, detail="Error calculating Choghadiya.")
+
+
+@router.get("/hora")
+async def get_hora(
+    latitude: float = Query(28.6139, ge=-90, le=90),
+    longitude: float = Query(77.2090, ge=-180, le=180),
+    date_str: str = None,
+):
+    """Get Hora periods (hourly planetary rulers) for the day."""
+    if date_str is None:
+        date_str = date.today().isoformat()
+
+    cache_key = f"hora:{date_str}:{latitude}:{longitude}"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        day_of_week = target_date.weekday()
+        vedic_day = (day_of_week + 1) % 7
+
+        sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
+        sunset_hour = 18.0 + (abs(latitude) - 28.0) * 0.02
+
+        all_periods = _calculate_hora(sunrise_hour, sunset_hour, vedic_day)
+
+        day_hora = [p for p in all_periods if "day" not in p or p.get("period") == "day"]
+        night_hora = [p for p in all_periods if p.get("period") == "night"]
+
+        result = {
+            "date": date_str,
+            "day_hora": day_hora,
+            "night_hora": night_hora,
+        }
+
+        await cache_service.set(cache_key, result, expiry=86400)
+        return result
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    except Exception as e:
+        logger.error(f"Hora error: {e}")
+        raise HTTPException(status_code=500, detail="Error calculating Hora.")
+
+
+@router.get("/gowri")
+async def get_gowri(
+    date_str: str = None,
+    latitude: float = Query(28.6139, ge=-90, le=90),
+):
+    """Get Gowri Panchangam periods (South Indian auspicious timing)."""
+    if date_str is None:
+        date_str = date.today().isoformat()
+
+    cache_key = f"gowri:{date_str}:{latitude}"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        day_of_week = target_date.weekday()
+        vedic_day = (day_of_week + 1) % 7
+
+        sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
+
+        periods = _calculate_gowri(sunrise_hour, vedic_day)
+
+        result = {
+            "date": date_str,
+            "periods": periods,
+        }
+
+        await cache_service.set(cache_key, result, expiry=86400)
+        return result
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    except Exception as e:
+        logger.error(f"Gowri error: {e}")
+        raise HTTPException(status_code=500, detail="Error calculating Gowri Panchangam.")
+
+
+@router.get("/ghati")
+async def get_ghati_muhurat(
+    latitude: float = Query(28.6139, ge=-90, le=90),
+    longitude: float = Query(77.2090, ge=-180, le=180),
+    date_str: str = None,
+):
+    """Get Do Ghati Muhurat (short auspicious windows of ~48 minutes each)."""
+    if date_str is None:
+        date_str = date.today().isoformat()
+
+    cache_key = f"ghati:{date_str}:{latitude}:{longitude}"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+        sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
+        sunset_hour = 18.0 + (abs(latitude) - 28.0) * 0.02
+
+        periods = _calculate_ghati_muhurat(sunrise_hour, sunset_hour)
+
+        result = {
+            "date": date_str,
+            "muhurats": periods,
+        }
+
+        await cache_service.set(cache_key, result, expiry=86400)
+        return result
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    except Exception as e:
+        logger.error(f"Ghati muhurat error: {e}")
+        raise HTTPException(status_code=500, detail="Error calculating Do Ghati Muhurat.")
+
+
+@router.get("/monthly")
+async def get_monthly_panchang(
+    latitude: float = Query(28.6139, ge=-90, le=90),
+    longitude: float = Query(77.2090, ge=-180, le=180),
+    month: int = Query(None, ge=1, le=12),
+    year: int = Query(None, ge=2000, le=2100),
+):
+    """Get monthly Panchang — daily summaries for every day in the given month."""
+    today = date.today()
+    if month is None:
+        month = today.month
+    if year is None:
+        year = today.year
+
+    cache_key = f"panchang:monthly:{year}:{month}:{latitude}:{longitude}"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
+
+    try:
+        # Determine number of days in month
+        if month == 12:
+            next_month = date(year + 1, 1, 1)
+        else:
+            next_month = date(year, month + 1, 1)
+        first_of_month = date(year, month, 1)
+        days_in_month = (next_month - first_of_month).days
+
+        daily_summaries = []
+
+        for day in range(1, days_in_month + 1):
+            target_date = date(year, month, day)
+            date_str = target_date.isoformat()
+            day_of_week = target_date.weekday()
+            vedic_day = (day_of_week + 1) % 7
+
+            sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
+            sunset_hour = 18.0 + (abs(latitude) - 28.0) * 0.02
+
+            # Get positions for this day
+            positions = get_planetary_positions(
+                year=year, month=month, day=day,
+                hour=12, minute=0, timezone_offset=5.5,
+            )
+
+            sun_longitude = None
+            moon_longitude = None
+            for planet in positions["planets"]:
+                if planet["planet"] == "Sun":
+                    sun_longitude = planet["longitude"]
+                elif planet["planet"] == "Moon":
+                    moon_longitude = planet["longitude"]
+
+            panchang_data = {}
+            if sun_longitude is not None and moon_longitude is not None:
+                try:
+                    panchang = get_panchang(
+                        sun_longitude=sun_longitude,
+                        moon_longitude=moon_longitude,
+                        date=datetime.combine(target_date, datetime.min.time()),
+                        sunrise_hour=sunrise_hour,
+                        sunset_hour=sunset_hour,
+                    )
+                    panchang_data = {
+                        "tithi": getattr(panchang, "tithi", None),
+                        "nakshatra": getattr(panchang, "nakshatra", None),
+                        "yoga": getattr(panchang, "yoga", None),
+                        "karana": getattr(panchang, "karana", None),
+                        "vara": getattr(panchang, "vara", None),
+                    }
+                except Exception:
+                    pass
+
+            # Add choghadiya summary for the day
+            choghadiya = _calculate_choghadiya(sunrise_hour, sunset_hour, vedic_day)
+
+            daily_summaries.append({
+                "date": date_str,
+                **panchang_data,
+                "choghadiya_count": len(choghadiya),
+                "first_choghadiya": choghadiya[0]["name"] if choghadiya else None,
+            })
+
+        result = {
+            "year": year,
+            "month": month,
+            "latitude": latitude,
+            "longitude": longitude,
+            "days": daily_summaries,
+        }
+
+        await cache_service.set(cache_key, result, expiry=86400)
+        return result
+
+    except Exception as e:
+        logger.error(f"Monthly panchang error: {e}")
+        raise HTTPException(status_code=500, detail="Error calculating monthly Panchang.")

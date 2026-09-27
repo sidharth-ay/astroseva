@@ -84,6 +84,9 @@ export default function Footer() {
                 {[
                   { href: "/numerology", label: "Numerology" },
                   { href: "/panchang", label: "Panchang" },
+                  { href: "/mantra", label: "Mantra & Chalisa" },
+                  { href: "/healing", label: "Healing & Remedies" },
+                  { href: "/matrimony", label: "Matrimony" },
                   { href: "/services", label: "All Services" },
                   { href: "/chat", label: "AI Astrologer" },
                 ].map((l) => (
@@ -196,6 +199,12 @@ export default function Footer() {
             <p>
               AstroSeva &mdash; Vedic Astrology Platform. For educational
               purposes only. &copy; {new Date().getFullYear()}
+            </p>
+            <p className="mt-2 flex justify-center gap-4">
+              <Link href="/terms" style={{ color: "var(--text-tertiary)" }}>Terms</Link>
+              <Link href="/privacy" style={{ color: "var(--text-tertiary)" }}>Privacy</Link>
+              <Link href="/refund" style={{ color: "var(--text-tertiary)" }}>Refunds</Link>
+              <Link href="/grievance" style={{ color: "var(--text-tertiary)" }}>Grievance</Link>
             </p>
           </div>
         </div>

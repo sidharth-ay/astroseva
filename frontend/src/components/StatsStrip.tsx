@@ -1,17 +1,18 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import {
   useReducedMotion,
   staggerContainerCustom,
   staggerItem,
 } from "@/lib/motion";
+import { AnimatedNumber } from "@/components/motion-primitives/animated-number";
 
 const stats = [
-  { value: "500+", label: "Charts Generated" },
-  { value: "50K+", label: "Happy Users" },
-  { value: "12", label: "Zodiac Signs" },
-  { value: "100%", label: "Free Service" },
+  { value: 500, suffix: "+", label: "Charts Generated" },
+  { value: 50, suffix: "K+", label: "Happy Users" },
+  { value: 12, suffix: "", label: "Zodiac Signs" },
+  { value: 100, suffix: "%", label: "Free Service" },
 ];
 
 export default function StatsStrip() {
@@ -40,7 +41,12 @@ export default function StatsStrip() {
               className="text-5xl font-bold tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
-              {stat.value}
+              <AnimatedNumber
+                value={stat.value}
+                className="inline"
+                springOptions={{ stiffness: 80, damping: 20 }}
+              />
+              {stat.suffix}
             </span>
             <span
               className="text-xs font-semibold uppercase tracking-widest"

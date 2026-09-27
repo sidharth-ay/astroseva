@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import {
   ArrowRight,
   Sparkles,
@@ -26,6 +26,11 @@ import {
   slideInRight,
   stagger,
 } from "@/lib/motion";
+import { TextScramble } from "@/components/motion-primitives/text-scramble";
+import { TextEffect } from "@/components/motion-primitives/text-effect";
+import { Spotlight } from "@/components/motion-primitives/spotlight";
+import { Magnetic } from "@/components/motion-primitives/magnetic";
+import { Tilt } from "@/components/motion-primitives/tilt";
 
 const zodiacSigns = [
   { name: "aries", symbol: "♈", angle: 0 },
@@ -270,6 +275,9 @@ export default function HomePage() {
           HERO SECTION
           ================================================================ */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden px-5">
+        {/* Spotlight effect */}
+        <Spotlight className="opacity-30" size={400} />
+
         {/* Background glow */}
         <div
           className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[500px] h-[500px] rounded-full pointer-events-none"
@@ -295,27 +303,33 @@ export default function HomePage() {
               }}
               variants={slideUp}
             >
-              YOUR PATH TO UNDERSTANDING ZODIAC
+              <TextScramble as="span" duration={1.2} speed={0.03}>
+                YOUR PATH TO UNDERSTANDING ZODIAC
+              </TextScramble>
             </motion.h1>
 
-            <motion.p
-              className="mb-10 max-w-md"
-              style={{
-                fontSize: "clamp(0.95rem, 2vw, 1.1rem)",
-                color: "var(--text-secondary)",
-                lineHeight: 1.7,
-                fontWeight: 300,
-              }}
-              variants={slideUp}
-            >
-              Free <span style={{ color: "#C8956D", fontWeight: 500 }}>Vedic Astrology</span> platform.
-              Kundli, marriage matching, predictions, horoscope, and more.
-            </motion.p>
+            <motion.div className="mb-10 max-w-md" variants={slideUp}>
+              <TextEffect
+                as="p"
+                preset="fade-in-blur"
+                per="word"
+                className="text-base"
+                style={{
+                  color: "var(--text-secondary)",
+                  lineHeight: 1.7,
+                  fontWeight: 300,
+                }}
+              >
+                Free Vedic Astrology platform. Kundli, marriage matching, predictions, horoscope, and more.
+              </TextEffect>
+            </motion.div>
 
             <motion.div variants={slideUp}>
-              <Link href="/services" className="btn-primary">
-                Explore Now <ArrowRight size={15} />
-              </Link>
+              <Magnetic intensity={0.3} range={80}>
+                <Link href="/services" className="btn-primary">
+                  Explore Now <ArrowRight size={15} />
+                </Link>
+              </Magnetic>
             </motion.div>
           </motion.div>
 
@@ -395,44 +409,48 @@ export default function HomePage() {
           >
             {servicesGrid.map((s) => (
               <motion.div key={s.href} variants={staggerItem}>
-                <Link
-                  href={s.href}
-                  className="glass-card block p-6 group"
-                  style={{ textDecoration: "none" }}
-                >
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
-                    style={{ background: `${s.color}12`, color: s.color }}
+                <Tilt rotationFactor={8} isRevese>
+                  <Link
+                    href={s.href}
+                    className="glass-card block p-6 group relative overflow-hidden"
+                    style={{ textDecoration: "none" }}
                   >
-                    <s.icon size={20} />
-                  </div>
-                  <h3
-                    className="text-base font-semibold mb-2"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    {s.title}
-                  </h3>
-                  <p
-                    className="text-sm leading-relaxed mb-4"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {s.description}
-                  </p>
-                  <span
-                    className="text-sm font-medium flex items-center gap-1 transition-all duration-150"
-                    style={{ color: s.color, opacity: 0.6 }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.opacity = "1";
-                      e.currentTarget.style.gap = "0.5rem";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.opacity = "0.6";
-                      e.currentTarget.style.gap = "0.25rem";
-                    }}
-                  >
-                    Learn more <ChevronRight size={13} />
-                  </span>
-                </Link>
+                    <div className="relative z-10">
+                      <div
+                        className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
+                        style={{ background: `${s.color}12`, color: s.color }}
+                      >
+                        <s.icon size={20} />
+                      </div>
+                      <h3
+                        className="text-base font-semibold mb-2"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {s.title}
+                      </h3>
+                      <p
+                        className="text-sm leading-relaxed mb-4"
+                        style={{ color: "var(--text-secondary)" }}
+                      >
+                        {s.description}
+                      </p>
+                      <span
+                        className="text-sm font-medium flex items-center gap-1 transition-all duration-150"
+                        style={{ color: s.color, opacity: 0.6 }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.opacity = "1";
+                          e.currentTarget.style.gap = "0.5rem";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.opacity = "0.6";
+                          e.currentTarget.style.gap = "0.25rem";
+                        }}
+                      >
+                        Learn more <ChevronRight size={13} />
+                      </span>
+                    </div>
+                  </Link>
+                </Tilt>
               </motion.div>
             ))}
           </motion.div>
@@ -473,34 +491,37 @@ export default function HomePage() {
             viewport={{ once: true, margin: "-30px" }}
           >
             {whyChooseUs.map((f) => (
-              <motion.div
-                key={f.title}
-                className="glass-card p-6 text-center"
-                variants={staggerItem}
-              >
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
-                  style={{
-                    background: `${f.color}12`,
-                    color: f.color,
-                    border: `1.5px solid ${f.color}30`,
-                  }}
+              <Tilt key={f.title} rotationFactor={6} isRevese>
+                <motion.div
+                  className="glass-card p-6 text-center relative overflow-hidden"
+                  variants={staggerItem}
                 >
-                  <f.icon size={24} />
-                </div>
-                <h3
-                  className="text-base font-semibold mb-2"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {f.title}
-                </h3>
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {f.description}
-                </p>
-              </motion.div>
+                  <div className="relative z-10">
+                    <div
+                      className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
+                      style={{
+                        background: `${f.color}12`,
+                        color: f.color,
+                        border: `1.5px solid ${f.color}30`,
+                      }}
+                    >
+                      <f.icon size={24} />
+                    </div>
+                    <h3
+                      className="text-base font-semibold mb-2"
+                      style={{ color: "var(--text-primary)" }}
+                    >
+                      {f.title}
+                    </h3>
+                    <p
+                      className="text-sm leading-relaxed"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {f.description}
+                    </p>
+                  </div>
+                </motion.div>
+              </Tilt>
             ))}
           </motion.div>
         </div>

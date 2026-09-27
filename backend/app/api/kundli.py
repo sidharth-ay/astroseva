@@ -1,6 +1,6 @@
 """Kundli (Birth Chart) API endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timezone
 from typing import Optional
@@ -34,7 +34,7 @@ def _validate_birth_data(birth_data: BirthData) -> None:
         raise HTTPException(status_code=400, detail="Name is required")
 
 
-def _generate_kundli_data(birth_data: BirthData) -> dict:
+def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") -> dict:
     """Generate kundli data from birth details. Shared by generate and PDF export."""
     _validate_birth_data(birth_data)
 
@@ -48,6 +48,7 @@ def _generate_kundli_data(birth_data: BirthData) -> dict:
         timezone_offset=birth_data.timezone_offset,
         latitude=birth_data.latitude,
         longitude=birth_data.longitude,
+        ayanamsa_type=ayanamsa_type,
     )
 
     # Get ascendant sign
@@ -120,21 +121,26 @@ def _generate_kundli_data(birth_data: BirthData) -> dict:
 
 
 @router.post("/generate", response_model=KundliResponse)
-async def generate_kundli(birth_data: BirthData):
+async def generate_kundli(birth_data: BirthData, ayanamsa_type: str = Query("lahiri", alias="ayanamsa_type")):
     """Generate a Vedic birth chart (Kundli)."""
+    # Validate ayanamsa_type
+    valid_ayanamsas = {"lahiri", "kp", "b_v_raman", "surya_siddhanta"}
+    if ayanamsa_type not in valid_ayanamsas:
+        raise HTTPException(status_code=400, detail=f"Invalid ayanamsa_type. Must be one of: {', '.join(sorted(valid_ayanamsas))}")
+
     # Cache key includes ALL result-affecting inputs
     cache_key = (
         f"kundli:{birth_data.name}:{birth_data.birth_date}:"
         f"{birth_data.birth_time}:{birth_data.birth_place}:"
         f"{birth_data.latitude}:{birth_data.longitude}:"
-        f"{birth_data.timezone_offset}"
+        f"{birth_data.timezone_offset}:{ayanamsa_type}"
     )
     cached = await cache_service.get(cache_key)
     if cached:
         return KundliResponse(**cached)
 
     try:
-        data = _generate_kundli_data(birth_data)
+        data = _generate_kundli_data(birth_data, ayanamsa_type=ayanamsa_type)
 
         response = KundliResponse(
             name=birth_data.name,

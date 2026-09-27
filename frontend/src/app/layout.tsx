@@ -3,6 +3,9 @@ import { Geist, Geist_Mono, Cinzel } from "next/font/google";
 import PageTransition from "@/components/PageTransition";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ScrollProgressBar from "@/components/ScrollProgressBar";
+import AgeGate from "@/components/AgeGate";
+import VisitTracker from "@/components/VisitTracker";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -49,6 +52,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <rect width="100%" height="100%" filter="url(#noiseFilter)" />
           </svg>
         </div>
+        <ScrollProgressBar />
+        <AgeGate />
+        <VisitTracker />
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm" style={{ background: "var(--gold)", color: "var(--midnight)" }}>
           Skip to content
         </a>

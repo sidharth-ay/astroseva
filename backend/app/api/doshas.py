@@ -1,6 +1,7 @@
 """Dosha detection API endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ..core.rate_limit import limiter
 import logging
 
 from ..models.birth_data import BirthData
@@ -21,17 +22,36 @@ def _planets_with_houses(positions: dict) -> tuple:
     asc_sign = int(positions["ascendant"] / 30)
     moon_sign = 0
     for planet in positions["planets"]:
-        planet["house"] = get_house_from_longitude(planet["longitude"], positions["ascendant"])
-        if planet["planet"] == "Moon":
-            moon_sign = planet["sign"]
+        planet["house"] = get_house_from_longitude(planet.get("longitude", 0), positions["ascendant"])
+        if planet.get("planet") == "Moon":
+            moon_sign = planet.get("sign", 0)
     return positions["planets"], asc_sign, moon_sign
 
 
+def _validate_location(birth_data: BirthData) -> None:
+    """Reject polar latitudes where the ascendant math breaks down."""
+    if abs(birth_data.latitude) > 66.5:
+        raise HTTPException(
+            status_code=400,
+            detail="Birth latitude beyond ±66.5° is not supported for house calculations.",
+        )
+
+
 @router.post("/detect", response_model=DoshaResponse)
-async def detect_doshas(birth_data: BirthData):
+@limiter.limit("20/minute")
+async def detect_doshas(request: Request, birth_data: BirthData):
     """Detect all doshas in a birth chart."""
+    cache_key = (
+        f"doshas:{birth_data.birth_date}:{birth_data.birth_time}:"
+        f"{birth_data.latitude}:{birth_data.longitude}:{birth_data.timezone_offset}"
+    )
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return DoshaResponse(**cached)
+    _validate_location(birth_data)
     try:
-        # Calculate planetary positions
+        # Calculate planetary positions (with birth-place coords —
+        # ascendant/houses depend on them)
         positions = get_planetary_positions(
             year=birth_data.birth_date.year,
             month=birth_data.birth_date.month,
@@ -39,6 +59,8 @@ async def detect_doshas(birth_data: BirthData):
             hour=birth_data.birth_time.hour,
             minute=birth_data.birth_time.minute,
             timezone_offset=birth_data.timezone_offset,
+            latitude=birth_data.latitude,
+            longitude=birth_data.longitude,
         )
 
         # Get ascendant and moon signs
@@ -51,13 +73,15 @@ async def detect_doshas(birth_data: BirthData):
             moon_sign=moon_sign or 0,
         )
 
-        return DoshaResponse(
+        response = DoshaResponse(
             manglik=doshas["manglik"],
             kaal_sarp=doshas["kaal_sarp"],
             sade_sati=doshas["sade_sati"],
             pitru_dosha=doshas["pitru_dosha"],
             total_doshas=doshas["total_doshas"],
         )
+        await cache_service.set(cache_key, response.model_dump(), expiry=86400)
+        return response
 
     except Exception as e:
         logger.error(f"Dosha detection error: {e}")
@@ -68,10 +92,19 @@ async def detect_doshas(birth_data: BirthData):
 
 
 @router.post("/remedies")
-async def get_remedies(birth_data: BirthData, language: str = "en"):
+@limiter.limit("10/minute")
+async def get_remedies(request: Request, birth_data: BirthData, language: str = "en"):
     """Get remedies for detected doshas."""
+    cache_key = (
+        f"remedies:{birth_data.birth_date}:{birth_data.birth_time}:"
+        f"{birth_data.latitude}:{birth_data.longitude}:{language}"
+    )
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
+    _validate_location(birth_data)
     try:
-        # Calculate doshas first
+        # Calculate doshas first (with birth-place coords)
         positions = get_planetary_positions(
             year=birth_data.birth_date.year,
             month=birth_data.birth_date.month,
@@ -79,6 +112,8 @@ async def get_remedies(birth_data: BirthData, language: str = "en"):
             hour=birth_data.birth_time.hour,
             minute=birth_data.birth_time.minute,
             timezone_offset=birth_data.timezone_offset,
+            latitude=birth_data.latitude,
+            longitude=birth_data.longitude,
         )
 
         planets, asc_sign, moon_sign = _planets_with_houses(positions)
@@ -92,11 +127,13 @@ async def get_remedies(birth_data: BirthData, language: str = "en"):
         # Generate remedies using AI
         remedies = await generate_remedies(doshas, language)
 
-        return {
+        response = {
             "doshas": doshas,
             "remedies": remedies,
             "language": language,
         }
+        await cache_service.set(cache_key, response, expiry=86400)
+        return response
 
     except Exception as e:
         logger.error(f"Remedies error: {e}")

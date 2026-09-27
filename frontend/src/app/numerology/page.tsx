@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger, ease } from "@/lib/motion";
+import { api, type NumerologyResponse } from "@/lib/api";
 
 const lifePathExplanations: Record<number, string> = {
   1: "Natural-born leader with strong will and independence. Pioneering spirit, ambitious, confident, determined.",
@@ -21,6 +22,8 @@ export default function NumerologyPage() {
   const [name, setName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [result, setResult] = useState<{ lifePath: number; destiny: number; soulUrge: number; personality: number } | null>(null);
+  const [serverData, setServerData] = useState<NumerologyResponse | null>(null);
+  const [serverNote, setServerNote] = useState("");
 
   useEffect(() => {
     document.title = "Numerology Calculator | AstroSeva";
@@ -33,8 +36,7 @@ export default function NumerologyPage() {
     return n;
   };
 
-  const calculate = () => {
-    if (!name || !birthDate) return;
+  const localCalculate = () => {
     const nums = birthDate.replace(/-/g, "").split("").map(Number);
     const lifePath = reduceToSingle(nums.reduce((a, b) => a + b, 0));
     const destiny = reduceToSingle(name.toLowerCase().split("").filter((c) => c >= "a" && c <= "z").reduce((a, c) => a + (c.charCodeAt(0) - 96), 0));
@@ -42,7 +44,28 @@ export default function NumerologyPage() {
     const soulUrge = reduceToSingle(name.toLowerCase().split("").filter((c) => vowels.includes(c)).reduce((a, c) => a + (c.charCodeAt(0) - 96), 0));
     const consonants = name.toLowerCase().split("").filter((c) => c >= "a" && c <= "z" && !vowels.includes(c));
     const personality = reduceToSingle(consonants.reduce((a, c) => a + (c.charCodeAt(0) - 96), 0));
-    setResult({ lifePath, destiny, soulUrge, personality });
+    return { lifePath, destiny, soulUrge, personality };
+  };
+
+  const calculate = async () => {
+    if (!name || !birthDate) return;
+    // Instant offline result first
+    setResult(localCalculate());
+    setServerData(null);
+    setServerNote("");
+    // Then enrich from server (traits, planets, lucky numbers)
+    try {
+      const res = await api.getNumerology(name, birthDate);
+      setServerData(res);
+      setResult({
+        lifePath: res.life_path.life_path_number,
+        destiny: res.destiny.destiny_number,
+        soulUrge: res.soul_urge.soul_urge_number,
+        personality: res.personality.personality_number,
+      });
+    } catch {
+      setServerNote("Server analysis unavailable — showing offline calculation.");
+    }
   };
 
   return (
@@ -121,6 +144,30 @@ export default function NumerologyPage() {
               </motion.div>
             ))}
           </motion.div>
+
+          {serverNote && (
+            <p className="text-xs text-center mt-4" style={{ color: "var(--text-secondary)" }}>{serverNote}</p>
+          )}
+
+          {serverData && (
+            <motion.div variants={staggerItem} className="glass-card p-6 max-w-4xl mx-auto mt-5">
+              <h3 className="font-bold mb-3 text-sm" style={{ color: "var(--text-primary)" }}>
+                Vedic Insights <span className="font-normal" style={{ color: "var(--text-secondary)" }}>(server analysis)</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+                <p><strong style={{ color: "var(--champagne)" }}>Life Path planet:</strong> {serverData.life_path.planet} — {serverData.life_path.traits.join(", ")}</p>
+                <p><strong style={{ color: "var(--champagne)" }}>Destiny planet:</strong> {serverData.destiny.planet} — {serverData.destiny.traits.join(", ")}</p>
+                <p><strong style={{ color: "var(--champagne)" }}>Birthday number:</strong> {serverData.birthday.birthday_number}</p>
+                {serverData.name_number && (
+                  <p><strong style={{ color: "var(--champagne)" }}>Name number:</strong> {serverData.name_number.name_number}</p>
+                )}
+                <p><strong style={{ color: "var(--champagne)" }}>Lucky numbers:</strong> {serverData.lucky_numbers.join(", ")}</p>
+                {serverData.compatibility && (
+                  <p><strong style={{ color: "var(--champagne)" }}>Compatibility:</strong> {serverData.compatibility.compatibility}</p>
+                )}
+              </div>
+            </motion.div>
+          )}
         </motion.div>
       )}
     </div>

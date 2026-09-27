@@ -101,7 +101,7 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
   return (
     <div ref={ref} className="relative">
       <div className="relative">
-        <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-tertiary)" }} />
+        <MapPin size={14} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
         <input
           ref={inputRef}
           id={id}
@@ -111,7 +111,7 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
           onFocus={() => results.length > 0 && setOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="input-field pl-8 pr-8"
+          className="input-field input-field-with-icon"
           role="combobox"
           aria-expanded={open}
           aria-autocomplete="list"

@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, Download, ChevronRight } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 import KundliChart from "@/components/KundliChart";
 
-import { api, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
+import { api, getToken, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
@@ -25,6 +25,7 @@ export default function KundliPage() {
     birth_place: "New Delhi", latitude: 28.6139, longitude: 77.209, timezone_offset: 5.5,
   });
   const [result, setResult] = useState<KundliResponse | null>(null);
+  const [chartStyle, setChartStyle] = useState<"north" | "south">("north");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const reduced = useReducedMotion();
@@ -59,6 +60,31 @@ export default function KundliPage() {
       const a = document.createElement("a"); a.href = url; a.download = `kundli-${form.name || "chart"}.pdf`; a.click();
       URL.revokeObjectURL(url);
     } catch { /* ignore */ }
+  };
+
+  const [savedMsg, setSavedMsg] = useState("");
+  const saveChart = async () => {
+    if (!result) return;
+    setSavedMsg("");
+    try {
+      if (!getToken()) {
+        setError("Please log in to save charts.");
+        return;
+      }
+      const res = await api.saveChart({
+        name: form.name || result.name,
+        birth_date: form.birth_date,
+        birth_time: form.birth_time,
+        birth_place: form.birth_place,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        timezone_offset: form.timezone_offset,
+        chart_data: result as unknown as Record<string, unknown>,
+      });
+      setSavedMsg(`Saved (id ${res.chart_id}). View it in Saved Charts.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save chart.");
+    }
   };
 
   return (
@@ -103,7 +129,13 @@ export default function KundliPage() {
               <Download size={13} /> Export PDF
             </button>
           )}
+          {result && (
+            <button className="btn-ghost" onClick={saveChart}>
+              Save to Profile
+            </button>
+          )}
         </div>
+        {savedMsg && <p className="text-xs mt-3" style={{ color: "var(--success)" }}>{savedMsg}</p>}
       </motion.div>
 
       {/* Results */}
@@ -136,8 +168,27 @@ export default function KundliPage() {
 
           {/* Chart */}
           <motion.div className="glass-card p-5" variants={staggerItem}>
-            <h3 className="text-xs font-semibold mb-4 uppercase tracking-wider" style={{ color: "#C8956D" }}>Birth Chart — North Indian Style</h3>
-            <KundliChart chart={result.chart} ascSign={result.asc_sign} />
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#C8956D" }}>
+                Birth Chart — {chartStyle === "north" ? "North Indian" : "South Indian"} Style
+              </h3>
+              <div className="flex gap-1 p-0.5 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+                {(["north", "south"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setChartStyle(s)}
+                    className="px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors"
+                    style={chartStyle === s
+                      ? { background: "rgba(200, 149, 109, 0.15)", color: "#C8956D" }
+                      : { color: "var(--text-tertiary)" }
+                    }
+                  >
+                    {s === "north" ? "North" : "South"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <KundliChart chart={result.chart} ascSign={result.asc_sign} chartStyle={chartStyle} />
           </motion.div>
 
           {/* Planetary Positions */}

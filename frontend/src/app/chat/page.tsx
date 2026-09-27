@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useReducedMotion, slideUp } from "@/lib/motion";
 import { Send, Trash2, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";

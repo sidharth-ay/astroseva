@@ -212,6 +212,9 @@ def build_chat_prompt(message: str, history: list, language: str = "en", birth_c
 
 async def generate_chat_response(message: str, history: list, language: str = "en", birth_details: dict = None) -> str:
     """Generate a chat response with intent detection and feature handling."""
+    from ..services.ai_service import _gemini_quota_exhausted, _quota_retry_after
+    import time as _time
+
     intent = detect_user_intent(message)
 
     if intent == "kundli" and birth_details:
@@ -224,6 +227,13 @@ async def generate_chat_response(message: str, history: list, language: str = "e
         return handle_horoscope_intent()
     if intent == "numerology":
         return handle_numerology_intent(birth_details)
+
+    # Skip AI if quota is known exhausted
+    if _gemini_quota_exhausted and _time.time() < _quota_retry_after:
+        birth_context = ""
+        if birth_details:
+            birth_context = compute_chat_birth_context(birth_details)
+        return generate_local_chat_response(message, birth_details, birth_context)
 
     model = configure_gemini()
     birth_context = ""
@@ -247,7 +257,15 @@ async def generate_chat_response(message: str, history: list, language: str = "e
         response = await asyncio.to_thread(_call_gemini)
         return response.text
     except Exception as e:
-        logger.error(f"Gemini error: {type(e).__name__}: {e}")
+        from ..services.ai_service import _gemini_quota_exhausted as _gqe, _quota_retry_after as _qra
+        err_str = str(e).lower()
+        if "429" in err_str or "quota" in err_str or "resourceexhausted" in type(e).__name__.lower():
+            import app.services.ai_service as ai_mod
+            ai_mod._gemini_quota_exhausted = True
+            ai_mod._quota_retry_after = _time.time() + 86400
+            logger.warning("Gemini quota exhausted in chat — using local fallback for 24h")
+        else:
+            logger.error(f"Gemini error: {type(e).__name__}: {e}")
         return generate_local_chat_response(message, birth_details, birth_context)
 
 

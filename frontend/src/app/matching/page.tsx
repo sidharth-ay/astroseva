@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, Heart, Shield } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 
@@ -49,6 +49,10 @@ export default function MatchingPage() {
   const [boy, setBoy] = useState(defaultForm("Boy", "1990-01-01", "10:00"));
   const [girl, setGirl] = useState(defaultForm("Girl", "1992-05-15", "14:00"));
   const [result, setResult] = useState<MatchingResponse | null>(null);
+  const [manglik, setManglik] = useState<{
+    boy: { is_manglik: boolean; severity: string };
+    girl: { is_manglik: boolean; severity: string };
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const reduced = useReducedMotion();
@@ -80,9 +84,30 @@ export default function MatchingPage() {
 
   const analyze = async () => {
     setLoading(true); setError("");
-    try { setResult(await api.analyzeMatching(boy, girl)); }
+    setManglik(null);
+    try {
+      setResult(await api.analyzeMatching(boy, girl));
+      try {
+        const [b, g] = await Promise.all([api.detectDoshas(boy), api.detectDoshas(girl)]);
+        setManglik({ boy: b.manglik, girl: g.manglik });
+      } catch { /* dosha check optional */ }
+    }
     catch (e) { setError(e instanceof Error ? e.message : "Failed."); }
     finally { setLoading(false); }
+  };
+
+  const exportPdf = async () => {
+    try {
+      const blob = await api.exportMatchingPdf(boy, girl);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `matching-${boy.name || "boy"}-${girl.name || "girl"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "PDF export failed.");
+    }
   };
 
   const scoreColor = (score: number, max: number) => {
@@ -127,6 +152,11 @@ export default function MatchingPage() {
       <button className="btn-primary mb-8" onClick={analyze} disabled={loading}>
         {loading ? "Analyzing..." : "Check Compatibility"}
       </button>
+      {result && (
+        <button className="btn-ghost mb-8 ml-2" onClick={exportPdf}>
+          Export PDF
+        </button>
+      )}
 
       {result && (
         <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-6">
@@ -145,6 +175,26 @@ export default function MatchingPage() {
               <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
                 style={{ background: "rgba(232, 93, 93, 0.08)", color: "var(--danger)", border: "1px solid rgba(232, 93, 93, 0.15)" }}>
                 Nadi Dosha Detected
+              </div>
+            )}
+            {manglik && (
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                {[
+                  { label: result.boy_name, m: manglik.boy },
+                  { label: result.girl_name, m: manglik.girl },
+                ].map((p) => (
+                  <span
+                    key={p.label}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                    style={
+                      p.m.is_manglik
+                        ? { background: "rgba(232, 184, 138, 0.1)", color: "var(--champagne)", border: "1px solid rgba(232, 184, 138, 0.2)" }
+                        : { background: "rgba(93, 200, 143, 0.08)", color: "var(--success)", border: "1px solid rgba(93, 200, 143, 0.15)" }
+                    }
+                  >
+                    {p.label}: {p.m.is_manglik ? `Manglik (${p.m.severity})` : "Non-Manglik"}
+                  </span>
+                ))}
               </div>
             )}
           </motion.div>

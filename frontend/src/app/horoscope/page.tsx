@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { api, type HoroscopeResponse } from "@/lib/api";
 import { zodiacSymbols, zodiacIcons } from "@/components/icons/ZodiacIcons";
 import {
@@ -26,30 +26,89 @@ const zodiacSigns = [
   { sign: "pisces", name: "Pisces", date: "Feb 19 - Mar 20", element: "water" },
 ];
 
+const tabs = ["Daily", "Weekly", "Monthly", "Yearly", "Love"] as const;
+type Tab = (typeof tabs)[number];
+
 const GOLD = "#C8956D";
 const GOLD_BRIGHT = "#E8B88A";
+const PINK = "#E8A0BF";
+const GREEN = "#5DC88F";
 const ratingLabels = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
 
+const tabDescriptions: Record<Tab, string> = {
+  Daily: "Your cosmic forecast for today",
+  Weekly: "What the stars hold for this week",
+  Monthly: "Your monthly astrological outlook",
+  Yearly: "Your year-long horoscope reading",
+  Love: "Romance and relationship insights",
+};
+
+const fetchers: Record<Tab, (sign: string, signal?: AbortSignal) => Promise<HoroscopeResponse>> = {
+  Daily: api.getDailyHoroscope,
+  Weekly: api.getWeeklyHoroscope,
+  Monthly: api.getMonthlyHoroscope,
+  Yearly: api.getYearlyHoroscope,
+  Love: api.getLoveHoroscope,
+};
+
 export default function HoroscopePage() {
+  const [activeTab, setActiveTab] = useState<Tab>("Daily");
   const [sign, setSign] = useState("aries");
   const [result, setResult] = useState<HoroscopeResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const reduced = useReducedMotion();
+  const abortRef = useRef<AbortController | null>(null);
+  const seqRef = useRef(0);
 
   useEffect(() => {
-    document.title = "Daily Horoscope | AstroSeva";
-  }, []);
+    document.title = `${activeTab} Horoscope | AstroSeva`;
+  }, [activeTab]);
+
+  const fetchHoroscope = useCallback(
+    (tab: Tab, zodiac: string) => {
+      // Genuinely cancel the previous request (signal is wired into fetch).
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const seq = ++seqRef.current;
+
+      setLoading(true);
+      setError(null);
+      setResult(null);
+
+      const fetcher = fetchers[tab];
+      if (typeof fetcher !== "function") {
+        setError(`Unknown tab "${tab}". Please try again.`);
+        setLoading(false);
+        return;
+      }
+
+      fetcher(zodiac, controller.signal)
+        .then((data) => {
+          // Ignore stale responses from superseded requests.
+          if (seq !== seqRef.current) return;
+          setResult(data);
+        })
+        .catch((e: unknown) => {
+          if (seq !== seqRef.current) return;
+          // Aborted requests are superseded by a newer fetch — not errors.
+          if (e instanceof DOMException && e.name === "AbortError") return;
+          setError(e instanceof Error ? e.message : "Failed to load horoscope.");
+        })
+        .finally(() => {
+          // Always clear loading for the latest request — never latch.
+          if (seq === seqRef.current) setLoading(false);
+        });
+    },
+    []
+  );
 
   useEffect(() => {
-    setLoading(true);
-    setError(false);
-    api
-      .getDailyHoroscope(sign)
-      .then(setResult)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [sign]);
+    fetchHoroscope(activeTab, sign);
+  }, [activeTab, sign, fetchHoroscope]);
+
+  const handleRetry = () => fetchHoroscope(activeTab, sign);
 
   const selected = zodiacSigns.find((z) => z.sign === sign);
 
@@ -60,15 +119,53 @@ export default function HoroscopePage() {
         initial={reduced ? false : { opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="text-center mb-10"
+        className="text-center mb-8"
       >
         <h1 className="heading-display text-3xl md:text-4xl font-bold mb-2">
           <span className="text-gradient-gold">HOROSCOPE</span>
         </h1>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          Daily predictions for every zodiac sign
+          {tabDescriptions[activeTab]}
         </p>
       </motion.div>
+
+      {/* Tab Bar */}
+      <div className="flex justify-center mb-8">
+        <div
+          className="inline-flex gap-1 p-1 rounded-xl"
+          style={{
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className="relative px-4 py-2 text-xs md:text-sm font-medium rounded-lg transition-colors duration-200"
+                style={{
+                  color: isActive ? GOLD : "var(--text-tertiary)",
+                }}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="tab-indicator"
+                    className="absolute inset-0 rounded-lg"
+                    style={{
+                      background: `${GOLD}14`,
+                      borderBottom: `2px solid ${GOLD}`,
+                    }}
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{tab}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Zodiac Grid */}
       <section className="mb-10">
@@ -165,19 +262,12 @@ export default function HoroscopePage() {
       {/* Error state */}
       {error && !loading && (
         <div className="glass-card p-8 text-center mb-10">
-          <p className="text-sm mb-3" style={{ color: "var(--text-secondary)" }}>
-            Could not load horoscope for {selected?.name}. Please try again.
+          <p className="text-sm mb-1" style={{ color: "var(--text-secondary)" }}>
+            Could not load {activeTab.toLowerCase()} horoscope for {selected?.name}. Please try again.
           </p>
+          <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>{error}</p>
           <button
-            onClick={() => {
-              setLoading(true);
-              setError(false);
-              api
-                .getDailyHoroscope(sign)
-                .then(setResult)
-                .catch(() => setError(true))
-                .finally(() => setLoading(false));
-            }}
+            onClick={handleRetry}
             className="btn-primary text-xs px-4 py-2"
           >
             Retry
@@ -189,7 +279,7 @@ export default function HoroscopePage() {
       <AnimatePresence mode="wait">
         {result && !loading && !error && (
           <motion.section
-            key={sign}
+            key={`${activeTab}-${sign}`}
             className="mb-12"
             initial={reduced ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -228,14 +318,12 @@ export default function HoroscopePage() {
             </div>
 
             {/* Horoscope Prediction */}
-            <div
-              className="glass-card p-6 md:p-8 mb-6"
-            >
+            <div className="glass-card p-6 md:p-8 mb-6">
               <h3
                 className="text-xs font-bold tracking-[0.25em] uppercase mb-4"
                 style={{ color: GOLD }}
               >
-                Horoscope Character
+                {activeTab} Horoscope
               </h3>
               <p
                 className="text-sm md:text-base leading-relaxed"
@@ -254,9 +342,9 @@ export default function HoroscopePage() {
             >
               {(
                 [
-                  { label: "Love", val: result.love_rating, color: "#E8A0BF" },
+                  { label: "Love", val: result.love_rating, color: PINK },
                   { label: "Career", val: result.career_rating, color: GOLD },
-                  { label: "Health", val: result.health_rating, color: "#5DC88F" },
+                  { label: "Health", val: result.health_rating, color: GREEN },
                 ] as const
               ).map((cat) => (
                 <motion.div

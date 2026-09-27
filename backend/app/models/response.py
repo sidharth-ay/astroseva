@@ -118,3 +118,96 @@ class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
     status_code: int
+
+
+class ChoghadiyaResponse(BaseModel):
+    """Choghadiya response."""
+    date: str
+    sunrise: str
+    sunset: str
+    day_choghadiya: List[Dict[str, Any]]
+    night_choghadiya: List[Dict[str, Any]]
+
+
+class HoraResponse(BaseModel):
+    """Hora response."""
+    date: str
+    day_hora: List[Dict[str, Any]]
+    night_hora: List[Dict[str, Any]]
+
+
+class GowriResponse(BaseModel):
+    """Gowri Panchangam response."""
+    date: str
+    periods: List[Dict[str, Any]]
+
+
+class GhatiMuhuratResponse(BaseModel):
+    """Do Ghati Muhurat response."""
+    date: str
+    muhurats: List[Dict[str, Any]]
+
+
+class MonthlyPanchangResponse(BaseModel):
+    """Monthly Panchang response."""
+    month: int
+    year: int
+    days: List[Dict[str, Any]]
+
+
+class TransitResponse(BaseModel):
+    """Transit (Gochar) response."""
+    date: str
+    transits: List[Dict[str, Any]]
+    current_signs: Dict[str, str]
+
+
+class GemstoneResponse(BaseModel):
+    """Gemstone recommendation response."""
+    birth_data: Dict[str, Any]
+    gemstones: List[Dict[str, Any]]
+    recommendations: str
+
+
+class VarshphalResponse(BaseModel):
+    """Annual horoscope (Varshphal) response."""
+    birth_data: Dict[str, Any]
+    year: int
+    Varshphal_chart: Dict[str, Any]
+    predictions: Dict[str, Any]
+    auspicious_months: List[str]
+    challenging_months: List[str]
+
+
+class LoveMatchResponse(BaseModel):
+    """Love compatibility response."""
+    partner1: str
+    partner2: str
+    overall_score: float
+    romantic_compatibility: float
+    emotional_compatibility: float
+    intellectual_compatibility: float
+    physical_compatibility: float
+    recommendations: str
+
+
+class BabyNameResponse(BaseModel):
+    """Baby name suggestion response."""
+    gender: str
+    names: List[Dict[str, Any]]
+    lucky_numbers: List[int]
+    lucky_letters: List[str]
+
+
+class FestivalResponse(BaseModel):
+    """Festival calendar response."""
+    month: int
+    year: int
+    festivals: List[Dict[str, Any]]
+
+
+class ReportResponse(BaseModel):
+    """Personalized report response."""
+    report_type: str
+    content: str
+    ai_model: str

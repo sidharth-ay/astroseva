@@ -348,13 +348,31 @@ Language: {'Hindi' if language == 'hi' else 'English'}
 Respond as AstroSeva AI."""
 
     try:
-        response = await asyncio.to_thread(_call_gemini, model, prompt)
+        try:
+            from google.generativeai.types import GenerationConfig
+            gen_config: object = GenerationConfig(max_output_tokens=800, temperature=0.7)
+        except Exception:
+            gen_config = None
+        # Bound the call well under the frontend's 60s abort so a slow model
+        # fails fast into local fallback instead of hanging the request.
+        response = await asyncio.wait_for(
+            asyncio.to_thread(_call_gemini, model, prompt, gen_config),
+            timeout=45,
+        )
         # Reset quota flag on success
         _gemini_quota_exhausted = False
         return {
             "content": response.text,
             "model": get_model_name(),
             "tokens_used": response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else None,
+        }
+    except asyncio.TimeoutError:
+        logger.warning("Gemini prediction timed out after 45s — using local fallback")
+        content = generate_fallback_prediction(birth_details, prediction_type)
+        return {
+            "content": content,
+            "model": "astroseva-local",
+            "tokens_used": None,
         }
     except Exception as e:
         # Detect quota exhaustion (429) and set flag
@@ -480,7 +498,7 @@ LUCKY_COLOR: <one color>"""
 
 async def generate_remedies(doshas: dict, language: str = "en") -> str:
     """Generate remedies for detected doshas."""
-    model = configure_gemini()
+    global _gemini_quota_exhausted, _quota_retry_after
 
     dosha_list = []
     if doshas.get("manglik", {}).get("is_manglik"):
@@ -494,6 +512,12 @@ async def generate_remedies(doshas: dict, language: str = "en") -> str:
 
     if not dosha_list:
         return "No significant doshas detected. Continue with regular spiritual practices."
+
+    # Skip Gemini entirely while quota is exhausted (same pattern as predictions)
+    if _gemini_quota_exhausted and _time.time() < _quota_retry_after:
+        return generate_local_remedies(dosha_list)
+
+    model = configure_gemini()
 
     if model is None:
         return generate_local_remedies(dosha_list)
@@ -514,9 +538,27 @@ Language: {'Hindi' if language == 'hi' else 'English'}
 Respond as AstroSeva AI."""
 
     try:
-        response = await asyncio.to_thread(_call_gemini, model, prompt)
+        try:
+            from google.generativeai.types import GenerationConfig
+            gen_config: object = GenerationConfig(max_output_tokens=600, temperature=0.7)
+        except Exception:
+            gen_config = None
+        response = await asyncio.wait_for(
+            asyncio.to_thread(_call_gemini, model, prompt, gen_config),
+            timeout=45,
+        )
         return response.text
+    except asyncio.TimeoutError:
+        logger.warning("Gemini remedies timed out after 45s — using local fallback")
+        return generate_local_remedies(dosha_list)
     except Exception as e:
+        err_str = str(e).lower()
+        if "429" in err_str or "quota" in err_str or "resourceexhausted" in type(e).__name__.lower():
+            _gemini_quota_exhausted = True
+            _quota_retry_after = _time.time() + 86400
+            logger.warning("Gemini quota exhausted — remedies will use local fallback for 24h")
+        else:
+            logger.error(f"Remedies AI error: {type(e).__name__}: {e}")
         return generate_local_remedies(dosha_list)
 
 

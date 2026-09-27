@@ -18,7 +18,7 @@ from slowapi.errors import RateLimitExceeded
 
 from .core.rate_limit import limiter
 
-from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities
+from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities, transit, gemstones, varshphal, baby_names, festivals, lalkitab, kp, reports, celebrity, mantra, healing
 from .db.database import init_db
 
 # Logging configuration
@@ -103,6 +103,17 @@ app.include_router(auth.router)
 app.include_router(charts.router)
 app.include_router(chat.router)
 app.include_router(cities.router)
+app.include_router(transit.router)
+app.include_router(gemstones.router)
+app.include_router(varshphal.router)
+app.include_router(baby_names.router)
+app.include_router(festivals.router)
+app.include_router(lalkitab.router)
+app.include_router(kp.router)
+app.include_router(reports.router)
+app.include_router(celebrity.router)
+app.include_router(mantra.router)
+app.include_router(healing.router)
 
 
 @app.get("/")

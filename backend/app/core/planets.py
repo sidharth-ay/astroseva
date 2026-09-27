@@ -149,8 +149,8 @@ def _is_retrograde(planet_name: str, t) -> bool:
 
 def _get_sign_info(longitude: float) -> dict:
     """Sign index and in-sign degree from ecliptic longitude."""
-    longitude = longitude % 360
-    return {"sign_index": int(longitude / 30), "sign_degree": longitude % 30}
+    longitude = float(longitude) % 360
+    return {"sign_index": int(longitude / 30), "sign_degree": float(longitude % 30)}
 
 
 def _get_dignity(planet: str, sign_index: int) -> str:
@@ -168,17 +168,30 @@ def _get_dignity(planet: str, sign_index: int) -> str:
     return "Neutral"
 
 
+AYANAMSA_OFFSETS = {
+    "lahiri": 0.0,
+    "kp": 0.0,
+    "b_v_raman": -1.0,
+    "surya_siddhanta": 0.5,
+}
+
+
 def get_planetary_positions(year: int, month: int, day: int,
                             hour: float = 12.0, minute: float = 0,
                             timezone_offset: float = 5.5,
                             latitude: float = 28.6139,
-                            longitude: float = 77.2090) -> dict:
-    """Calculate sidereal (Lahiri) planetary positions for birth details.
+                            longitude: float = 77.2090,
+                            ayanamsa_type: str = "lahiri") -> dict:
+    """Calculate sidereal planetary positions for birth details.
 
     Same signature as before -- all existing callers work unchanged.
+    ayanamsa_type: "lahiri" (default), "kp", "b_v_raman", "surya_siddhanta"
     """
     t = _to_utc_time(year, month, day, hour, minute, timezone_offset)
     ayanamsa = _lahiri_ayanamsa(t)
+
+    offset = AYANAMSA_OFFSETS.get(ayanamsa_type, 0.0)
+    ayanamsa = (ayanamsa + offset) % 360
 
     planets = []
     for planet_name in ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus",
@@ -189,13 +202,13 @@ def get_planetary_positions(year: int, month: int, day: int,
         dignity = _get_dignity(planet_name, sign_info["sign_index"])
         planets.append({
             "planet": planet_name,
-            "longitude": sidereal_long,
-            "sign": sign_info["sign_index"],
+            "longitude": float(sidereal_long),
+            "sign": int(sign_info["sign_index"]),
             "sign_name": SIGN_NAMES[sign_info["sign_index"]],
-            "sign_degree": sign_info["sign_degree"],
-            "retrograde": _is_retrograde(planet_name, t),
+            "sign_degree": float(sign_info["sign_degree"]),
+            "retrograde": bool(_is_retrograde(planet_name, t)),
             "dignity": dignity,
-            "is_own_sign": dignity in ("Own Sign", "Moolatrikona"),
+            "is_own_sign": bool(dignity in ("Own Sign", "Moolatrikona")),
         })
 
     # Rahu (mean node) / Ketu (opposite point)
@@ -205,10 +218,10 @@ def get_planetary_positions(year: int, month: int, day: int,
         sign_info = _get_sign_info(lng)
         planets.append({
             "planet": name,
-            "longitude": lng,
-            "sign": sign_info["sign_index"],
+            "longitude": float(lng),
+            "sign": int(sign_info["sign_index"]),
             "sign_name": SIGN_NAMES[sign_info["sign_index"]],
-            "sign_degree": sign_info["sign_degree"],
+            "sign_degree": float(sign_info["sign_degree"]),
             "retrograde": True,
             "dignity": "Neutral",
             "is_own_sign": False,
@@ -219,11 +232,11 @@ def get_planetary_positions(year: int, month: int, day: int,
 
     return {
         "planets": planets,
-        "ascendant": asc_sid,
-        "asc_sign": asc_info["sign_index"],
-        "asc_sign_degree": asc_info["sign_degree"],
-        "ayanamsa": ayanamsa,
-        "julian_day": t.tt,
+        "ascendant": float(asc_sid),
+        "asc_sign": int(asc_info["sign_index"]),
+        "asc_sign_degree": float(asc_info["sign_degree"]),
+        "ayanamsa": float(ayanamsa),
+        "julian_day": float(t.tt),
     }
 
 

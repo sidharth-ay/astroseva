@@ -18,7 +18,7 @@ def detect_manglik(planets: list[dict], asc_sign: int) -> dict:
     manglik_positions = []
 
     for planet in planets:
-        if planet["planet"] == "Mars":
+        if planet.get("planet") == "Mars":
             house = planet.get("house", 0)
             if house in [1, 2, 4, 7, 8, 12]:
                 rule = MANGLIK_RULES.get(f"Mars_in_{house}")
@@ -36,7 +36,7 @@ def detect_manglik(planets: list[dict], asc_sign: int) -> dict:
     # Check if Mars is in same sign for both (for matching)
     # Check if Mars is exalted or in own sign
     for planet in planets:
-        if planet["planet"] == "Mars":
+        if planet.get("planet") == "Mars":
             if planet.get("dignity") == "Exalted":
                 cancellation = True
                 cancellation_reason = "Mars is exalted - reduces Manglik effect"
@@ -46,10 +46,17 @@ def detect_manglik(planets: list[dict], asc_sign: int) -> dict:
 
     is_manglik = len(manglik_positions) > 0 and not cancellation
 
+    if not is_manglik:
+        severity = "None"
+    elif any(p["severity"] == "High" for p in manglik_positions):
+        severity = "High"
+    else:
+        severity = "Medium"
+
     return {
         "is_manglik": is_manglik,
         "positions": manglik_positions,
-        "severity": "High" if any(p["severity"] == "High" for p in manglik_positions) else "Medium" if manglik_positions else "None",
+        "severity": severity,
         "cancellation": cancellation,
         "cancellation_reason": cancellation_reason,
         "description": "Mars in 1st, 2nd, 4th, 7th, 8th, or 12th house causes Manglik Dosha" if is_manglik else "No Manglik Dosha detected",
@@ -62,14 +69,19 @@ def detect_kaal_sarp(planets: list[dict]) -> dict:
     ketu_house = None
 
     for planet in planets:
-        if planet["planet"] == "Rahu":
+        if planet.get("planet") == "Rahu":
             rahu_house = planet.get("house", 0)
-        elif planet["planet"] == "Ketu":
+        elif planet.get("planet") == "Ketu":
             ketu_house = planet.get("house", 0)
 
     if rahu_house is None or ketu_house is None:
         return {
             "has_dosha": False,
+            "rahu_house": rahu_house,
+            "ketu_house": ketu_house,
+            "planets_between": [],
+            "planets_outside": [],
+            "severity": "None",
             "description": "Rahu or Ketu position not found",
         }
 
@@ -79,22 +91,22 @@ def detect_kaal_sarp(planets: list[dict]) -> dict:
     planets_outside = []
 
     for planet in planets:
-        if planet["planet"] in ["Rahu", "Ketu"]:
+        if planet.get("planet") in ["Rahu", "Ketu"]:
             continue
-        if planet["planet"] in ["Uranus", "Neptune", "Pluto"]:
+        if planet.get("planet") in ["Uranus", "Neptune", "Pluto"]:
             continue  # classical Kaal Sarp considers Sun-Saturn only
 
         planet_house = planet.get("house", 0)
         if rahu_house < ketu_house:
             if rahu_house <= planet_house <= ketu_house:
-                planets_between.append(planet["planet"])
+                planets_between.append(planet.get("planet"))
             else:
-                planets_outside.append(planet["planet"])
+                planets_outside.append(planet.get("planet"))
         else:
             if ketu_house <= planet_house <= rahu_house:
-                planets_between.append(planet["planet"])
+                planets_between.append(planet.get("planet"))
             else:
-                planets_outside.append(planet["planet"])
+                planets_outside.append(planet.get("planet"))
 
     has_dosha = len(planets_outside) == 0
 
@@ -104,45 +116,53 @@ def detect_kaal_sarp(planets: list[dict]) -> dict:
         "ketu_house": ketu_house,
         "planets_between": planets_between,
         "planets_outside": planets_outside,
+        "severity": "High" if has_dosha else "None",
         "description": "All planets between Rahu-Ketu axis" if has_dosha else "Planets on both sides of Rahu-Ketu axis",
     }
 
 
 def detect_sade_sati(planets: list[dict], moon_sign: int) -> dict:
     """Detect Sade Sati (Saturn's 7.5-year transit over Moon sign)."""
-    saturn_house = None
+    saturn_sign = None
 
     for planet in planets:
-        if planet["planet"] == "Saturn":
-            saturn_house = planet.get("house", 0)
+        if planet.get("planet") == "Saturn":
+            saturn_sign = planet.get("sign")
             break
 
-    if saturn_house is None:
+    if saturn_sign is None:
         return {
             "is_active": False,
+            "saturn_sign": None,
+            "moon_sign": moon_sign,
+            "relative_position": None,
+            "phase": None,
+            "severity": "None",
             "description": "Saturn position not found",
         }
 
-    # Sade Sati: Saturn in 12th, 1st, or 2nd from Moon sign
-    relative_position = (saturn_house - 1) % 12 + 1  # 1-based
+    # Sade Sati: Saturn transiting the 12th, 1st, or 2nd sign FROM the Moon.
+    # In 0-based sign arithmetic: same sign (0), next sign (1), previous (11).
+    relative = (saturn_sign - moon_sign) % 12
 
-    is_active = relative_position in [12, 1, 2]
+    is_active = relative in [11, 0, 1]
 
     phase = None
     if is_active:
-        if relative_position == 12:
+        if relative == 11:
             phase = "Rising (12th from Moon)"
-        elif relative_position == 1:
+        elif relative == 0:
             phase = "Peak (on Moon sign)"
-        elif relative_position == 2:
+        elif relative == 1:
             phase = "Setting (2nd from Moon)"
 
     return {
         "is_active": is_active,
-        "saturn_house": saturn_house,
+        "saturn_sign": saturn_sign,
         "moon_sign": moon_sign,
-        "relative_position": relative_position,
+        "relative_position": relative,
         "phase": phase,
+        "severity": "High" if relative == 0 else "Medium" if is_active else "None",
         "description": f"Sade Sati is {'active' if is_active else 'not active'}" + (f" - {phase}" if phase else ""),
     }
 
@@ -155,13 +175,13 @@ def detect_pitru_dosha(planets: list[dict]) -> dict:
     moon_house = None
 
     for planet in planets:
-        if planet["planet"] == "Rahu":
+        if planet.get("planet") == "Rahu":
             rahu_house = planet.get("house", 0)
-        elif planet["planet"] == "Ketu":
+        elif planet.get("planet") == "Ketu":
             ketu_house = planet.get("house", 0)
-        elif planet["planet"] == "Sun":
+        elif planet.get("planet") == "Sun":
             sun_house = planet.get("house", 0)
-        elif planet["planet"] == "Moon":
+        elif planet.get("planet") == "Moon":
             moon_house = planet.get("house", 0)
 
     conditions = []

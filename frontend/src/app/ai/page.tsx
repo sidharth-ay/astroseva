@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { useReducedMotion, slideUp, staggerContainerCustom, staggerItem, stagger } from "@/lib/motion";
 import { Brain, ChevronRight } from "lucide-react";
 import { api } from "@/lib/api";
