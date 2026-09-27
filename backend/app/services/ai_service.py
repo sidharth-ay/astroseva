@@ -34,7 +34,7 @@ PERSONALITY:
 PLATFORM FEATURES (guide users when relevant):
 1. KUNDLI (Birth Chart): /kundli — Full Vedic birth chart with 9 planets, 12 houses, Nakshatras, Dasha
 2. MARRIAGE MATCHING: /matching — Ashtakoot Gun Milan, 8 factors, 36 points, Nadi Dosha
-3. DOSHA DETECTION: /doshas — Manglik, Kaal Sarp, Sade Sati, Pitru Dosha with severity & remedies
+3. DOSHA DETECTION: /doshas — Manglik, Sade Sati, Pitru Dosha with severity & remedies
 4. PREDICTIONS: /predictions — AI predictions for career, love, health, finance, education
 5. DAILY HOROSCOPE: /horoscope — Daily horoscope with ratings and lucky items
 6. PANCHANG: /panchang — Hindu calendar, Tithi, Rahu Kaal, auspicious timings
@@ -503,8 +503,6 @@ async def generate_remedies(doshas: dict, language: str = "en") -> str:
     dosha_list = []
     if doshas.get("manglik", {}).get("is_manglik"):
         dosha_list.append("Manglik Dosha")
-    if doshas.get("kaal_sarp", {}).get("has_dosha"):
-        dosha_list.append("Kaal Sarp Dosha")
     if doshas.get("sade_sati", {}).get("is_active"):
         dosha_list.append("Sade Sati")
     if doshas.get("pitru_dosha", {}).get("has_dosha"):
@@ -573,13 +571,6 @@ def generate_local_remedies(dosha_list: list) -> str:
 - Donate red lentils (masoor dal) on Tuesday
 - Read Hanuman Chalisa regularly
 - Avoid non-vegetarian food on Tuesdays""")
-        elif dosha == "Kaal Sarp Dosha":
-            remedies.append("""Kaal Sarp Dosha Remedies:
-- Visit temples of Lord Shiva regularly
-- Chant "Om Namah Shivaya" 108 times daily
-- Donate milk and rice on Monday
-- Perform Rahu-Ketu puja at Shiva temples
-- Keep a silver ball with you""")
         elif dosha == "Sade Sati":
             remedies.append("""Sade Sati Remedies:
 - Chant "Om Sham Shanaicharaya Namaha" on Saturdays

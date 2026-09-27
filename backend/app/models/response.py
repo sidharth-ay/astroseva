@@ -66,9 +66,8 @@ class PredictionResponse(BaseModel):
 
 
 class DoshaResponse(BaseModel):
-    """Dosha detection response."""
+    """Dosha detection response (Manglik, Sade Sati, Pitru; total 0-3)."""
     manglik: Dict[str, Any]
-    kaal_sarp: Dict[str, Any]
     sade_sati: Dict[str, Any]
     pitru_dosha: Dict[str, Any]
     total_doshas: int

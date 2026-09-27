@@ -8,7 +8,7 @@ from ..models.birth_data import BirthData
 from ..models.response import DoshaResponse
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
-from ..core.doshas import detect_all_doshas, detect_manglik, detect_kaal_sarp, detect_sade_sati, detect_pitru_dosha
+from ..core.doshas import detect_all_doshas, detect_manglik, detect_sade_sati, detect_pitru_dosha
 from ..services.ai_service import generate_remedies
 from ..services.cache_service import cache_service
 
@@ -75,7 +75,6 @@ async def detect_doshas(request: Request, birth_data: BirthData):
 
         response = DoshaResponse(
             manglik=doshas["manglik"],
-            kaal_sarp=doshas["kaal_sarp"],
             sade_sati=doshas["sade_sati"],
             pitru_dosha=doshas["pitru_dosha"],
             total_doshas=doshas["total_doshas"],

@@ -89,9 +89,6 @@ def compute_chat_birth_context(birth_details: dict) -> str:
         mang = doshas.get("manglik", {})
         if mang.get("is_manglik"):
             dosha_parts.append(f"Manglik ({mang.get('severity', 'Unknown')} - Mars in house {', '.join(str(d.get('house','')) for d in mang.get('positions', []))})")
-        kaal = doshas.get("kaal_sarp", {})
-        if kaal.get("has_dosha"):
-            dosha_parts.append(f"Kaal Sarp (Rahu H{kaal.get('rahu_house')}, Ketu H{kaal.get('ketu_house')})")
         sade = doshas.get("sade_sati", {})
         if sade.get("is_active"):
             dosha_parts.append(f"Sade Sati ({sade.get('phase', 'Active')})")
@@ -129,7 +126,7 @@ def detect_user_intent(message: str) -> str:
         return "kundli"
     if any(w in msg for w in ["matching", "compatibility", "gun milan", "are we compatible", "marriage matching", "ashtakoot"]):
         return "matching"
-    if any(w in msg for w in ["check my dosha", "do i have dosha", "manglik check", "kaal sarp check", "my doshas", "dosha analysis"]):
+    if any(w in msg for w in ["check my dosha", "do i have dosha", "manglik check", "my doshas", "dosha analysis"]):
         return "dosha_check"
     if any(w in msg for w in ["horoscope", "today prediction", "daily prediction", "rashifal", "daily horoscope"]):
         return "horoscope"
