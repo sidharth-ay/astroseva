@@ -156,7 +156,7 @@ export default function DoshasPage() {
           CHECK YOUR <span className="text-gradient-gold">DOSHAS</span>
         </h1>
         <p className="max-w-lg mx-auto" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
-          Detect Manglik, Kaal Sarp, Sade Sati, and Pitru Dosha from your birth chart with remedies.
+          Detect Manglik, Sade Sati, and Pitru Dosha from your birth chart with remedies.
         </p>
       </motion.div>
 
