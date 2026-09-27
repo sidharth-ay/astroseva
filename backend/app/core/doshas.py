@@ -63,64 +63,6 @@ def detect_manglik(planets: list[dict], asc_sign: int) -> dict:
     }
 
 
-def detect_kaal_sarp(planets: list[dict]) -> dict:
-    """Detect Kaal Sarp Dosha (Rahu-Ketu axis affliction)."""
-    rahu_house = None
-    ketu_house = None
-
-    for planet in planets:
-        if planet.get("planet") == "Rahu":
-            rahu_house = planet.get("house", 0)
-        elif planet.get("planet") == "Ketu":
-            ketu_house = planet.get("house", 0)
-
-    if rahu_house is None or ketu_house is None:
-        return {
-            "has_dosha": False,
-            "rahu_house": rahu_house,
-            "ketu_house": ketu_house,
-            "planets_between": [],
-            "planets_outside": [],
-            "severity": "None",
-            "description": "Rahu or Ketu position not found",
-        }
-
-    # Check if all other planets are between Rahu and Ketu
-    # (one side of the axis)
-    planets_between = []
-    planets_outside = []
-
-    for planet in planets:
-        if planet.get("planet") in ["Rahu", "Ketu"]:
-            continue
-        if planet.get("planet") in ["Uranus", "Neptune", "Pluto"]:
-            continue  # classical Kaal Sarp considers Sun-Saturn only
-
-        planet_house = planet.get("house", 0)
-        if rahu_house < ketu_house:
-            if rahu_house <= planet_house <= ketu_house:
-                planets_between.append(planet.get("planet"))
-            else:
-                planets_outside.append(planet.get("planet"))
-        else:
-            if ketu_house <= planet_house <= rahu_house:
-                planets_between.append(planet.get("planet"))
-            else:
-                planets_outside.append(planet.get("planet"))
-
-    has_dosha = len(planets_outside) == 0
-
-    return {
-        "has_dosha": has_dosha,
-        "rahu_house": rahu_house,
-        "ketu_house": ketu_house,
-        "planets_between": planets_between,
-        "planets_outside": planets_outside,
-        "severity": "High" if has_dosha else "None",
-        "description": "All planets between Rahu-Ketu axis" if has_dosha else "Planets on both sides of Rahu-Ketu axis",
-    }
-
-
 def detect_sade_sati(planets: list[dict], moon_sign: int) -> dict:
     """Detect Sade Sati (Saturn's 7.5-year transit over Moon sign)."""
     saturn_sign = None
@@ -221,20 +163,17 @@ def detect_nadi_dosha(nadi1: str, nadi2: str) -> dict:
 
 
 def detect_all_doshas(planets: list[dict], asc_sign: int, moon_sign: int) -> dict:
-    """Detect all doshas in a birth chart."""
+    """Detect all doshas in a birth chart (Manglik, Sade Sati, Pitru)."""
     manglik = detect_manglik(planets, asc_sign)
-    kaal_sarp = detect_kaal_sarp(planets)
     sade_sati = detect_sade_sati(planets, moon_sign)
     pitru = detect_pitru_dosha(planets)
 
     return {
         "manglik": manglik,
-        "kaal_sarp": kaal_sarp,
         "sade_sati": sade_sati,
         "pitru_dosha": pitru,
         "total_doshas": sum([
             1 if manglik["is_manglik"] else 0,
-            1 if kaal_sarp["has_dosha"] else 0,
             1 if sade_sati["is_active"] else 0,
             1 if pitru["has_dosha"] else 0,
         ]),
