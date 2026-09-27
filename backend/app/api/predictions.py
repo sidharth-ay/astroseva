@@ -7,9 +7,10 @@ from ..models.birth_data import PredictionRequest, BirthData
 from ..models.response import PredictionResponse
 from ..core.planets import get_planetary_positions
 from ..core.rashis import RASHI_NAMES
-from ..core.doshas import detect_all_doshas
+from ..core.doshas import detect_all_doshas, get_transit_saturn_sign
 from ..services.ai_service import generate_prediction
 from ..services.cache_service import cache_service
+from datetime import date as _date
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +48,17 @@ async def generate_ai_prediction(request: PredictionRequest):
             elif planet["planet"] == "Sun":
                 sun_sign = planet["sign"]
 
-        # Detect doshas
+        # Detect doshas (Sade Sati uses today's transiting Saturn)
+        _today = _date.today()
+        try:
+            _transit_saturn = get_transit_saturn_sign(_today.year, _today.month, _today.day)
+        except Exception:
+            _transit_saturn = None
         doshas = detect_all_doshas(
             planets=positions["planets"],
             asc_sign=asc_sign,
             moon_sign=moon_sign or 0,
+            transit_saturn_sign=_transit_saturn,
         )
 
         # Prepare birth details for AI

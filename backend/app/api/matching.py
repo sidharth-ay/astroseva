@@ -141,9 +141,10 @@ async def export_matching_pdf(matching_data: MatchingData):
             )
             planets = positions["planets"]
             asc_sign = int(positions["ascendant"] / 30)
+            moon_sign = next((p["sign"] for p in planets if p.get("planet") == "Moon"), 0)
             for p in planets:
                 p["house"] = get_house_from_longitude(p["longitude"], positions["ascendant"])
-            m = detect_manglik(planets, asc_sign)
+            m = detect_manglik(planets, asc_sign, moon_sign)
             if m.get("is_manglik"):
                 return f"Manglik ({m.get('severity', 'Present')})"
             return "Non-Manglik"

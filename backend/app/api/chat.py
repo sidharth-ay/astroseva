@@ -34,8 +34,9 @@ def compute_chat_birth_context(birth_details: dict) -> str:
     try:
         from ..core.planets import get_planetary_positions
         from ..core.houses import get_planets_in_houses
-        from ..core.doshas import detect_all_doshas
+        from ..core.doshas import detect_all_doshas, get_transit_saturn_sign
         from ..core.rashis import RASHI_NAMES
+        from datetime import date as _date
 
         year = int(birth_details.get("birth_year", 0))
         month = int(birth_details.get("birth_month", 0))
@@ -78,8 +79,13 @@ def compute_chat_birth_context(birth_details: dict) -> str:
             house = p.get("house", "?") if p.get("house") is not None else "?"
             planet_lines.append(f"{p['planet']}-{p['sign_name']} {p['sign_degree']:.1f} deg H{house}{retro}")
 
-        # Detect doshas
-        doshas = detect_all_doshas(planets, asc_sign, moon_sign)
+        # Detect doshas (Sade Sati uses today's transiting Saturn)
+        today = _date.today()
+        try:
+            transit_saturn = get_transit_saturn_sign(today.year, today.month, today.day)
+        except Exception:
+            transit_saturn = None
+        doshas = detect_all_doshas(planets, asc_sign, moon_sign, transit_saturn)
 
         asc_name = RASHI_NAMES.get(asc_sign, {}).get("en", "Unknown")
         moon_name = RASHI_NAMES.get(moon_sign, {}).get("en", "Unknown")
