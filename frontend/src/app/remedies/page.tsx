@@ -26,15 +26,15 @@ const REMEDIES: Remedy[] = [
   { id: "r8", title: "Guru Blessings", detail: "Seek elders' blessings every Thursday morning.", day: "Thursday", planet: "Jupiter", tags: ["wisdom", "career"] },
   { id: "r9", title: "Lakshmi Lamp", detail: "Light a ghee lamp Friday evenings; keep finances tidy.", day: "Friday", planet: "Venus", tags: ["wealth", "love", "luxury"] },
   { id: "r10", title: "White Donation", detail: "Donate rice, milk, or white cloth on Fridays.", day: "Friday", planet: "Venus", tags: ["love", "marriage"] },
-  { id: "r11", title: "Shani Sesame Donation", detail: "Donate black sesame or iron on Saturdays; feed crows.", day: "Saturday", planet: "Saturn", tags: ["sade-sati", "kaal-sarp", "career"] },
+  { id: "r11", title: "Shani Sesame Donation", detail: "Donate black sesame or iron on Saturdays; feed crows.", day: "Saturday", planet: "Saturn", tags: ["sade-sati", "career"] },
   { id: "r12", title: "Peepal Water", detail: "Offer water at a Peepal tree Saturday mornings.", day: "Saturday", planet: "Saturn", tags: ["sade-sati", "pitru"] },
-  { id: "r13", title: "Rahu Coconut", detail: "Float a coconut in flowing water on Saturdays for Rahu/Kaal Sarp.", day: "Saturday", planet: "Rahu", tags: ["kaal-sarp", "protection"] },
-  { id: "r14", title: "Ketu Dog Feeding", detail: "Feed dogs regularly; donate blankets for Ketu balance.", day: "Sunday", planet: "Ketu", tags: ["kaal-sarp", "peace"] },
+  { id: "r13", title: "Rahu Coconut", detail: "Float a coconut in flowing water on Saturdays for Rahu afflictions.", day: "Saturday", planet: "Rahu", tags: ["rahu", "protection"] },
+  { id: "r14", title: "Ketu Dog Feeding", detail: "Feed dogs regularly; donate blankets for Ketu balance.", day: "Sunday", planet: "Ketu", tags: ["ketu", "peace"] },
   { id: "r15", title: "Pitru Tarpanam", detail: "Offer water with black sesame facing south on Amavasya for ancestors.", day: "Amavasya", planet: "Sun", tags: ["pitru", "peace"] },
   { id: "r16", title: "Gayatri at Dawn", detail: "11× Gayatri Mantra at dawn for intellect and clarity.", day: "Daily", planet: "Sun", tags: ["health", "wisdom", "career"] },
 ];
 
-const CONCERNS = ["manglik", "kaal-sarp", "sade-sati", "pitru", "marriage", "career", "wealth", "health", "peace", "love"];
+const CONCERNS = ["manglik", "sade-sati", "pitru", "marriage", "career", "wealth", "health", "peace", "love"];
 const KEY = "astroseva_remedy_done";
 
 function weekKey(): string {

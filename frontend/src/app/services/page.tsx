@@ -78,7 +78,7 @@ const categories = [
   {
     title: "Dosha Analysis",
     services: [
-      { title: "Dosha Check", description: "Detect Manglik, Kaal Sarp, Sade Sati, and Pitru Dosha with remedies.", href: "/doshas", icon: AlertTriangle, color: "#E85D5D" },
+      { title: "Dosha Check", description: "Detect Manglik, Sade Sati, and Pitru Dosha with remedies.", href: "/doshas", icon: AlertTriangle, color: "#E85D5D" },
       { title: "Pitru Dosha", description: "Ancestral affliction detection with severity analysis and remedies.", href: "/pitru-dosha", icon: Activity, color: "#E85D5D" },
       { title: "Nadi Dosha", description: "Nadi compatibility check in marriage matching with remedies.", href: "/nadi-dosha", icon: Heart, color: "#DDA0DD" },
     ],

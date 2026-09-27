@@ -201,14 +201,6 @@ const products: Product[] = [
     icon: Package,
   },
   {
-    id: 21,
-    name: "Kaal Sarp Remedies Kit",
-    category: "Ritual Kits",
-    price: 3999,
-    description: "Complete remedies for Kaal Sarp dosha. Includes Rudraksha & mantras.",
-    icon: Package,
-  },
-  {
     id: 22,
     name: "AstroSage Desktop Software",
     category: "Astrology Software",
