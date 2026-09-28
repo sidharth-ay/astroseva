@@ -442,14 +442,25 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
+// Fired whenever the stored session changes so components (the Navbar's
+// logout control) can react without needing a context provider.
+export const AUTH_CHANGE_EVENT = "astroseva:auth-change";
+
+function notifyAuthChange() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
+}
+
 export function setSession(token: string, user: AuthUser) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  notifyAuthChange();
 }
 
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  notifyAuthChange();
 }
 
 export async function fetchAuth<T>(endpoint: string, options?: RequestInit): Promise<T> {
