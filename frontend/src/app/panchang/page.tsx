@@ -13,7 +13,7 @@ import { MapPin } from "lucide-react";
 import { api } from "@/lib/api";
 import CitySearch from "@/components/CitySearch";
 
-type TabId = "daily" | "choghadiya" | "hora" | "gowri" | "ghati";
+type TabId = "daily" | "choghadiya" | "hora" | "gowri" | "ghati" | "bala";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "daily", label: "Daily" },
@@ -21,6 +21,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "hora", label: "Hora" },
   { id: "gowri", label: "Gowri" },
   { id: "ghati", label: "Ghati" },
+  { id: "bala", label: "Bala" },
 ];
 
 const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -73,6 +74,13 @@ export default function PanchangPage() {
   const [gowriData, setGowriData] = useState<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [ghatiData, setGhatiData] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [muhuratData, setMuhuratData] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [balaData, setBalaData] = useState<any>(null);
+  const [birthName, setBirthName] = useState("");
+  const [birthDate, setBirthDate] = useState("1990-01-15");
+  const [birthTime, setBirthTime] = useState("10:30");
 
   const reduced = useReducedMotion();
   const seqRef = useRef(0);
@@ -95,6 +103,11 @@ export default function PanchangPage() {
       switch (tab) {
         case "daily":
           setDailyData(await api.getPanchang(lat, lng));
+          try {
+            setMuhuratData(await api.getMuhurat(lat, lng));
+          } catch {
+            setMuhuratData(null);
+          }
           break;
         case "choghadiya":
           setChogData(await api.getChoghadiya(lat, lng));
@@ -107,6 +120,20 @@ export default function PanchangPage() {
           break;
         case "ghati":
           setGhatiData(await api.getGhatiMuhurat(lat, lng));
+          break;
+        case "bala":
+          if (!birthName.trim()) {
+            throw new Error("Enter your name and birth details, then press Get Bala.");
+          }
+          setBalaData(await api.getBala({
+            name: birthName.trim(),
+            birth_date: birthDate,
+            birth_time: birthTime,
+            birth_place: city,
+            latitude: lat,
+            longitude: lng,
+            timezone_offset: 5.5,
+          }));
           break;
       }
     } catch (e: unknown) {
@@ -168,6 +195,42 @@ export default function PanchangPage() {
             {city} &bull; {lat.toFixed(2)}°N, {lng.toFixed(2)}°E
           </p>
         </div>
+        {activeTab === "bala" && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div>
+              <label className="input-label" htmlFor="bala-name">Name</label>
+              <input
+                id="bala-name"
+                className="input-field"
+                value={birthName}
+                onChange={(e) => setBirthName(e.target.value)}
+                placeholder="Your name"
+              />
+            </div>
+            <div>
+              <label className="input-label" htmlFor="bala-date">Birth Date</label>
+              <input
+                id="bala-date"
+                type="date"
+                className="input-field"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                style={{ colorScheme: "dark" }}
+              />
+            </div>
+            <div>
+              <label className="input-label" htmlFor="bala-time">Birth Time</label>
+              <input
+                id="bala-time"
+                type="time"
+                className="input-field"
+                value={birthTime}
+                onChange={(e) => setBirthTime(e.target.value)}
+                style={{ colorScheme: "dark" }}
+              />
+            </div>
+          </div>
+        )}
         {error && <p className="text-xs mt-3" style={{ color: "var(--danger)" }}>{error}</p>}
       </motion.div>
 
@@ -223,11 +286,12 @@ export default function PanchangPage() {
           initial={reduced ? false : "hidden"}
           animate="visible"
         >
-          {activeTab === "daily" && dailyData && <DailyTab data={dailyData as any} />}
+          {activeTab === "daily" && dailyData && <DailyTab data={dailyData as any} muhurat={muhuratData as any} />}
           {activeTab === "choghadiya" && chogData && <ChoghadiyaTab data={chogData as any} />}
           {activeTab === "hora" && horaData && <HoraTab data={horaData as any} />}
           {activeTab === "gowri" && gowriData && <GowriTab data={gowriData as any} />}
           {activeTab === "ghati" && ghatiData && <GhatiTab data={ghatiData as any} />}
+          {activeTab === "bala" && balaData && <BalaTab data={balaData as any} />}
         </motion.div>
       )}
     </div>
@@ -236,7 +300,7 @@ export default function PanchangPage() {
 
 /* ─── Daily ──────────────────────────────────────────────── */
 
-function DailyTab({ data }: { data: any }) {
+function DailyTab({ data, muhurat }: { data: any; muhurat: any }) {
   const items = [
     { label: "Tithi", value: data.tithi.tithi_name, sub: `${data.tithi.paksha}` },
     { label: "Nakshatra", value: data.nakshatra.nakshatra_name, sub: `Pada ${data.nakshatra.pada}` },
@@ -310,6 +374,50 @@ function DailyTab({ data }: { data: any }) {
           </div>
         </div>
       </motion.div>
+
+      {/* Yamaganda, Kulika & Abhijit */}
+      {muhurat && (
+        <motion.div variants={staggerItem} className="glass-card p-5">
+          <h3 className="font-semibold mb-4 text-sm" style={{ color: "#C8956D" }}>
+            Yamaganda, Kulika & Abhijit
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div
+              className="rounded-xl p-4 text-center"
+              style={{ background: "rgba(229,93,93,0.06)", border: "1px solid rgba(229,93,93,0.15)" }}
+            >
+              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--danger, #e5484d)" }}>
+                Yamaganda
+              </div>
+              <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                {muhurat.yamaganda.start} — {muhurat.yamaganda.end}
+              </div>
+            </div>
+            <div
+              className="rounded-xl p-4 text-center"
+              style={{ background: "rgba(229,93,93,0.06)", border: "1px solid rgba(229,93,93,0.15)" }}
+            >
+              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--danger, #e5484d)" }}>
+                Kulika
+              </div>
+              <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                {muhurat.kulika.start} — {muhurat.kulika.end}
+              </div>
+            </div>
+            <div
+              className="rounded-xl p-4 text-center"
+              style={{ background: "rgba(93,200,143,0.06)", border: "1px solid rgba(93,200,143,0.15)" }}
+            >
+              <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--success, #5DC88F)" }}>
+                Abhijit (auspicious)
+              </div>
+              <div className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                {muhurat.abhijit_muhurat.start} — {muhurat.abhijit_muhurat.end}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Sunrise / Sunset */}
       <motion.div variants={staggerItem} className="glass-card p-5">
@@ -505,6 +613,56 @@ function GowriTab({ data }: { data: any }) {
 }
 
 /* ─── Ghati Muhurat ──────────────────────────────────────── */
+
+function BalaTab({ data }: { data: any }) {
+  const cards = [
+    {
+      label: "Tara Bala",
+      value: data.tara_bala.tara_name,
+      sub: `Tara ${data.tara_bala.tara_number} · ${data.tara_bala.description}`,
+      good: data.tara_bala.favourable,
+    },
+    {
+      label: "Chandra Bala",
+      value: `House ${data.chandra_bala.house_from_moon} from Moon`,
+      sub: data.chandra_bala.description,
+      good: data.chandra_bala.favourable,
+    },
+  ];
+  return (
+    <div className="space-y-4">
+      <motion.div variants={staggerItem} className="glass-card p-5 text-center">
+        <div className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--text-tertiary)" }}>
+          {data.date} · Janma: {data.janma_nakshatra} · Today: {data.daily_nakshatra}
+        </div>
+      </motion.div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {cards.map((c) => (
+          <motion.div key={c.label} variants={staggerItem} className="glass-card p-5 text-center"
+            style={{ borderColor: c.good ? "rgba(93,200,143,0.35)" : "rgba(229,93,93,0.35)" }}>
+            <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "#C8956D" }}>
+              {c.label}
+            </div>
+            <div className="text-lg font-bold mb-1" style={{ color: "var(--text-primary)" }}>
+              {c.value}
+            </div>
+            <div className="text-xs" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
+              {c.sub}
+            </div>
+            <div
+              className="inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-2"
+              style={c.good
+                ? { background: "rgba(93,200,143,0.12)", color: "var(--success)" }
+                : { background: "rgba(229,93,93,0.12)", color: "var(--danger)" }}
+            >
+              {c.good ? "Favourable" : "Unfavourable"}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function GhatiTab({ data }: { data: any }) {
   return (

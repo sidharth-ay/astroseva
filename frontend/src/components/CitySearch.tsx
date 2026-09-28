@@ -69,10 +69,13 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
   }, []);
 
   const select = (city: CityEntry) => {
-    setQuery(city.name);
+    // Display + store the full "Name, State" label so same-name places in
+    // different states stay unambiguous in every form. Coords untouched.
+    const labeled = { ...city, name: city.label || city.name };
+    setQuery(labeled.name);
     setOpen(false);
     setHighlightedIndex(-1);
-    onChange(city);
+    onChange(labeled);
   };
 
   const clear = () => {
@@ -174,8 +177,14 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
               aria-selected={highlightedIndex === i}
             >
               <Search size={12} style={{ color: "var(--text-tertiary)", flexShrink: 0 }} />
-              <span className="font-medium">{c.name}</span>
-              {c.state && <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{c.state}</span>}
+              <span className="min-w-0">
+                <span className="font-medium block truncate">{c.label || c.name}</span>
+                {c.state && (
+                  <span className="text-xs block truncate" style={{ color: "var(--text-tertiary)" }}>
+                    {c.kind === "district" ? "District" : "Town"} · {c.state}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>

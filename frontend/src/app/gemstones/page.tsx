@@ -22,12 +22,16 @@ interface GemstoneItem {
   finger: string;
   day: string;
   alternative: string;
+  role?: string;
 }
 
 interface GemstoneResponse {
   birth_data: Record<string, unknown>;
   gemstones: GemstoneItem[];
   recommendations: string;
+  primary_stones?: string[];
+  avoid_stones?: string[];
+  notes?: string[];
 }
 
 export default function GemstonesPage() {
@@ -285,7 +289,7 @@ export default function GemstonesPage() {
                     className="text-[10px] uppercase tracking-wider mb-1 font-medium"
                     style={{ color: "var(--text-tertiary)" }}
                   >
-                    {g.planet}
+                    {g.planet}{g.role ? ` · ${g.role}` : ""}
                   </div>
                   <div
                     className="text-base font-semibold mb-3"
@@ -339,6 +343,22 @@ export default function GemstonesPage() {
               >
                 {result.recommendations}
               </p>
+            </motion.div>
+          )}
+
+          {/* Avoid + notes */}
+          {((result.avoid_stones || []).length > 0 || (result.notes || []).length > 0) && (
+            <motion.div className="glass-card p-4" variants={staggerItem}>
+              {(result.avoid_stones || []).length > 0 && (
+                <p className="text-xs mb-2" style={{ color: "var(--danger, #e5484d)" }}>
+                  Avoid: {(result.avoid_stones || []).join(", ")}
+                </p>
+              )}
+              {(result.notes || []).map((n, i) => (
+                <p key={i} className="text-xs leading-relaxed mb-1" style={{ color: "var(--text-secondary)" }}>
+                  · {n}
+                </p>
+              ))}
             </motion.div>
           )}
         </motion.div>

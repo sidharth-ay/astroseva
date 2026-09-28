@@ -47,6 +47,23 @@ async def generate_report(request: Request, payload: ReportRequest):
         for p in positions["planets"]:
             h = get_house_from_longitude(p["longitude"], positions["ascendant"])
             planet_houses[p["planet"]] = h
+            p["house"] = h
+
+        # Structured career framework (deterministic AstroTalk-style factors)
+        try:
+            from datetime import datetime, timezone
+            from ..core.career import analyze_career_factors
+            from ..core.dasha import get_current_dasha, calculate_mahadashas
+            moon_lon = next(p["longitude"] for p in positions["planets"] if p["planet"] == "Moon")
+            birth_dt = datetime(bd.birth_date.year, bd.birth_date.month, bd.birth_date.day,
+                                tzinfo=timezone.utc)
+            mds = calculate_mahadashas(birth_dt, moon_lon)
+            cur = get_current_dasha(mds, datetime.now(timezone.utc)) or {}
+            career_factors = analyze_career_factors(
+                positions["planets"], asc_sign, cur.get("mahadasha"))
+        except Exception as e:
+            logger.warning(f"Career framework error: {e}")
+            career_factors = {"tenth_lord": None, "factors": [], "verdict": ""}
 
         # Build birth details for AI
         birth_details = {
@@ -96,6 +113,7 @@ async def generate_report(request: Request, payload: ReportRequest):
                 "content": summary,
                 "sections": report_sections,
                 "house_analysis": house_analysis,
+                "career_factors": career_factors,
                 "ai_model": "astroseva-local",
             }
         else:
@@ -114,6 +132,8 @@ async def generate_report(request: Request, payload: ReportRequest):
                 "content": result["content"],
                 "ai_model": result["model"],
             }
+            if payload.report_type == "career":
+                response["career_factors"] = career_factors
             await cache_service.set(cache_key, response, expiry=86400)
             return response
     except Exception as e:

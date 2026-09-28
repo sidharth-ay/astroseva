@@ -161,11 +161,46 @@ export default function NumerologyPage() {
                 {serverData.name_number && (
                   <p><strong style={{ color: "var(--champagne)" }}>Name number:</strong> {serverData.name_number.name_number}</p>
                 )}
+                {serverData.mulank && (
+                  <p><strong style={{ color: "var(--champagne)" }}>Mulank (day root):</strong> {serverData.mulank.mulank_number}</p>
+                )}
+                {serverData.bhagyank && (
+                  <p><strong style={{ color: "var(--champagne)" }}>Bhagyank (destiny root):</strong> {serverData.bhagyank.bhagyank_number}</p>
+                )}
                 <p><strong style={{ color: "var(--champagne)" }}>Lucky numbers:</strong> {serverData.lucky_numbers.join(", ")}</p>
                 {serverData.compatibility && (
                   <p><strong style={{ color: "var(--champagne)" }}>Compatibility:</strong> {serverData.compatibility.compatibility}</p>
                 )}
               </div>
+              {serverData.lo_shu && (
+                <div className="mt-5">
+                  <h4 className="font-bold mb-3 text-sm" style={{ color: "var(--text-primary)" }}>Lo Shu Grid</h4>
+                  <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
+                    {[4, 9, 2, 3, 5, 7, 8, 1, 6].map((n) => {
+                      const count = serverData.lo_shu?.grid?.[String(n)] ?? 0;
+                      return (
+                        <div
+                          key={n}
+                          className="rounded-lg p-3 text-center"
+                          style={{
+                            background: count > 0 ? "rgba(200,149,109,0.1)" : "var(--bg-surface)",
+                            border: `1px solid ${count > 0 ? "#C8956D" : "var(--border-subtle)"}`,
+                          }}
+                        >
+                          <div className="text-xl font-bold" style={{ color: count > 0 ? "var(--champagne)" : "var(--text-tertiary)" }}>
+                            {count > 0 ? `${n}×${count}` : n}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {(serverData.lo_shu?.missing_numbers?.length ?? 0) > 0 && (
+                    <p className="text-xs text-center mt-3" style={{ color: "var(--text-secondary)" }}>
+                      Missing numbers {(serverData.lo_shu?.missing_numbers || []).join(", ")} — strengthen through conscious practice and remedies.
+                    </p>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
         </motion.div>

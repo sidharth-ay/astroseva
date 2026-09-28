@@ -33,6 +33,10 @@ export interface CityEntry {
   lng: number;
   tz: number;
   state?: string;
+  district?: string;
+  kind?: "district" | "town";
+  label?: string;
+  aliases?: string[];
 }
 
 import citiesJson from "./cities.json";
@@ -142,6 +146,9 @@ export interface NumerologyResponse {
   personality: { personality_number: number };
   birthday: { birthday_number: number };
   name_number?: { name_number: number };
+  mulank?: { mulank_number: number };
+  bhagyank?: { bhagyank_number: number };
+  lo_shu?: { grid: Record<string, number>; missing_numbers: number[] };
   lucky_numbers: number[];
   compatibility?: { number1: number; number2: number; compatibility: string };
 }
@@ -232,6 +239,7 @@ export interface ReportResponse {
   content: string;
   sections?: { title: string; content: string }[];
   house_analysis?: Record<string, string>;
+  career_factors?: { tenth_lord: string | null; factors: string[]; verdict: string };
   ai_model: string;
 }
 
@@ -402,6 +410,26 @@ export const api = {
 
   getPanchang: (lat = 28.6139, lng = 77.209) =>
     fetchAPI<PanchangResponse>(`/api/v1/panchang/daily?latitude=${lat}&longitude=${lng}`),
+
+  getMuhurat: (lat = 28.6139, lng = 77.209) =>
+    fetchAPI<{
+      date: string; sunrise: number; sunset: number;
+      abhijit_muhurat: { start: string; end: string };
+      rahu_kaal: { start: string; end: string };
+      gulika_kaal: { start: string; end: string };
+      yamaganda: { start: string; end: string; nature: string };
+      kulika: { start: string; end: string; nature: string };
+    }>(`/api/v1/panchang/muhurat?latitude=${lat}&longitude=${lng}`),
+
+  getBala: (data: BirthData) =>
+    fetchAPI<{
+      date: string; janma_nakshatra: string; daily_nakshatra: string;
+      tara_bala: { tara_number: number; tara_name: string; favourable: boolean; description: string };
+      chandra_bala: { house_from_moon: number; favourable: boolean; description: string };
+    }>("/api/v1/panchang/bala", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   getChoghadiya: (lat = 28.6139, lng = 77.209) =>
     fetchAPI<{ date: string; sunrise: string; sunset: string; day_choghadiya: { name: string; start: string; end: string; type: string }[]; night_choghadiya: { name: string; start: string; end: string; type: string }[] }>(`/api/v1/panchang/choghadiya?latitude=${lat}&longitude=${lng}`),

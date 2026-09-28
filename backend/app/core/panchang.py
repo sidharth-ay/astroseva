@@ -187,6 +187,104 @@ def calculate_vara(date: datetime) -> dict:
     }
 
 
+
+def calculate_sunrise_sunset(target_date, latitude: float, longitude: float, tz_offset: float = 5.5) -> dict:
+    """Sunrise/sunset (local hours) via NOAA solar approximation (zenith 90.833┬░).
+
+    Accurate to ~1-2 minutes for |lat| < 66┬░. Replaces the old fixed 6/18
+    assumption and latitude fudge in muhurat tables.
+    """
+    day_of_year = target_date.timetuple().tm_yday
+    lat_rad = math.radians(latitude)
+
+    # Solar declination (Cooper) + equation of time (NOAA approx, minutes)
+    decl = math.radians(23.45 * math.sin(math.radians(360 / 365 * (284 + day_of_year))))
+    b = math.radians(360 / 365 * (day_of_year - 81))
+    eot = 9.87 * math.sin(2 * b) - 7.53 * math.cos(b) - 1.5 * math.sin(b)
+
+    cos_ha = (math.cos(math.radians(90.833)) - math.sin(lat_rad) * math.sin(decl)) / (
+        math.cos(lat_rad) * math.cos(decl)
+    )
+    cos_ha = max(-1.0, min(1.0, cos_ha))
+    ha_deg = math.degrees(math.acos(cos_ha))
+
+    # Solar noon in local time, then +/- hour angle
+    solar_noon = 12.0 - (longitude - tz_offset * 15.0) / 15.0 - eot / 60.0
+    delta = ha_deg / 15.0
+    return {
+        "sunrise": round(solar_noon - delta, 4),
+        "sunset": round(solar_noon + delta, 4),
+        "solar_noon": round(solar_noon, 4),
+    }
+
+
+def _segment_window(sunrise_hour: float, sunset_hour: float, index_1based: int) -> dict:
+    """Start/end of the Nth daytime eighth (Rahu/Yama/Kulika family)."""
+    day_length = sunset_hour - sunrise_hour
+    seg = day_length / 8
+    start = sunrise_hour + (index_1based - 1) * seg
+    end = start + seg
+
+    def _fmt(h: float) -> str:
+        return f"{int(h):02d}:{int((h % 1) * 60):02d}"
+
+    return {"start": _fmt(start), "end": _fmt(end),
+            "start_decimal": round(start, 4), "end_decimal": round(end, 4)}
+
+
+# Daytime eighth-segment indices (1-8 from sunrise) per weekday (0=Sunday).
+# Rahu Kalam (existing RAHU_KAAL_BASE) == {0:8, 1:2, 2:7, 3:5, 4:6, 5:4, 6:3}.
+YAMAGANDA_SEGMENTS = {0: 5, 1: 4, 2: 3, 3: 2, 4: 1, 5: 7, 6: 6}
+KULIKA_SEGMENTS = {0: 7, 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1}
+
+
+def calculate_yamaganda(sunrise_hour: float, sunset_hour: float, day_of_week: int) -> dict:
+    """Yamagandam inauspicious window for the weekday."""
+    window = _segment_window(sunrise_hour, sunset_hour, YAMAGANDA_SEGMENTS.get(day_of_week, 5))
+    window["nature"] = "inauspicious"
+    return window
+
+
+def calculate_kulika(sunrise_hour: float, sunset_hour: float, day_of_week: int) -> dict:
+    """Kulika (Kuligai) inauspicious window for the weekday."""
+    window = _segment_window(sunrise_hour, sunset_hour, KULIKA_SEGMENTS.get(day_of_week, 7))
+    window["nature"] = "inauspicious"
+    return window
+
+
+# Tara Bala: 9-fold cycle from Janma (birth Moon) nakshatra.
+TARA_NAMES = [
+    "Janma", "Sampat", "Vipat", "Kshema", "Pratyak",
+    "Sadhana", "Naidhana", "Mitra", "Parama Mitra",
+]
+TARA_GOOD = {"Sampat", "Kshema", "Sadhana", "Mitra", "Parama Mitra"}
+
+
+def calculate_tara_bala(janma_nakshatra_index: int, daily_nakshatra_index: int) -> dict:
+    """Tara Bala of the daily Moon nakshatra counted from birth Moon nakshatra."""
+    tara_index = (daily_nakshatra_index - janma_nakshatra_index) % 27
+    tara_number = tara_index % 9 + 1
+    name = TARA_NAMES[(tara_index % 9)]
+    good = name in TARA_GOOD
+    return {
+        "tara_number": tara_number,
+        "tara_name": name,
+        "favourable": good,
+        "description": f"{name} Tara ΓÇö {'favourable' if good else 'avoid important beginnings'}.",
+    }
+
+
+def calculate_chandra_bala(natal_moon_sign: int, transit_moon_sign: int) -> dict:
+    """Chandra Bala: transit Moon in 1st/3rd/6th/7th/10th/11th from natal Moon."""
+    house = (transit_moon_sign - natal_moon_sign) % 12 + 1
+    good = house in [1, 3, 6, 7, 10, 11]
+    return {
+        "house_from_moon": house,
+        "favourable": good,
+        "description": f"Moon transiting {house}{'st' if house == 1 else 'nd' if house == 2 else 'rd' if house == 3 else 'th'} from natal Moon ΓÇö {'favourable' if good else 'unfavourable'}.",
+    }
+
+
 def calculate_rahu_kaal(sunrise_hour: float, sunset_hour: float, day_of_week: int) -> dict:
     """Calculate Rahu Kaal for the day."""
     base_start, base_end = RAHU_KAAL_BASE.get(day_of_week, (4.5, 6.0))

@@ -1,12 +1,21 @@
 """Panchang API endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from ..core.rate_limit import limiter
 from datetime import date, datetime, timedelta
 import logging
 
 from ..models.response import PanchangResponse
 from ..core.planets import get_planetary_positions
-from ..core.panchang import get_panchang
+from ..core.panchang import (
+    get_panchang,
+    calculate_sunrise_sunset,
+    calculate_yamaganda,
+    calculate_kulika,
+    calculate_tara_bala,
+    calculate_chandra_bala,
+    calculate_nakshatra,
+)
 from ..services.cache_service import cache_service
 
 logger = logging.getLogger(__name__)
@@ -210,6 +219,11 @@ async def get_daily_panchang(
         # Parse date
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
+        # Real sunrise/sunset from coords unless caller overrides both.
+        if sunrise_hour == 6.0 and sunset_hour == 18.0:
+            sun_times = calculate_sunrise_sunset(target_date, latitude, longitude, timezone_offset)
+            sunrise_hour, sunset_hour = sun_times["sunrise"], sun_times["sunset"]
+
         # Calculate Sun and Moon positions (approximate)
         # For simplicity, using noon position
         positions = get_planetary_positions(
@@ -278,25 +292,34 @@ async def get_muhurat(
     try:
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
+        # Real sunrise/sunset from coords for accurate muhurat divisions.
+        sun_times = calculate_sunrise_sunset(target_date, latitude, longitude, 5.5)
+        sunrise_hour, sunset_hour = sun_times["sunrise"], sun_times["sunset"]
+
         # Get Panchang first
         panchang = await get_daily_panchang(latitude, longitude, date_str)
 
-        # Calculate Abhijit Muhurat (approximate)
-        # Abhijit is the 8th Muhurat from sunrise
-        muhurat_duration = (18.0 - 6.0) / 15  # 30 muhurats in a day
+        # Abhijit Muhurat: 8th of 15 daytime divisions.
+        muhurat_duration = (sunset_hour - sunrise_hour) / 15
 
-        abhijit_start = 6.0 + 7 * muhurat_duration
-        abhijit_end = 6.0 + 8 * muhurat_duration
+        abhijit_start = sunrise_hour + 7 * muhurat_duration
+        abhijit_end = sunrise_hour + 8 * muhurat_duration
+
+        weekday = (target_date.weekday() + 1) % 7  # 0=Sunday
 
         return {
             "date": date_str,
+            "sunrise": sun_times["sunrise"],
+            "sunset": sun_times["sunset"],
             "abhijit_muhurat": {
                 "start": f"{int(abhijit_start):02d}:{int((abhijit_start % 1) * 60):02d}",
                 "end": f"{int(abhijit_end):02d}:{int((abhijit_end % 1) * 60):02d}",
             },
             "rahu_kaal": panchang.rahu_kaal,
             "gulika_kaal": panchang.gulika_kaal,
-            "note": "For precise muhurats, consult a Vedic calendar (Panchang)",
+            "yamaganda": calculate_yamaganda(sunrise_hour, sunset_hour, weekday),
+            "kulika": calculate_kulika(sunrise_hour, sunset_hour, weekday),
+            "note": "Yamaganda and Kulika are inauspicious windows; Abhijit is auspicious midday.",
         }
 
     except Exception as e:
@@ -573,3 +596,52 @@ async def get_monthly_panchang(
     except Exception as e:
         logger.error(f"Monthly panchang error: {e}")
         raise HTTPException(status_code=500, detail="Error calculating monthly Panchang.")
+
+
+from ..models.birth_data import BirthData
+
+
+@router.post("/bala")
+@limiter.limit("60/minute")
+async def get_bala(request: Request, birth_data: BirthData, date_str: str = None):
+    """Tara Bala + Chandra Bala for a birth chart against a date (default today)."""
+    from datetime import date as _date
+
+    if date_str is None:
+        target = _date.today()
+    else:
+        try:
+            target = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+    try:
+        natal = get_planetary_positions(
+            year=birth_data.birth_date.year, month=birth_data.birth_date.month,
+            day=birth_data.birth_date.day, hour=birth_data.birth_time.hour,
+            minute=birth_data.birth_time.minute, timezone_offset=birth_data.timezone_offset,
+            latitude=birth_data.latitude, longitude=birth_data.longitude,
+        )
+        moon_lon = next(p["longitude"] for p in natal["planets"] if p["planet"] == "Moon")
+        moon_sign = next(p["sign"] for p in natal["planets"] if p["planet"] == "Moon")
+        janma_nak = calculate_nakshatra(moon_lon)
+
+        today_pos = get_planetary_positions(
+            year=target.year, month=target.month, day=target.day,
+            hour=12, minute=0, timezone_offset=5.5,
+        )
+        t_moon = next(p for p in today_pos["planets"] if p["planet"] == "Moon")
+        daily_nak = calculate_nakshatra(t_moon["longitude"])
+
+        return {
+            "date": target.isoformat(),
+            "janma_nakshatra": janma_nak["nakshatra_name"],
+            "daily_nakshatra": daily_nak["nakshatra_name"],
+            "tara_bala": calculate_tara_bala(janma_nak["nakshatra_index"], daily_nak["nakshatra_index"]),
+            "chandra_bala": calculate_chandra_bala(moon_sign, t_moon["sign"]),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Bala error: {e}")
+        raise HTTPException(status_code=500, detail="Error calculating Tara/Chandra Bala.")

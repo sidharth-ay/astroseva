@@ -269,6 +269,20 @@ def get_numerology_analysis(name: str, birth_date: str) -> dict:
     # Name number
     name_num = calculate_name_number(name)
 
+    # Mulank (day root) + Bhagyank (full-date root) — Indian method
+    day_digits = [int(ch) for ch in birth_date if ch.isdigit()][:2]
+    mulank = reduce_to_single_digit(sum(day_digits))
+    all_digits = [int(ch) for ch in birth_date if ch.isdigit()]
+    bhagyank = reduce_to_single_digit(sum(all_digits))
+
+    # Lo Shu grid from all birth-date digits (+ Mulank/Bhagyank emphasis)
+    # Positions: 4 9 2 / 3 5 7 / 8 1 6
+    lo_shu_counts = {str(n): 0 for n in range(1, 10)}
+    for dgt in all_digits:
+        if dgt != 0:
+            lo_shu_counts[str(reduce_to_single_digit(dgt))] += 1
+    missing_numbers = sorted([int(n) for n, c in lo_shu_counts.items() if c == 0])
+
     return {
         "life_path": life_path,
         "destiny": destiny,
@@ -276,6 +290,9 @@ def get_numerology_analysis(name: str, birth_date: str) -> dict:
         "personality": personality,
         "birthday": birthday,
         "name_number": name_num,
+        "mulank": {"mulank_number": mulank},
+        "bhagyank": {"bhagyank_number": bhagyank},
+        "lo_shu": {"grid": lo_shu_counts, "missing_numbers": missing_numbers},
         "lucky_numbers": [
             life_path["life_path_number"],
             destiny["destiny_number"],

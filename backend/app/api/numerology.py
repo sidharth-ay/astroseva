@@ -28,6 +28,9 @@ async def analyze_numerology(request: Request, payload: NumerologyRequest):
             personality=result["personality"],
             birthday=result["birthday"],
             name_number=result["name_number"],
+            mulank=result.get("mulank"),
+            bhagyank=result.get("bhagyank"),
+            lo_shu=result.get("lo_shu"),
             lucky_numbers=result["lucky_numbers"],
             compatibility=result["compatibility"],
         )

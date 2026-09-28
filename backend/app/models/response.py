@@ -95,6 +95,9 @@ class NumerologyResponse(BaseModel):
     personality: Dict[str, Any]
     birthday: Dict[str, Any]
     name_number: Dict[str, Any]
+    mulank: Optional[Dict[str, Any]] = None
+    bhagyank: Optional[Dict[str, Any]] = None
+    lo_shu: Optional[Dict[str, Any]] = None
     lucky_numbers: List[int]
     compatibility: Dict[str, Any]
 

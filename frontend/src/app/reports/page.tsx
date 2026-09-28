@@ -28,6 +28,7 @@ interface ReportResponse {
   content: string;
   sections?: { title: string; content: string }[];
   house_analysis?: Record<string, string>;
+  career_factors?: { tenth_lord: string | null; factors: string[]; verdict: string };
   ai_model: string;
 }
 
@@ -218,6 +219,28 @@ export default function ReportsPage() {
                   ) : null
                 ))}
               </div>
+            </motion.div>
+          )}
+
+          {/* Career framework (deterministic factors) */}
+          {result.career_factors && result.career_factors.factors.length > 0 && (
+            <motion.div className="glass-card p-5" variants={staggerItem}>
+              <h4 className="text-sm font-semibold mb-3" style={{ color: "#C8956D" }}>
+                Career Factors {result.career_factors.tenth_lord ? `(10th lord: ${result.career_factors.tenth_lord})` : ""}
+              </h4>
+              <ul className="space-y-1.5 mb-3">
+                {result.career_factors.factors.map((f, i) => (
+                  <li key={i} className="text-xs flex items-start gap-1.5" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
+                    <span style={{ color: "#C8956D" }}>·</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              {result.career_factors.verdict && (
+                <p className="text-xs font-medium" style={{ color: "var(--champagne)" }}>
+                  {result.career_factors.verdict}
+                </p>
+              )}
             </motion.div>
           )}
         </motion.div>
