@@ -38,6 +38,7 @@ class KundliResponse(BaseModel):
     exalted_planets: List[str]
     debilitated_planets: List[str]
     dasha_info: Optional[Dict[str, Any]] = None
+    extras: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=datetime.now)
 
 

@@ -81,12 +81,33 @@ export interface CurrentDasha {
   pratyantardasha?: string;
   pratyantardasha_start?: string;
   pratyantardasha_end?: string;
+  sookshma?: string;
+  sookshma_start?: string;
+  sookshma_end?: string;
+  prana?: string;
+  prana_start?: string;
+  prana_end?: string;
 }
 
 export interface DashaInfo {
   birth_nakshatra: { index: number; name: string; lord: string; pada: number };
   all_mahadashas: DashaPeriod[];
   current_dasha: CurrentDasha | null;
+  current_yogini?: { yogini: string; start: string; end: string } | null;
+  current_chara?: { sign: number; lord: string; start: string; end: string } | null;
+  yogas?: { name: string; description: string; strength: string }[];
+  navamsa?: Record<string, number>;
+  extras?: {
+    avakahada?: Record<string, string | number>;
+    birth_panchang?: Record<string, string | number>;
+    sunrise?: number;
+    sunset?: number;
+    julian_day?: number;
+    ishta_devata?: { planet: string | null; deity: string | null };
+    chara_karakas?: { role: string; planet: string }[];
+    avastha?: Record<string, string>;
+    friendships?: Record<string, { friends: string[]; enemies: string[]; neutral: string[] }>;
+  } | null;
 }
 
 export interface KundliResponse {
@@ -108,6 +129,7 @@ export interface KundliResponse {
   exalted_planets: string[];
   debilitated_planets: string[];
   dasha_info?: DashaInfo;
+  extras?: DashaInfo["extras"];
 }
 
 export interface MatchingResponse {

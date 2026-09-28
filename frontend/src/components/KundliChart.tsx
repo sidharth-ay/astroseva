@@ -73,7 +73,7 @@ export default function KundliChart({ chart, ascSign, chartStyle = "north" }: Ku
 
   return (
     <div className="w-full max-w-[400px] mx-auto">
-      <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+      <svg id="kundli-chart-svg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
         {/* Background */}
         <rect x="0" y="0" width="400" height="400" fill="#0F0E1A" rx="4" />
 
@@ -228,7 +228,7 @@ function SouthIndianChart({
 
   return (
     <div className="w-full max-w-[400px] mx-auto">
-      <svg viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+      <svg id="kundli-chart-svg-south" viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
         {/* Background */}
         <rect x="0" y="0" width="440" height="440" fill="#0F0E1A" rx="4" />
 
