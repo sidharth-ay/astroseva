@@ -148,6 +148,24 @@ export default function DoshasPage() {
             : "",
         },
         {
+          title: "Kaal Sarp Dosha",
+          active: result.kaal_sarp?.has_dosha,
+          badge: result.kaal_sarp?.has_dosha
+            ? (result.kaal_sarp?.kaal_sarp_type || "Present")
+            : "Absent",
+          description:
+            result.kaal_sarp?.description ||
+            "Forms when all seven planets are hemmed between Rahu and Ketu.",
+          extra: result.kaal_sarp?.has_dosha
+            ? [
+                result.kaal_sarp?.kaal_sarp_type ? `Type: ${result.kaal_sarp.kaal_sarp_type}` : "",
+                `Rahu house ${result.kaal_sarp?.rahu_house ?? "?"} · Ketu house ${result.kaal_sarp?.ketu_house ?? "?"}`,
+              ]
+              .filter(Boolean)
+              .join(" — ")
+            : "",
+        },
+        {
           title: "Sade Sati",
           active: result.sade_sati?.is_active,
           badge: result.sade_sati?.is_active
@@ -185,7 +203,7 @@ export default function DoshasPage() {
           CHECK YOUR <span className="text-gradient-gold">DOSHAS</span>
         </h1>
         <p className="max-w-lg mx-auto" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
-          Detect Manglik, Sade Sati, and Pitru Dosha from your birth chart with remedies.
+          Detect Manglik, Kaal Sarp, Sade Sati, and Pitru Dosha from your birth chart with remedies.
         </p>
       </motion.div>
 

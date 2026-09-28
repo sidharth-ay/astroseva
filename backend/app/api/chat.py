@@ -96,6 +96,9 @@ def compute_chat_birth_context(birth_details: dict) -> str:
         mang = doshas.get("manglik", {})
         if mang.get("is_manglik"):
             dosha_parts.append(f"Manglik ({mang.get('severity', 'Unknown')} - Mars in house {', '.join(str(d.get('house','')) for d in mang.get('positions', []))})")
+        kaal = doshas.get("kaal_sarp", {})
+        if kaal.get("has_dosha"):
+            dosha_parts.append(f"Kaal Sarp ({kaal.get('kaal_sarp_type', 'Kaal Sarp')} - Rahu H{kaal.get('rahu_house')}, Ketu H{kaal.get('ketu_house')})")
         sade = doshas.get("sade_sati", {})
         if sade.get("is_active"):
             dosha_parts.append(f"Sade Sati ({sade.get('phase', 'Active')})")
@@ -133,7 +136,7 @@ def detect_user_intent(message: str) -> str:
         return "kundli"
     if any(w in msg for w in ["matching", "compatibility", "gun milan", "are we compatible", "marriage matching", "ashtakoot"]):
         return "matching"
-    if any(w in msg for w in ["check my dosha", "do i have dosha", "manglik check", "my doshas", "dosha analysis"]):
+    if any(w in msg for w in ["check my dosha", "do i have dosha", "manglik check", "kaal sarp check", "my doshas", "dosha analysis"]):
         return "dosha_check"
     if any(w in msg for w in ["horoscope", "today prediction", "daily prediction", "rashifal", "daily horoscope"]):
         return "horoscope"
@@ -169,7 +172,7 @@ def handle_dosha_check_intent(birth_details: dict) -> str:
     context = compute_chat_birth_context(birth_details)
     if not context:
         return "To check your doshas, I need your birth details. Please visit /kundli first to generate your chart."
-    dosha_lines = [line for line in context.split('\n') if 'Dosha' in line or 'Manglik' in line or 'Sade' in line or 'Pitru' in line]
+    dosha_lines = [line for line in context.split('\n') if 'Dosha' in line or 'Manglik' in line or 'Kaal' in line or 'Sade' in line or 'Pitru' in line]
     dosha_summary = '\n'.join(dosha_lines) if dosha_lines else "No active doshas detected."
     name = birth_details.get("name", "friend")
     return f"Here's your dosha analysis, {name}:\n\n{dosha_summary}\n\nWant me to explain any of these doshas in detail? I can suggest specific remedies for any active doshas."
@@ -479,6 +482,8 @@ def _analyze_marriage(chart: dict) -> str:
     dosha_text = chart["doshas"]
     if "Manglik" in dosha_text:
         lines.append("\nYou have Manglik Dosha, which can cause initial delays or challenges in marriage. Remedies include chanting Hanuman Chalisa and wearing coral (after consulting an astrologer).")
+    if "Kaal Sarp" in dosha_text:
+        lines.append("\nKaal Sarp Dosha may cause delays and struggles. Worshipping Lord Shiva and visiting temples on Mondays can help.")
 
     lines.append(f"\nYour {chart['ascendant']} ascendant gives you a {chart['moon_sign']}-Moon emotional nature in relationships. For a detailed compatibility analysis with a partner, visit /matching.")
     lines.append("\nWant me to check your doshas or career prospects? I'm here to help!")
@@ -713,10 +718,10 @@ def generate_local_chat_response(message: str, birth_details: dict = None, birth
             return _analyze_finance(chart)
         if any(w in msg for w in ["love", "romance", "boyfriend", "girlfriend"]):
             return _analyze_love(chart)
-        if any(w in msg for w in ["dosha", "manglik", "sade sati", "pitru"]):
+        if any(w in msg for w in ["dosha", "manglik", "kaal sarp", "sade sati", "pitru"]):
             dosha_text = chart["doshas"]
             if dosha_text and dosha_text != "None detected":
-                return f"Here's your dosha analysis, {chart.get('name', 'friend')}:\n\nActive doshas: {dosha_text}\n\nManglik Dosha is caused by Mars in houses 1, 2, 4, 7, 8, or 12. Remedies include chanting Hanuman Chalisa daily, fasting on Tuesdays, and wearing red coral (after consulting an astrologer).\n\nFor detailed dosha analysis, visit /doshas. Want me to explain any specific dosha in detail?"
+                return f"Here's your dosha analysis, {chart.get('name', 'friend')}:\n\nActive doshas: {dosha_text}\n\nManglik Dosha is caused by Mars in houses 1, 2, 4, 7, 8, or 12. Remedies include chanting Hanuman Chalisa daily, fasting on Tuesdays, and wearing red coral (after consulting an astrologer).\n\nKaal Sarp Dosha is caused by all planets hemmed between Rahu and Ketu. Remedies include worshipping Lord Shiva, chanting 'Om Namah Shivaya', and visiting Shiva temples on Mondays.\n\nFor detailed dosha analysis, visit /doshas. Want me to explain any specific dosha in detail?"
             return f"No significant doshas detected in your chart, {chart.get('name', 'friend')}. Your chart is relatively clean. For a detailed dosha check, visit /doshas."
         if any(w in msg for w in ["remedy", "remedies", "upay", "solution"]):
             dosha_text = chart.get("doshas", "")
@@ -726,6 +731,10 @@ def generate_local_chat_response(message: str, birth_details: dict = None, birth
                 remedies.append("- Fast on Tuesdays and offer red lentils")
                 remedies.append("- Wear red coral (Moonga) after consulting an astrologer")
                 remedies.append("- Visit Hanuman temple on Tuesdays")
+            if "Kaal Sarp" in dosha_text:
+                remedies.append("- Chant 'Om Namah Shivaya' 108 times daily")
+                remedies.append("- Visit Shiva temple on Mondays and offer milk")
+                remedies.append("- Perform Rahu-Ketu puja at Shiva temples")
             if "Pitru" in dosha_text:
                 remedies.append("- Perform Pitru Tarpanam during Pitru Paksha")
                 remedies.append("- Offer food to crows and dogs on Saturdays")
@@ -767,8 +776,8 @@ def generate_local_chat_response(message: str, birth_details: dict = None, birth
         return "Marriage matching requires both partners' birth details. Visit /matching for a complete Ashtakoot analysis."
     if any(w in msg for w in ["manglik", "mars dosha"]):
         return "Manglik Dosha occurs when Mars is in the 1st, 2nd, 4th, 7th, 8th, or 12th house. Visit /kundli to check your chart, or /doshas for detailed analysis."
-    if any(w in msg for w in ["rahu", "ketu"]):
-        return "Rahu and Ketu are the lunar nodes — shadow planets linked to desires, detachment, and karmic patterns. Check your chart at /kundli or visit /doshas for dosha analysis."
+    if any(w in msg for w in ["kaal sarp", "rahu", "ketu"]):
+        return "Kaal Sarp Dosha forms when all planets are hemmed between Rahu and Ketu. Check your chart at /kundli or visit /doshas for dosha analysis."
     if any(w in msg for w in ["sade sati", "saturn", "shani"]):
         return "Sade Sati occurs when Saturn transits near your Moon sign for 7.5 years. Check your chart at /kundli or visit /doshas."
     if any(w in msg for w in ["numerology", "number", "life path"]):
