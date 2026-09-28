@@ -60,7 +60,10 @@ async def detect_doshas(
         f"{birth_data.latitude}:{birth_data.longitude}:{birth_data.timezone_offset}:{as_of}"
     )
     cached = await cache_service.get(cache_key)
-    if cached:
+    # Only trust a cache entry that carries every field DoshaResponse requires.
+    # Entries written before kaal_sarp existed would otherwise raise a
+    # ValidationError -> HTTP 500, so treat them as a miss and recompute.
+    if cached and set(DoshaResponse.model_fields).issubset(cached):
         return DoshaResponse(**cached)
     try:
         transit_saturn, _ = _transit_saturn_for(as_of_date)
@@ -91,6 +94,7 @@ async def detect_doshas(
 
         response = DoshaResponse(
             manglik=doshas["manglik"],
+            kaal_sarp=doshas["kaal_sarp"],
             sade_sati=doshas["sade_sati"],
             pitru_dosha=doshas["pitru_dosha"],
             total_doshas=doshas["total_doshas"],
