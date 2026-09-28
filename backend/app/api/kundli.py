@@ -107,6 +107,83 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
 
     dasha_info = get_dasha_for_birth(moon_longitude, birth_dt)
 
+    # Yogini + Chara dashas (AstroSage parity: alternate timing systems)
+    try:
+        from ..core.dasha import get_current_yogini, get_current_chara
+        dasha_info["current_yogini"] = get_current_yogini(birth_dt, moon_longitude)
+        dasha_info["current_chara"] = get_current_chara(asc_sign, birth_dt)
+    except Exception as e:
+        logger.warning(f"Dasha extension error: {e}")
+
+    # Classical yogas + Navamsha (D9) divisional chart
+    try:
+        from ..core.yogas import detect_yogas
+        from ..core.vargas import get_navamsa_positions
+        dasha_info["yogas"] = detect_yogas(
+            [{"planet": p["planet"], "sign": p["sign"]} for p in positions["planets"]],
+            asc_sign,
+            next((p["sign"] for p in positions["planets"] if p["planet"] == "Moon"), 0),
+        )
+        dasha_info["navamsa"] = get_navamsa_positions(
+            [{"planet": p["planet"], "sign": p["sign"], "sign_degree": p["sign_degree"]}
+             for p in positions["planets"]]
+        )
+    except Exception as e:
+        logger.warning(f"Yoga/Varga error: {e}")
+
+    # Avakahada Chakra, birth Panchang, Ishta/Karak/Avastha (AstroSage parity)
+    extras: dict = {}
+    try:
+        from ..core.kundli_extras import (
+            build_avakahada, ishta_devata, chara_karakas, avastha_of,
+            julian_day, FRIENDSHIPS,
+        )
+        from ..core.panchang import (
+            calculate_tithi, calculate_karana, calculate_yoga,
+            calculate_nakshatra, calculate_sunrise_sunset,
+        )
+        from ..core.planets import SIGN_LORDS
+
+        sun_lon = next(p["longitude"] for p in positions["planets"] if p["planet"] == "Sun")
+        moon = next(p for p in positions["planets"] if p["planet"] == "Moon")
+        nak = calculate_nakshatra(moon["longitude"])
+        tithi = calculate_tithi(sun_lon, moon["longitude"])
+        karana = calculate_karana(sun_lon, moon["longitude"])
+        yoga = calculate_yoga(sun_lon, moon["longitude"])
+        sun_times = calculate_sunrise_sunset(
+            birth_data.birth_date, birth_data.latitude,
+            birth_data.longitude, birth_data.timezone_offset)
+        utc_hour = (birth_data.birth_time.hour + birth_data.birth_time.minute / 60.0
+                    - birth_data.timezone_offset)
+
+        extras = {
+            "avakahada": build_avakahada(
+                moon["sign"], nak["nakshatra_index"], nak["pada"], asc_sign,
+                SIGN_LORDS.get(moon["sign"], "Unknown"),
+                SIGN_LORDS.get(asc_sign, "Unknown"),
+                dasha_info.get("birth_nakshatra", {}).get("lord", "Unknown")),
+            "birth_panchang": {
+                "tithi": tithi["tithi_name"],
+                "paksha": tithi["paksha"],
+                "karana": karana["karana_name"],
+                "yoga": yoga["yoga_name"],
+                "nakshatra": nak["nakshatra_name"],
+                "pada": nak["pada"],
+            },
+            "sunrise": sun_times["sunrise"],
+            "sunset": sun_times["sunset"],
+            "julian_day": julian_day(
+                birth_data.birth_date.year, birth_data.birth_date.month,
+                birth_data.birth_date.day, utc_hour),
+            "ishta_devata": ishta_devata(positions["planets"]),
+            "chara_karakas": chara_karakas(positions["planets"]),
+            "avastha": {p["planet"]: avastha_of(p["sign"], p["sign_degree"])
+                        for p in positions["planets"]},
+            "friendships": FRIENDSHIPS,
+        }
+    except Exception as e:
+        logger.warning(f"Kundli extras error: {e}")
+
     return {
         "positions": positions,
         "planets": planets,
@@ -118,6 +195,7 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
         "asc_sign": asc_sign,
         "asc_sign_name": asc_sign_name,
         "dasha_info": dasha_info,
+        "extras": extras,
     }
 
 
@@ -163,6 +241,7 @@ async def generate_kundli(request: Request, birth_data: BirthData, ayanamsa_type
             exalted_planets=data["exalted"],
             debilitated_planets=data["debilitated"],
             dasha_info=data["dasha_info"],
+            extras=data.get("extras") or None,
         )
 
         # Cache the result
