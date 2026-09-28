@@ -121,6 +121,62 @@ export interface DashaInfo {
       all: { index: number; name: string; lord: string; longitude: number; sign: number; deg_in_sign: number; benefic_for_ascendant: boolean; applied: boolean }[];
     };
     somatilak?: { asc_sign: number; somatilak: string; lord: string; nakshatra: string };
+    vargas?: Record<string, {
+      name: string;
+      asc_sign: number;
+      planets: Record<string, number>;
+    }>;
+    shadbala?: {
+      max_rupa: number;
+      asc_sign: number;
+      strongest: string | null;
+      weakest: string | null;
+      planets: {
+        planet: string; sign: number; house: number; retrograde: boolean;
+        sthana: number; dig: number; kala: number; cheshta: number;
+        naisargika: number; drik: number; total_rupa: number;
+        rupor_virupada: number;
+        bhasa_rupa: boolean; bhava_rupa: boolean; dhruva_rupa: boolean;
+      }[];
+    };
+    bhavabala?: {
+      max_per_house: number; total_rava: number; max_total: number;
+      strongest: number | null;
+      houses: { house: number; sign: number; sign_name: string; planets: string[]; rava: number; raw_rava: number }[];
+    };
+    ashtakavarga?: {
+      asc_sign: number; method: string; validated_against_published_tables: boolean;
+      best_sign: number | null; best_house: number | null;
+      per_graha: Record<string, {
+        occupied_sign: number; total_points: number;
+        in_own_sign: number; in_asc_sign: number;
+        grade_own: string; grade_asc: string;
+        signs: { sign: number; house: number; points: number; grade: string }[];
+      }>;
+      by_sign: { sign: number; house: number; grahas_binding: number; grahas: string[] }[];
+    };
+    pav?: {
+      asc_sign: number; seventh_lord: string;
+      lagna_total: number; sukarma_total: number; nabansaka_total: number;
+      lagna_chart: { sign: number; house: number; points: number }[];
+      sukarma_chart: { sign: number; house: number; points: number }[];
+      nabansaka_chart: { sign: number; house: number; points: number }[];
+    };
+    navatara?: {
+      most_suitable: string | null; least_suitable: string | null;
+      grahas: {
+        planet: string; sign: number; sign_name: string;
+        total: number; published_total: number; suitable: boolean;
+        factors: Record<string, number>;
+        factor_names: string[];
+      }[];
+    };
+    arudha?: {
+      asc_sign: number; arudha_lagna: number; arudha_lagna_name: string;
+      arudha_house: number;
+      arudhas: { planet: string; sign: number; sign_name: string; arudha_sign: number; arudha_name: string; house: number }[];
+      parivartana: { signs: number[]; planets: string[] }[];
+    };
   } | null;
 }
 

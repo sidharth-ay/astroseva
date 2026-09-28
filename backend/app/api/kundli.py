@@ -146,6 +146,12 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
         from ..core.grahayukti import (
             build_aspects, build_consideration, build_ghatak, build_somatilak,
         )
+        from ..core.vargas import build_vargas
+        from ..core.shadbala import build_shadbala, build_bhavabala
+        from ..core.ashtakavarga import (
+            build_ashtakavarga, build_prasthara_ashtakavarga,
+        )
+        from ..core.navatara import build_navatara, build_arudha
 
         sun_lon = next(p["longitude"] for p in positions["planets"] if p["planet"] == "Sun")
         moon = next(p for p in positions["planets"] if p["planet"] == "Moon")
@@ -190,6 +196,13 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
             "consideration": build_consideration(positions["planets"]),
             "ghatak": build_ghatak(positions["ascendant"]),
             "somatilak": build_somatilak(asc_sign),
+            "vargas": build_vargas(positions["planets"], asc_sign),
+            "shadbala": build_shadbala(positions["planets"], asc_sign),
+            "bhavabala": build_bhavabala(positions["planets"], asc_sign),
+            "ashtakavarga": build_ashtakavarga(positions["planets"], asc_sign),
+            "pav": build_prasthara_ashtakavarga(positions["planets"], asc_sign),
+            "navatara": build_navatara(positions["planets"]),
+            "arudha": build_arudha(positions["planets"], asc_sign),
         }
     except Exception as e:
         logger.warning(f"Kundli extras error: {e}")

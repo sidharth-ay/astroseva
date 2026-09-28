@@ -39,7 +39,7 @@ export default function KundliTabsPanel({
         {tab === "planets" && <PlanetsTab result={result} />}
         {tab === "dasha" && <DashaTab result={result} />}
         {tab === "divisional" && <DivisionalTab result={result} />}
-        {tab === "strength" && <ComingSoon what="Shadbala, Bhavabala & Prastharashtakavarga" />}
+        {tab === "strength" && <StrengthTab result={result} />}
         {tab === "nakshatra" && <NakshatraTab result={result} />}
         {tab === "relationships" && <RelationshipsTab result={result} />}
         {tab === "karma" && <KarmaTab result={result} />}
@@ -329,14 +329,40 @@ function DashaTab({ result }: { result: KundliResponse }) {
 /* ─── 4. Divisional ────────────────────────────────────────── */
 
 function DivisionalTab({ result }: { result: KundliResponse }) {
-  const nav = result.dasha_info?.navamsa;
+  const vargas = result.extras?.vargas;
+  const [picked, setPicked] = useState("D9");
+  if (!vargas) return <ComingSoon what="Shodashvarga charts" />;
+
+  const charts = Object.entries(vargas);
+  const active = vargas[picked];
+
   return (
     <div className="space-y-6">
-      {nav && Object.keys(nav).length > 0 && (
+      <div className="flex flex-wrap gap-1.5">
+        {charts.map(([code, v]) => (
+          <button
+            key={code}
+            onClick={() => setPicked(code)}
+            aria-pressed={picked === code}
+            className="px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors"
+            style={{
+              background: picked === code ? "rgba(200,149,109,0.15)" : "var(--bg-surface)",
+              border: `1px solid ${picked === code ? "var(--border-active)" : "var(--border-subtle)"}`,
+              color: picked === code ? "var(--champagne)" : "var(--text-tertiary)",
+            }}
+          >
+            {code} · {v.name}
+          </button>
+        ))}
+      </div>
+
+      {active && (
         <div className="glass-card p-4">
-          <SubHeading>Navamsa (D9)</SubHeading>
+          <SubHeading>
+            {picked} {active.name} — Ascendant in {SIGN_NAMES[active.asc_sign]}
+          </SubHeading>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {Object.entries(nav).map(([planet, sign]) => (
+            {Object.entries(active.planets).map(([planet, sign]) => (
               <Box key={planet}>
                 <BoxLabel>{planet}</BoxLabel>
                 <Value>{SIGN_NAMES[sign as number]}</Value>
@@ -345,7 +371,177 @@ function DivisionalTab({ result }: { result: KundliResponse }) {
           </div>
         </div>
       )}
-      <ComingSoon what="Shodashvarga charts (D1–D12)" />
+
+      <div className="glass-card p-4">
+        <SubHeading count={charts.length}>All Divisional Charts</SubHeading>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Chart", "Name", "As", "Sun", "Moon", "Mars", "Mer", "Jup", "Ven", "Sat", "Rahu", "Ketu"].map((h) => (
+                  <th key={h} className="text-left py-2 px-2 font-medium whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {charts.map(([code, v]) => (
+                <tr key={code} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="py-2 px-2 font-medium" style={{ color: "var(--champagne)" }}>{code}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{v.name}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{SIGN_NAMES[v.asc_sign]}</td>
+                  {(["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"] as const).map((g) => {
+                    const s = v.planets[g];
+                    return (
+                      <td key={g} className="py-2 px-2 whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>
+                        {s === undefined ? "—" : SIGN_NAMES[s].slice(0, 3)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── 5. Strength ──────────────────────────────────────────── */
+
+function StrengthTab({ result }: { result: KundliResponse }) {
+  const sh = result.extras?.shadbala;
+  const bh = result.extras?.bhavabala;
+  const av = result.extras?.ashtakavarga;
+  const pav = result.extras?.pav;
+  if (!sh || !bh || !av) return <ComingSoon what="Shadbala, Bhavabala & Ashtakavarga" />;
+
+  return (
+    <div className="space-y-6">
+      <div className="glass-card p-4">
+        <SubHeading>Shadbala — Six-Fold Strength</SubHeading>
+        <p className="text-[10px] mb-3" style={{ color: "var(--text-tertiary)" }}>
+          Sthana, Dig, Kala, Cheshta, Naisargika and Drik, each max 60. Total
+          strength is shown in Rupas (max 6.0).
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Graha", "H", "Sth", "Dig", "Kala", "Cheshta", "Nais", "Drik", "Total", "Grades"].map((h) => (
+                  <th key={h} className="text-left py-2 px-2 font-medium whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sh.planets.map((p) => (
+                <tr key={p.planet} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="py-2 px-2 font-medium" style={{ color: "var(--text-primary)" }}>{p.planet}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.house}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.sthana.toFixed(0)}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.dig.toFixed(0)}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.kala.toFixed(0)}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.cheshta.toFixed(0)}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.naisargika.toFixed(0)}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.drik.toFixed(0)}</td>
+                  <td className="py-2 px-2 font-medium" style={{ color: "var(--champagne)" }}>{p.total_rupa.toFixed(2)}</td>
+                  <td className="py-2 px-2 whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>
+                    {[
+                      p.bhasa_rupa ? "Bhasa" : null,
+                      p.bhava_rupa ? "Bhava" : null,
+                      p.dhruva_rupa ? "Dhruva" : null,
+                    ].filter(Boolean).join(", ") || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-[10px] mt-3" style={{ color: "var(--text-tertiary)" }}>
+          Strongest: {sh.strongest ?? "—"} · Weakest: {sh.weakest ?? "—"}
+        </p>
+      </div>
+
+      <div className="glass-card p-4">
+        <SubHeading>Bhavabala — House Strength</SubHeading>
+        <p className="text-[10px] mb-3" style={{ color: "var(--text-tertiary)" }}>
+          Total {bh.total_rava} of {bh.max_total} rawa. Strongest house: {bh.strongest ?? "—"}.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {bh.houses.map((h) => (
+            <Box key={h.house}>
+              <BoxLabel>H{h.house} · {h.sign_name}</BoxLabel>
+              <Value>{h.rava.toFixed(1)}</Value>
+              {h.planets.length > 0 && (
+                <div className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>
+                  {h.planets.join(", ")}
+                </div>
+              )}
+            </Box>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass-card p-4">
+        <SubHeading>Ashtakavarga</SubHeading>
+        <p className="text-[10px] mb-3" style={{ color: "var(--text-tertiary)" }}>
+          {av.method}. Not yet validated against published binding tables, so
+          treat point totals as a faithful reconstruction.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Graha", "Sign", "Total", "Own sign", "Asc sign"].map((h) => (
+                  <th key={h} className="text-left py-2 px-2 font-medium" style={{ color: "var(--text-tertiary)" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(av.per_graha).map(([graha, v]) => (
+                <tr key={graha} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td className="py-2 px-2 font-medium" style={{ color: "var(--text-primary)" }}>{graha}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{SIGN_NAMES[v.occupied_sign]}</td>
+                  <td className="py-2 px-2 font-medium" style={{ color: "var(--champagne)" }}>{v.total_points}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{v.in_own_sign} · {v.grade_own}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{v.in_asc_sign} · {v.grade_asc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+          {av.by_sign.map((x) => (
+            <Box key={x.sign}>
+              <BoxLabel>H{x.house} · {SIGN_NAMES[x.sign]}</BoxLabel>
+              <Value>{x.grahas_binding} / 7</Value>
+            </Box>
+          ))}
+        </div>
+      </div>
+
+      {pav && (
+        <div className="glass-card p-4">
+          <SubHeading>Prastharashtakvarga</SubHeading>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <Box><BoxLabel>Lagna chart</BoxLabel><Value>{pav.lagna_total}</Value></Box>
+            <Box><BoxLabel>Sukarma</BoxLabel><Value>{pav.sukarma_total}</Value></Box>
+            <Box><BoxLabel>Nabansaka ({pav.seventh_lord})</BoxLabel><Value>{pav.nabansaka_total}</Value></Box>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {pav.lagna_chart.map((x) => (
+              <Box key={x.sign}>
+                <BoxLabel>H{x.house} · {SIGN_NAMES[x.sign]}</BoxLabel>
+                <Value>{x.points}</Value>
+              </Box>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -502,7 +698,74 @@ function RelationshipsTab({ result }: { result: KundliResponse }) {
       )}
       <AspectsTab result={result} />
       <GhatakTab result={result} />
-      <ComingSoon what="Navatara & Arudha charts" />
+      <NavataraArudhaTabs result={result} />
+    </div>
+  );
+}
+
+/* ─── 7d. Navatara & Arudha ────────────────────────────────── */
+
+function NavataraArudhaTabs({ result }: { result: KundliResponse }) {
+  const nav = result.extras?.navatara;
+  const aru = result.extras?.arudha;
+  if (!nav && !aru) return <ComingSoon what="Navatara & Arudha charts" />;
+
+  return (
+    <div className="space-y-6">
+      {nav && (
+        <div className="glass-card p-4">
+          <SubHeading count={nav.grahas.length}>Navatara</SubHeading>
+          <p className="text-[10px] mb-3" style={{ color: "var(--text-tertiary)" }}>
+            Nine-fold gem suitability, from the graha's base score adjusted by
+            its sign. Most suitable: {nav.most_suitable ?? "—"} · least: {nav.least_suitable ?? "—"}.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {nav.grahas.map((g) => (
+              <Box key={g.planet}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{g.planet}</span>
+                  <span className="text-sm font-medium" style={{ color: g.suitable ? "var(--success)" : "var(--danger)" }}>
+                    {g.total}
+                  </span>
+                </div>
+                <div className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                  {g.sign_name} · base {g.published_total} · {g.suitable ? "suitable" : "not suitable"}
+                </div>
+              </Box>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {aru && (
+        <div className="glass-card p-4">
+          <SubHeading>Arudha Chart</SubHeading>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            <Field label="Arudha Lagna (A1)" value={aru.arudha_lagna_name} />
+            <Field label="A1 house" value={String(aru.arudha_house)} />
+            <Field label="Ascendant" value={SIGN_NAMES[aru.asc_sign]} />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {aru.arudhas.map((a) => (
+              <Box key={a.planet}>
+                <BoxLabel>{a.planet} · {a.sign_name}</BoxLabel>
+                <Value>{a.arudha_name}</Value>
+                <div className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>House {a.house}</div>
+              </Box>
+            ))}
+          </div>
+          {aru.parivartana.length > 0 && (
+            <div className="mt-3">
+              <SubHeading>Parivartana (exchange)</SubHeading>
+              {aru.parivartana.map((x, i) => (
+                <p key={i} className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                  {x.planets.join(" ↔ ")} in {SIGN_NAMES[x.signs[0]]} ↔ {SIGN_NAMES[x.signs[1]]}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -694,7 +957,7 @@ function KarmaTab({ result }: { result: KundliResponse }) {
         </div>
       )}
 
-      <ComingSoon what="Manglik, Kaal Sarp, Sade Sati & Ghatak" />
+      <ComingSoon what="Manglik, Kaal Sarp & Sade Sati" />
     </div>
   );
 }
