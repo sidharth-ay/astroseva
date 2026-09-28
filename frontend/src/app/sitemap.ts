@@ -7,12 +7,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "", "/kundli", "/matching", "/horoscope", "/predictions",
     "/numerology", "/panchang", "/services", "/ai", "/chat",
     "/transit", "/gemstones", "/varshphal", "/love-match", "/baby-names",
-    "/festivals", "/lalkitab", "/kp", "/reports", "/pitru-dosha",
-    "/nadi-dosha", "/palmistry", "/tarot", "/vastu", "/chinese-astrology",
+    "/festivals", "/lalkitab", "/reports", "/pitru-dosha",
+    "/nadi-dosha", "/palmistry", "/tarot", "/vastu",
     "/mantra", "/celebrities", "/healing", "/matrimony", "/shop", "/software",
     "/doshas", "/saved-charts", "/lakshan",
     "/terms", "/privacy", "/refund", "/grievance",
-    "/samudra", "/voice", "/moles", "/age-palm", "/face-match", "/photo-consult", "/remedies",
+    "/samudra", "/moles", "/face-match", "/photo-consult", "/remedies",
     "/academy", "/analytics", "/notifications", "/community",
   ];
 

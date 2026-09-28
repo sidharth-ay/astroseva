@@ -20,12 +20,9 @@ import {
   Activity,
   Eye,
   Flower2,
-  Moon,
   Sun,
-  Globe,
   Zap,
   AlertTriangle,
-  Mic,
   Camera,
 } from "lucide-react";
 import {
@@ -70,9 +67,7 @@ const categories = [
     title: "Astrology Systems",
     services: [
       { title: "Lal Kitab", description: "Lal Kitab chart with planet-house remedies and practical solutions.", href: "/lalkitab", icon: BookOpen, color: "#C8956D" },
-      { title: "KP Astrology", description: "Krishnamurti Paddhati chart with sub-lords and nakshatra analysis.", href: "/kp", icon: Globe, color: "#87CEEB" },
       { title: "Varshphal", description: "Annual horoscope with monthly predictions and auspicious periods.", href: "/varshphal", icon: Calendar, color: "#C8956D" },
-      { title: "Chinese Astrology", description: "Chinese zodiac animal, personality traits, and compatibility.", href: "/chinese-astrology", icon: Globe, color: "#E85D5D" },
     ],
   },
   {
@@ -96,9 +91,7 @@ const categories = [
     title: "Samudra Sastra",
     services: [
       { title: "Face & Body Reading", description: "Samudra Sastra interpretations for face, eyes, nose, hands, and gait.", href: "/samudra", icon: Eye, color: "#E8B88A" },
-      { title: "Voice Astrology", description: "Vocal traits from Mercury and the houses of speech and communication.", href: "/voice", icon: Mic, color: "#87CEEB" },
       { title: "Mole Tracker", description: "Record mole positions on a body map with a change diary.", href: "/moles", icon: Activity, color: "#DDA0DD" },
-      { title: "Age Palmistry", description: "See which palm lines dominate each stage of life with an age slider.", href: "/age-palm", icon: Sun, color: "#E8B88A" },
       { title: "Feature Compatibility", description: "Compare facial features for harmony — no birth details needed.", href: "/face-match", icon: Heart, color: "#E8A0BF" },
       { title: "Photo Consultation", description: "Submit palm or face photos for expert review within 24–48 hours.", href: "/photo-consult", icon: Camera, color: "#C8956D" },
     ],

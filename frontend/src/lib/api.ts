@@ -302,13 +302,6 @@ export interface HealingRecommendation {
   };
 }
 
-export interface KPResponse {
-  name: string;
-  ascendant: { sign: string; nakshatra: string; nak_lord: string; sub_lord: string; pada: number; degree: number };
-  planets: { planet: string; sign: string; sign_lord: string; nakshatra: string; nak_lord: string; sub_lord: string; pada: number; degree: number; retrograde: boolean }[];
-  ruling_planet: string;
-}
-
 export interface LalKitabResponse {
   name: string;
   birth_date: string;
@@ -639,12 +632,6 @@ export const api = {
 
   getHealingRecommendation: (data: BirthData) =>
     fetchAPI<HealingRecommendation>("/api/v1/healing/recommend", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  getKpChart: (data: BirthData) =>
-    fetchAPI<KPResponse>("/api/v1/kp/chart", {
       method: "POST",
       body: JSON.stringify(data),
     }),

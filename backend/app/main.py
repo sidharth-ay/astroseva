@@ -19,7 +19,7 @@ from slowapi.errors import RateLimitExceeded
 from .core.rate_limit import limiter
 from .services.auth_service import get_current_user
 
-from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities, transit, gemstones, varshphal, baby_names, festivals, lalkitab, kp, reports, celebrity, mantra, healing
+from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities, transit, gemstones, varshphal, baby_names, festivals, lalkitab, reports, celebrity, mantra, healing
 from .db.database import init_db
 
 # Logging configuration
@@ -128,7 +128,6 @@ app.include_router(varshphal.router, dependencies=require_auth)
 app.include_router(baby_names.router, dependencies=require_auth)
 app.include_router(festivals.router, dependencies=require_auth)
 app.include_router(lalkitab.router, dependencies=require_auth)
-app.include_router(kp.router, dependencies=require_auth)
 app.include_router(reports.router, dependencies=require_auth)
 app.include_router(celebrity.router, dependencies=require_auth)
 app.include_router(mantra.router, dependencies=require_auth)
