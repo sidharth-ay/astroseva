@@ -17,9 +17,9 @@ function LoginForm() {
   const reduced = useReducedMotion();
   const router = useRouter();
   const search = useSearchParams();
-  const rawNext = search.get("next") || "/saved-charts";
+  const rawNext = search.get("next") || "/services";
   // Only allow same-origin relative redirects (open-redirect hygiene).
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/saved-charts";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/services";
 
   useEffect(() => {
     document.title = "Login | AstroSeva";
