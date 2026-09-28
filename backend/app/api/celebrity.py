@@ -573,7 +573,7 @@ async def get_celebrity_detail(celebrity_id: str):
         logger.error(f"Failed to compute chart for {celebrity['name']}: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to compute astrological chart for {celebrity['name']}: {str(e)}",
+            detail=f"Failed to compute astrological chart for {celebrity['name']}. Please try again.",
         )
 
     return _build_celebrity_response(celebrity, chart)

@@ -23,7 +23,7 @@ def _load_cities():
 
 
 @router.get("/api/v1/cities")
-def search_cities(q: str = Query(..., min_length=1, description="City name to search")):
+def search_cities(q: str = Query(..., min_length=1, max_length=100, description="City name to search")):
     cities = _load_cities()
     lower = q.lower()
     matched = [c for c in cities if lower in c["name"].lower()][:10]

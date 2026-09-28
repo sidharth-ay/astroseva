@@ -1,6 +1,7 @@
 """Gemstone recommendation API."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ..core.rate_limit import limiter
 import logging
 
 from ..models.birth_data import BirthData
@@ -21,7 +22,8 @@ GEMSTONE_MAP = {
 }
 
 @router.post("/recommend")
-async def recommend_gemstones(birth_data: BirthData):
+@limiter.limit("60/minute")
+async def recommend_gemstones(request: Request, birth_data: BirthData):
     """Recommend gemstones based on birth chart."""
     try:
         positions = get_planetary_positions(

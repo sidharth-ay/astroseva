@@ -2,12 +2,13 @@
 
 import io
 import re
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ..core.rate_limit import limiter
 from fastapi.responses import StreamingResponse
 from datetime import datetime
 import logging
 
-from ..models.birth_data import BirthData, MatchingData
+from ..models.birth_data import BirthData, MatchingData, LoveMatchData
 from ..models.response import LoveMatchResponse, MatchingResponse
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
@@ -22,7 +23,8 @@ router = APIRouter(prefix="/api/v1/matching", tags=["matching"])
 
 
 @router.post("/analyze", response_model=MatchingResponse)
-async def analyze_marriage_matching(matching_data: MatchingData):
+@limiter.limit("30/minute")
+async def analyze_marriage_matching(request: Request, matching_data: MatchingData):
     """Analyze marriage compatibility between two charts."""
     try:
         # Calculate boy's chart
@@ -128,7 +130,8 @@ async def get_sample_matching():
 
 
 @router.post("/export-pdf")
-async def export_matching_pdf(matching_data: MatchingData):
+@limiter.limit("30/minute")
+async def export_matching_pdf(request: Request, matching_data: MatchingData):
     """Export marriage matching report as PDF, including Manglik cross-check."""
     try:
         result = await analyze_marriage_matching(matching_data)
@@ -207,17 +210,12 @@ def _planet_sign(planets: list, name: str) -> int:
 
 
 @router.post("/love-match", response_model=LoveMatchResponse)
-async def analyze_love_match(payload: dict):
-    """Analyze romantic compatibility between two birth charts.
-
-    Request body: { "partner1": BirthData, "partner2": BirthData }
-    """
+@limiter.limit("30/minute")
+async def analyze_love_match(request: Request, data: LoveMatchData):
+    """Analyze romantic compatibility between two birth charts."""
+    p1 = data.partner1
+    p2 = data.partner2
     try:
-        try:
-            p1 = BirthData(**payload.get("partner1", {}))
-            p2 = BirthData(**payload.get("partner2", {}))
-        except Exception:
-            raise HTTPException(status_code=422, detail="partner1 and partner2 birth details are required")
 
         def _chart(bd: BirthData) -> dict:
             return get_planetary_positions(

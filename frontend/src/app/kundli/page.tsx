@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, Download, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import CitySearch from "@/components/CitySearch";
 import KundliChart from "@/components/KundliChart";
 
-import { api, getToken, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
+import { api, getToken, clearSession, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
@@ -63,12 +64,13 @@ export default function KundliPage() {
   };
 
   const [savedMsg, setSavedMsg] = useState("");
+  const router = useRouter();
   const saveChart = async () => {
     if (!result) return;
     setSavedMsg("");
     try {
       if (!getToken()) {
-        setError("Please log in to save charts.");
+        router.replace("/login?next=/kundli");
         return;
       }
       const res = await api.saveChart({
@@ -83,6 +85,12 @@ export default function KundliPage() {
       });
       setSavedMsg(`Saved (id ${res.chart_id}). View it in Saved Charts.`);
     } catch (e) {
+      const status = (e as { status?: number })?.status;
+      if (status === 401 || status === 403) {
+        clearSession();
+        router.replace("/login?next=/kundli");
+        return;
+      }
       setError(e instanceof Error ? e.message : "Failed to save chart.");
     }
   };

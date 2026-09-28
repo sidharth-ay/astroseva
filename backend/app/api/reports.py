@@ -1,6 +1,7 @@
 """Personalized astrology reports API."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ..core.rate_limit import limiter
 from pydantic import BaseModel
 from typing import Optional
 import logging
@@ -29,10 +30,11 @@ HOUSE_NAMES = {
 }
 
 @router.post("/generate")
-async def generate_report(request: ReportRequest):
+@limiter.limit("30/minute")
+async def generate_report(request: Request, payload: ReportRequest):
     """Generate a personalized astrology report."""
     try:
-        bd = request.birth_data
+        bd = payload.birth_data
         positions = get_planetary_positions(
             year=bd.birth_date.year, month=bd.birth_date.month, day=bd.birth_date.day,
             hour=bd.birth_time.hour, minute=bd.birth_time.minute,
@@ -61,7 +63,7 @@ async def generate_report(request: ReportRequest):
             ]),
         }
 
-        if request.report_type == "brihat_kundli":
+        if payload.report_type == "brihat_kundli":
             # Comprehensive Brihat Kundli report — use local fallback for speed
             report_sections = []
             for rtype in ["career", "finance", "health", "marriage", "love", "education"]:
@@ -100,14 +102,14 @@ async def generate_report(request: ReportRequest):
             # Single-type report — cache 24h (same pattern as predictions)
             cache_key = (
                 f"report:{bd.birth_date}:{bd.birth_time}:{bd.latitude}:"
-                f"{bd.longitude}:{request.report_type}"
+                f"{bd.longitude}:{payload.report_type}"
             )
             cached = await cache_service.get(cache_key)
             if cached:
                 return cached
-            result = await generate_prediction(birth_details, request.report_type, "en")
+            result = await generate_prediction(birth_details, payload.report_type, "en")
             response = {
-                "report_type": request.report_type,
+                "report_type": payload.report_type,
                 "birth_data": {"name": bd.name, "date": str(bd.birth_date), "time": str(bd.birth_time), "place": bd.birth_place},
                 "content": result["content"],
                 "ai_model": result["model"],

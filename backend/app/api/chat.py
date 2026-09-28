@@ -1,6 +1,7 @@
 """AI Chat API endpoint for talking with AstroSeva AI."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ..core.rate_limit import limiter
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 import asyncio
@@ -791,15 +792,16 @@ def generate_local_chat_response(message: str, birth_details: dict = None, birth
 # ---------------------------------------------------------------------------
 
 @router.post("/send")
-async def send_chat_message(request: ChatRequest):
+@limiter.limit("30/minute")
+async def send_chat_message(request: Request, payload: ChatRequest):
     """Send a chat message to AstroSeva AI."""
     try:
-        history_data = [msg.model_dump() for msg in (request.history or [])]
+        history_data = [msg.model_dump() for msg in (payload.history or [])]
         response = await generate_chat_response(
-            message=request.message,
+            message=payload.message,
             history=history_data,
-            language=request.language or "en",
-            birth_details=request.birth_details,
+            language=payload.language or "en",
+            birth_details=payload.birth_details,
         )
         return {"response": response, "model": get_model_name()}
     except Exception as e:

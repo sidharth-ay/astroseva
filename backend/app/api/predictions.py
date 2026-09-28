@@ -1,6 +1,7 @@
 """AI Prediction API endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ..core.rate_limit import limiter
 import logging
 
 from ..models.birth_data import PredictionRequest, BirthData
@@ -18,10 +19,11 @@ router = APIRouter(prefix="/api/v1/predictions", tags=["predictions"])
 
 
 @router.post("/generate", response_model=PredictionResponse)
-async def generate_ai_prediction(request: PredictionRequest):
+@limiter.limit("30/minute")
+async def generate_ai_prediction(request: Request, payload: PredictionRequest):
     """Generate AI prediction using Google Gemini."""
     # Check cache
-    cache_key = f"prediction:{request.birth_data.birth_date}:{request.birth_data.birth_time}:{request.birth_data.latitude}:{request.prediction_type}:{request.language}"
+    cache_key = f"prediction:{payload.birth_data.birth_date}:{payload.birth_data.birth_time}:{payload.birth_data.latitude}:{payload.prediction_type}:{payload.language}"
     cached = await cache_service.get(cache_key)
     if cached:
         return PredictionResponse(**cached)
@@ -29,12 +31,12 @@ async def generate_ai_prediction(request: PredictionRequest):
     try:
         # Calculate birth chart details
         positions = get_planetary_positions(
-            year=request.birth_data.birth_date.year,
-            month=request.birth_data.birth_date.month,
-            day=request.birth_data.birth_date.day,
-            hour=request.birth_data.birth_time.hour,
-            minute=request.birth_data.birth_time.minute,
-            timezone_offset=request.birth_data.timezone_offset,
+            year=payload.birth_data.birth_date.year,
+            month=payload.birth_data.birth_date.month,
+            day=payload.birth_data.birth_date.day,
+            hour=payload.birth_data.birth_time.hour,
+            minute=payload.birth_data.birth_time.minute,
+            timezone_offset=payload.birth_data.timezone_offset,
         )
 
         # Get ascendant and moon signs
@@ -63,10 +65,10 @@ async def generate_ai_prediction(request: PredictionRequest):
 
         # Prepare birth details for AI
         birth_details = {
-            "name": request.birth_data.name,
-            "birth_date": str(request.birth_data.birth_date),
-            "birth_time": str(request.birth_data.birth_time),
-            "birth_place": request.birth_data.birth_place,
+            "name": payload.birth_data.name,
+            "birth_date": str(payload.birth_data.birth_date),
+            "birth_time": str(payload.birth_data.birth_time),
+            "birth_place": payload.birth_data.birth_place,
             "ascendant": RASHI_NAMES[asc_sign]["en"],
             "moon_sign": RASHI_NAMES[moon_sign]["en"] if moon_sign is not None else "Unknown",
             "sun_sign": RASHI_NAMES[sun_sign]["en"] if sun_sign is not None else "Unknown",
@@ -85,16 +87,16 @@ async def generate_ai_prediction(request: PredictionRequest):
         # Generate prediction
         result = await generate_prediction(
             birth_details=birth_details,
-            prediction_type=request.prediction_type,
-            language=request.language,
+            prediction_type=payload.prediction_type,
+            language=payload.language,
         )
 
         response = PredictionResponse(
-            prediction_type=request.prediction_type,
+            prediction_type=payload.prediction_type,
             content=result["content"],
             ai_model=result["model"],
             tokens_used=result.get("tokens_used"),
-            language=request.language,
+            language=payload.language,
         )
 
         # Cache for 24 hours

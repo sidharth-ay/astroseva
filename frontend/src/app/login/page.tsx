@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { Suspense } from "react";
-import { api, setSession, getToken } from "@/lib/api";
+import { api, setSession, getToken, clearSession } from "@/lib/api";
 import { useReducedMotion, slideUp } from "@/lib/motion";
 
 function LoginForm() {
@@ -23,7 +23,13 @@ function LoginForm() {
 
   useEffect(() => {
     document.title = "Login | AstroSeva";
-    if (getToken()) router.replace(next);
+    // Validate any stored token server-side instead of trusting it.
+    if (getToken()) {
+      api.getMe().then(
+        () => router.replace(next),
+        () => clearSession()
+      );
+    }
   }, [router, next]);
 
   const submit = async () => {
@@ -42,11 +48,16 @@ function LoginForm() {
     }
     setLoading(true);
     try {
-      const res =
-        mode === "login"
-          ? await api.login(email, password)
-          : await api.register(email, name.trim(), password);
-      setSession(res.token, res.user);
+      if (mode === "login") {
+        const res = await api.login(email, password);
+        setSession(res.token, res.user);
+      } else {
+        // Register returns a generic message (anti-enumeration);
+        // log in immediately afterwards to establish the session.
+        await api.register(email, name.trim(), password);
+        const res = await api.login(email, password);
+        setSession(res.token, res.user);
+      }
       router.replace(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Authentication failed.");

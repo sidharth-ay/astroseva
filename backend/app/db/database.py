@@ -37,3 +37,17 @@ def get_db():
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    _ensure_user_token_version()
+
+
+def _ensure_user_token_version():
+    """Lightweight migration: add users.token_version on pre-existing DBs."""
+    try:
+        with engine.connect() as conn:
+            cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
+            if "token_version" not in cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0"))
+                conn.commit()
+    except Exception:
+        # Non-SQLite backends or fresh DBs: create_all already handles schema.
+        pass

@@ -1,6 +1,7 @@
 """Kundli (Birth Chart) API endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from ..core.rate_limit import limiter
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timezone
 from typing import Optional
@@ -121,7 +122,8 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
 
 
 @router.post("/generate", response_model=KundliResponse)
-async def generate_kundli(birth_data: BirthData, ayanamsa_type: str = Query("lahiri", alias="ayanamsa_type")):
+@limiter.limit("30/minute")
+async def generate_kundli(request: Request, birth_data: BirthData, ayanamsa_type: str = Query("lahiri", alias="ayanamsa_type")):
     """Generate a Vedic birth chart (Kundli)."""
     # Validate ayanamsa_type
     valid_ayanamsas = {"lahiri", "kp", "b_v_raman", "surya_siddhanta"}
@@ -194,7 +196,8 @@ async def get_sample_kundli():
 
 
 @router.post("/export-pdf")
-async def export_kundli_pdf(birth_data: BirthData):
+@limiter.limit("30/minute")
+async def export_kundli_pdf(request: Request, birth_data: BirthData):
     """Export Kundli as PDF. Uses the same calculation path as generate."""
     try:
         data = _generate_kundli_data(birth_data)

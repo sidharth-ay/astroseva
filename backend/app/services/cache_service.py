@@ -5,12 +5,24 @@ import json
 import sqlite3
 import time
 import asyncio
+import hashlib
 import logging
 import threading
 from typing import Optional, Any
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_key(key: str) -> str:
+    """Hash the variable part of a cache key so PII (names, birth data)
+    never lands in Redis/SQLite keyspace. The `prefix:` is preserved so
+    pattern clears like `horoscope:*` keep working."""
+    if ":" in key:
+        prefix, rest = key.split(":", 1)
+        digest = hashlib.sha256(rest.encode("utf-8")).hexdigest()[:32]
+        return f"{prefix}:{digest}"
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:32]
 
 try:
     import redis
@@ -98,6 +110,7 @@ class CacheService:
             self.fallback = SQLiteCache()
 
     async def get(self, key: str) -> Optional[Any]:
+        key = _safe_key(key)
         if self.client:
             try:
                 value = await asyncio.to_thread(self.client.get, key)
@@ -116,6 +129,7 @@ class CacheService:
         return None
 
     async def set(self, key: str, value: Any, expiry: int = 3600) -> bool:
+        key = _safe_key(key)
         if self.client:
             try:
                 await asyncio.to_thread(
@@ -135,6 +149,7 @@ class CacheService:
         return False
 
     async def delete(self, key: str) -> bool:
+        key = _safe_key(key)
         if self.client:
             try:
                 await asyncio.to_thread(self.client.delete, key)

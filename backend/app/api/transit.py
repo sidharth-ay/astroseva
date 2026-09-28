@@ -1,6 +1,7 @@
 """Transit (Gochar) API — current planetary positions."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from ..core.rate_limit import limiter
 from datetime import date
 import logging
 
@@ -16,7 +17,8 @@ PLANET_SIGNS = {
 }
 
 @router.get("/today")
-async def get_today_transit():
+@limiter.limit("60/minute")
+async def get_today_transit(request: Request):
     """Get current planetary transits for today."""
     today = date.today()
     cache_key = f"transit:{today.isoformat()}"

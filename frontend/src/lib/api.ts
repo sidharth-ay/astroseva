@@ -521,7 +521,7 @@ export const api = {
     }),
 
   register: (email: string, name: string, password: string) =>
-    fetchAPI<{ message: string; token: string; user: AuthUser }>("/api/v1/auth/register", {
+    fetchAPI<{ message: string }>("/api/v1/auth/register", {
       method: "POST",
       body: JSON.stringify({ email, name, password }),
     }),
@@ -530,6 +530,15 @@ export const api = {
     fetchAPI<{ message: string; token: string; user: AuthUser }>("/api/v1/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
+    }),
+
+  logout: () =>
+    fetchAuth<{ message: string }>("/api/v1/auth/logout", { method: "POST" }),
+
+  changePassword: (current_password: string, new_password: string) =>
+    fetchAuth<{ message: string }>("/api/v1/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password, new_password }),
     }),
 
   getMe: () => fetchAuth<{ id: number; email: string; name: string; created_at: string }>("/api/v1/auth/me"),

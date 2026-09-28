@@ -1,6 +1,7 @@
 """Numerology API endpoints."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ..core.rate_limit import limiter
 import logging
 
 from ..models.birth_data import NumerologyRequest
@@ -13,11 +14,12 @@ router = APIRouter(prefix="/api/v1/numerology", tags=["numerology"])
 
 
 @router.post("/analyze", response_model=NumerologyResponse)
-async def analyze_numerology(request: NumerologyRequest):
+@limiter.limit("60/minute")
+async def analyze_numerology(request: Request, payload: NumerologyRequest):
     """Perform numerology analysis based on name and birth date."""
     try:
-        birth_date_str = request.birth_date.strftime("%d-%m-%Y")
-        result = get_numerology_analysis(request.name, birth_date_str)
+        birth_date_str = payload.birth_date.strftime("%d-%m-%Y")
+        result = get_numerology_analysis(payload.name, birth_date_str)
 
         return NumerologyResponse(
             life_path=result["life_path"],

@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import ScrollProgressBar from "@/components/ScrollProgressBar";
 import AgeGate from "@/components/AgeGate";
 import VisitTracker from "@/components/VisitTracker";
+import AuthGate from "@/components/AuthGate";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -60,7 +61,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <Navbar />
         <main id="main-content" className="flex-1 relative z-10">
-          <PageTransition>{children}</PageTransition>
+          <PageTransition>
+            <AuthGate>{children}</AuthGate>
+          </PageTransition>
         </main>
         <Footer />
       </body>

@@ -10,13 +10,14 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from .core.rate_limit import limiter
+from .services.auth_service import get_current_user
 
 from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities, transit, gemstones, varshphal, baby_names, festivals, lalkitab, kp, reports, celebrity, mantra, healing
 from .db.database import init_db
@@ -87,8 +88,18 @@ app.add_middleware(
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Minimal security headers for API responses."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 # Include routers
@@ -168,8 +179,13 @@ async def health_check():
 
 
 @app.post("/api/v1/admin/clear-cache")
-async def clear_cache(pattern: str = "*"):
-    """Clear cache entries matching a pattern."""
+@limiter.limit("10/minute")
+async def clear_cache(request: Request, pattern: str = "*", user=Depends(get_current_user)):
+    """Clear cache entries matching a pattern (authenticated users only)."""
     from .services.cache_service import cache_service
+    # Restrict to safe namespaces to prevent full-wipe abuse.
+    allowed_prefixes = ("horoscope:", "kundli:", "panchang:", "prediction:", "report:", "doshas:", "remedies:", "transit:")
+    if pattern != "*" and not pattern.startswith(allowed_prefixes):
+        return JSONResponse(status_code=400, content={"error": "Pattern not allowed"})
     deleted = await cache_service.clear_pattern(pattern)
     return {"cleared": deleted, "pattern": pattern}

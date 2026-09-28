@@ -4,7 +4,8 @@ import asyncio
 import logging
 import random
 from datetime import date, datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ..core.rate_limit import limiter
 
 from ..models.response import HoroscopeResponse
 from ..services.ai_service import generate_horoscope, generate_fallback_horoscope
@@ -336,7 +337,8 @@ def _generate_love_fallback(sign: str) -> dict:
 # ---------------------------------------------------------------------------
 
 @router.get("/daily/{sign}", response_model=HoroscopeResponse)
-async def get_daily_horoscope(sign: str, language: str = "en"):
+@limiter.limit("60/minute")
+async def get_daily_horoscope(request: Request, sign: str, language: str = "en"):
     """Daily horoscope — instant from cache/local, AI refreshes in background."""
     sign = sign.lower()
     if sign not in ZODIAC_SIGNS:
@@ -368,7 +370,8 @@ async def get_daily_horoscope(sign: str, language: str = "en"):
 
 
 @router.get("/daily")
-async def get_all_daily_horoscopes(language: str = "en"):
+@limiter.limit("60/minute")
+async def get_all_daily_horoscopes(request: Request, language: str = "en"):
     """All 12 signs in parallel."""
     cache_key = f"horoscope:all:{date.today().isoformat()}:{language}"
     cached = await cache_service.get(cache_key)
@@ -473,7 +476,8 @@ def _build_period_response(sign: str, period: str, data: dict) -> HoroscopeRespo
 
 
 @router.get("/weekly/{sign}", response_model=HoroscopeResponse)
-async def get_weekly_horoscope(sign: str, language: str = "en"):
+@limiter.limit("60/minute")
+async def get_weekly_horoscope(request: Request, sign: str, language: str = "en"):
     """Weekly horoscope — cached or local fallback."""
     sign = sign.lower()
     if sign not in ZODIAC_SIGNS:
@@ -494,7 +498,8 @@ async def get_weekly_horoscope(sign: str, language: str = "en"):
 
 
 @router.get("/monthly/{sign}", response_model=HoroscopeResponse)
-async def get_monthly_horoscope(sign: str, language: str = "en"):
+@limiter.limit("60/minute")
+async def get_monthly_horoscope(request: Request, sign: str, language: str = "en"):
     """Monthly horoscope — cached or local fallback."""
     sign = sign.lower()
     if sign not in ZODIAC_SIGNS:
@@ -515,7 +520,8 @@ async def get_monthly_horoscope(sign: str, language: str = "en"):
 
 
 @router.get("/yearly/{sign}", response_model=HoroscopeResponse)
-async def get_yearly_horoscope(sign: str, language: str = "en"):
+@limiter.limit("60/minute")
+async def get_yearly_horoscope(request: Request, sign: str, language: str = "en"):
     """Yearly horoscope — cached or local fallback."""
     sign = sign.lower()
     if sign not in ZODIAC_SIGNS:
@@ -536,7 +542,8 @@ async def get_yearly_horoscope(sign: str, language: str = "en"):
 
 
 @router.get("/love/{sign}", response_model=HoroscopeResponse)
-async def get_love_horoscope(sign: str, language: str = "en"):
+@limiter.limit("60/minute")
+async def get_love_horoscope(request: Request, sign: str, language: str = "en"):
     """Weekly love horoscope — cached or local fallback."""
     sign = sign.lower()
     if sign not in ZODIAC_SIGNS:

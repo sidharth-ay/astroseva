@@ -1,6 +1,7 @@
 """Varshphal (Annual Horoscope) API."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from ..core.rate_limit import limiter
 from pydantic import BaseModel
 from typing import Optional
 import logging
@@ -18,7 +19,8 @@ MONTHS = ["January", "February", "March", "April", "May", "June",
           "July", "August", "September", "October", "November", "December"]
 
 @router.post("/calculate")
-async def calculate_varshphal(data: VarshphalRequest):
+@limiter.limit("60/minute")
+async def calculate_varshphal(request: Request, data: VarshphalRequest):
     """Calculate annual horoscope (Varshphal)."""
     try:
         positions = get_planetary_positions(

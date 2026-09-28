@@ -28,6 +28,12 @@ class MatchingData(BaseModel):
     girl: BirthData = Field(..., description="Girl's birth details")
 
 
+class LoveMatchData(BaseModel):
+    """Data for love compatibility analysis."""
+    partner1: BirthData = Field(..., description="First partner's birth details")
+    partner2: BirthData = Field(..., description="Second partner's birth details")
+
+
 class PredictionRequest(BaseModel):
     """Request for AI prediction generation."""
     birth_data: BirthData = Field(..., description="Birth details")

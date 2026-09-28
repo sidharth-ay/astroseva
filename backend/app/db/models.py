@@ -13,6 +13,7 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=False)
     hashed_password = Column(String(255), nullable=False)
+    token_version = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

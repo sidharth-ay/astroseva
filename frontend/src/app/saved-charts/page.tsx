@@ -49,11 +49,13 @@ export default function SavedChartsPage() {
     } catch (e) {
       const status = (e as { status?: number })?.status;
       if (status === 401 || status === 403) {
+        clearSession();
         router.replace("/login?next=/saved-charts");
         return;
       }
       const msg = e instanceof Error ? e.message : "Failed to load charts.";
       if (msg.toLowerCase().includes("log in")) {
+        clearSession();
         router.replace("/login?next=/saved-charts");
         return;
       }
@@ -87,9 +89,38 @@ export default function SavedChartsPage() {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch { /* session cleared locally regardless */ }
     clearSession();
     router.replace("/login?next=/saved-charts");
+  };
+
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNew, setPwNew] = useState("");
+  const [pwMsg, setPwMsg] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
+
+  const changePw = async () => {
+    setPwMsg("");
+    if (pwNew.length < 8) {
+      setPwMsg("New password must be at least 8 characters.");
+      return;
+    }
+    setPwLoading(true);
+    try {
+      const res = await api.changePassword(pwCurrent, pwNew);
+      setPwMsg(res.message + " You have been logged out everywhere.");
+      setPwCurrent("");
+      setPwNew("");
+      clearSession();
+      setTimeout(() => router.replace("/login?next=/saved-charts"), 1500);
+    } catch (e) {
+      setPwMsg(e instanceof Error ? e.message : "Password change failed.");
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   return (
@@ -177,6 +208,37 @@ export default function SavedChartsPage() {
           </button>
         </div>
       )}
+
+      <div className="glass-card p-5 mt-6">
+        <h3 className="text-base font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+          Change Password
+        </h3>
+        <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
+          Changing your password logs you out on all devices.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <input
+            type="password"
+            className="input-field"
+            placeholder="Current password"
+            value={pwCurrent}
+            onChange={(e) => setPwCurrent(e.target.value)}
+          />
+          <input
+            type="password"
+            className="input-field"
+            placeholder="New password (upper + lower + number, 8+ chars)"
+            value={pwNew}
+            onChange={(e) => setPwNew(e.target.value)}
+          />
+        </div>
+        {pwMsg && (
+          <p className="text-xs mb-3" style={{ color: "var(--champagne)" }}>{pwMsg}</p>
+        )}
+        <button onClick={changePw} disabled={pwLoading} className="btn-ghost text-xs">
+          {pwLoading ? "Changing…" : "Change Password"}
+        </button>
+      </div>
     </div>
   );
 }
