@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import KundliChart from "@/components/KundliChart";
 import {
   TabBar, StaggerWrap, ComingSoon, SubHeading, Field, Pill, Box, BoxLabel, Value,
   type KundliTabId,
 } from "@/components/kundli/KundliTabs";
-import type { KundliResponse, Planet } from "@/lib/api";
+import { api, type KundliResponse, type Planet, type BirthData, type DoshaResponse } from "@/lib/api";
 
 const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
 const NAK_NAMES = ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"];
@@ -957,7 +958,191 @@ function KarmaTab({ result }: { result: KundliResponse }) {
         </div>
       )}
 
-      <ComingSoon what="Manglik, Kaal Sarp & Sade Sati" />
+      <DoshaPanel birthData={{
+        name: result.name, birth_date: result.birth_date, birth_time: result.birth_time,
+        birth_place: result.birth_place, latitude: result.latitude,
+        longitude: result.longitude, timezone_offset: 5.5,
+      }} />
+    </div>
+  );
+}
+
+/* ─── Dosha panel (lazy, via API — engine lives in core/doshas.py) ─── */
+
+function DoshaPanel({ birthData }: { birthData: BirthData }) {
+  const [doshas, setDoshas] = useState<DoshaResponse | null>(null);
+  const [periods, setPeriods] = useState<{ phase: string; start: string; end: string }[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showPeriods, setShowPeriods] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      setDoshas(await api.detectDoshas(birthData));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to check doshas.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPeriods = async () => {
+    setShowPeriods(true);
+    if (periods) return;
+    setError("");
+    try {
+      const res = await api.getSadePeriods(birthData);
+      setPeriods(res.periods || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load Sade Sati periods.");
+    }
+  };
+
+  if (!doshas && !loading && !error) {
+    return (
+      <div className="glass-card p-4 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#C8956D" }}>
+            Doshas
+          </h3>
+          <p className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>
+            Manglik, Kaal Sarp, Sade Sati and Pitru.
+          </p>
+        </div>
+        <button onClick={load} className="btn-ghost text-xs">Check Doshas</button>
+      </div>
+    );
+  }
+
+  if (loading && !doshas) {
+    return <div className="shimmer h-24 w-full rounded-lg" />;
+  }
+
+  if (error && !doshas) {
+    return (
+      <div className="glass-card p-4 flex items-center justify-between gap-3">
+        <p className="text-xs" style={{ color: "var(--danger)" }}>{error}</p>
+        <button onClick={load} className="btn-ghost text-xs">Retry</button>
+      </div>
+    );
+  }
+
+  if (!doshas) return null;
+  const d = doshas;
+
+  return (
+    <div className="space-y-6">
+      <div className="glass-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <SubHeading>Doshas ({d.total_doshas} active)</SubHeading>
+          <Link href="/doshas" className="text-xs font-medium" style={{ color: "#C8956D" }}>
+            Full report &amp; remedies →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {[
+            { label: "Manglik", on: d.manglik.is_manglik, note: d.manglik.severity },
+            { label: "Kaal Sarp", on: d.kaal_sarp.has_dosha, note: d.kaal_sarp.kaal_sarp_type || "" },
+            { label: "Sade Sati", on: d.sade_sati.is_active, note: (d.sade_sati.phase || "").split(" ")[0] },
+            { label: "Pitru", on: d.pitru_dosha.has_dosha, note: `${d.pitru_dosha.conditions.length} condition${d.pitru_dosha.conditions.length === 1 ? "" : "s"}` },
+          ].map((x) => (
+            <Box key={x.label}>
+              <BoxLabel>{x.label}</BoxLabel>
+              <div className="text-sm font-medium" style={{ color: x.on ? "var(--danger)" : "var(--success)" }}>
+                {x.on ? (x.note || "Present") : "Clear"}
+              </div>
+            </Box>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass-card p-4">
+        <SubHeading>Manglik Dosha</SubHeading>
+        <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
+          {d.manglik.description}
+        </p>
+        {d.manglik.cancellation_reason && (
+          <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)" }}>
+            {d.manglik.cancellation_reason}
+          </p>
+        )}
+        {(d.manglik.positions || []).length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {d.manglik.positions!.map((p, i) => (
+              <Pill key={i} small color={p.severity === "High" ? "var(--danger)" : "var(--text-secondary)"}>
+                H{p.house} {p.chart} · {p.severity}
+              </Pill>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="glass-card p-4">
+        <SubHeading>Kaal Sarp Dosha</SubHeading>
+        <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
+          {d.kaal_sarp.description}
+        </p>
+        {d.kaal_sarp.has_dosha && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Field label="Type" value={d.kaal_sarp.kaal_sarp_type || "—"} />
+            <Field label="Rahu house" value={d.kaal_sarp.rahu_house ?? "—"} />
+            <Field label="Ketu house" value={d.kaal_sarp.ketu_house ?? "—"} />
+          </div>
+        )}
+      </div>
+
+      <div className="glass-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <SubHeading>Sade Sati</SubHeading>
+          {!showPeriods && (
+            <button onClick={loadPeriods} className="btn-ghost text-xs">Load Periods</button>
+          )}
+        </div>
+        <p className="text-xs mb-2" style={{ color: "var(--text-secondary)" }}>
+          {d.sade_sati.description}
+        </p>
+        {d.sade_sati.transit_based && (
+          <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+            Based on transiting Saturn as of today.
+          </p>
+        )}
+        {showPeriods && (
+          <div className="mt-3">
+            {periods === null ? (
+              <div className="shimmer h-20 w-full rounded-lg" />
+            ) : periods.length === 0 ? (
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>No Sade Sati windows found.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                {periods.map((p, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs px-3 py-2 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
+                    <span className="font-medium" style={{ color: p.phase === "Peak" ? "var(--danger)" : "var(--champagne)" }}>{p.phase}</span>
+                    <span style={{ color: "var(--text-secondary)" }}>{p.start} → {p.end}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="glass-card p-4">
+        <SubHeading>Pitru Dosha</SubHeading>
+        <p className="text-xs mb-2" style={{ color: "var(--text-secondary)" }}>
+          {d.pitru_dosha.description}
+        </p>
+        {d.pitru_dosha.conditions.length > 0 && (
+          <ul className="space-y-1">
+            {d.pitru_dosha.conditions.map((c, i) => (
+              <li key={i} className="text-xs flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                <span style={{ color: "var(--danger)" }}>·</span>{c}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

@@ -352,7 +352,17 @@ export interface DoshaResponse {
     cancellation_reason?: string | null;
     positions?: { house?: number; chart?: string; severity?: string; description?: string }[];
   };
-  sade_sati: { is_active: boolean; description?: string; phase?: string | null; severity?: string };
+  kaal_sarp: {
+    has_dosha: boolean;
+    rahu_house?: number | null;
+    ketu_house?: number | null;
+    planets_between?: string[];
+    planets_outside?: string[];
+    kaal_sarp_type?: string | null;
+    severity?: string;
+    description?: string;
+  };
+  sade_sati: { is_active: boolean; description?: string; phase?: string | null; severity?: string; transit_based?: boolean; as_of_date?: string };
   pitru_dosha: { has_dosha: boolean; conditions: string[]; description: string };
   total_doshas: number;
 }
@@ -525,6 +535,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
       signal,
+    }),
+
+  getSadePeriods: (data: BirthData) =>
+    fetchAPI<{ moon_sign: number; periods: { phase: string; start: string; end: string; saturn_sign: number; saturn_sign_name?: string }[] }>("/api/v1/doshas/sade-sati-periods", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 
   chatSend: (message: string, history: { role: string; content: string }[], language: string = "en", birthDetails?: Record<string, any>) =>

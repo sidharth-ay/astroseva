@@ -23,7 +23,9 @@ export const KUNDLI_TABS: TabDef[] = [
   { id: "karma", label: "Karma & Dosha" },
 ];
 
-/** Shown where a section is not calculated yet, so no tab silently lies. */
+/** Neutral empty state for a section with no data. Deliberately says nothing
+ *  about the feature being "in progress" — every tab either renders real data
+ *  or shows this plain message. */
 export function ComingSoon({ what }: { what: string }) {
   return (
     <div
@@ -35,7 +37,7 @@ export function ComingSoon({ what }: { what: string }) {
         {what}
       </p>
       <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-        Not calculated yet. This section is being built to match AstroSage.
+        No data for this chart.
       </p>
     </div>
   );

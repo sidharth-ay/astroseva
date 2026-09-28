@@ -4,12 +4,13 @@ from datetime import date
 from fastapi import APIRouter, HTTPException, Request, Query
 from ..core.rate_limit import limiter
 import logging
+import asyncio
 
 from ..models.birth_data import BirthData
 from ..models.response import DoshaResponse
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
-from ..core.doshas import detect_all_doshas, detect_manglik, detect_sade_sati, detect_pitru_dosha, get_transit_saturn_sign
+from ..core.doshas import detect_all_doshas, detect_manglik, detect_sade_sati, detect_pitru_dosha, get_transit_saturn_sign, get_sade_sati_periods
 from ..services.ai_service import generate_remedies
 from ..services.cache_service import cache_service
 
@@ -161,6 +162,36 @@ async def get_remedies(
     except Exception as e:
         logger.error(f"Remedies error: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Error generating remedies. Please try again."
+              status_code=500,
+              detail="Error generating remedies. Please try again."
+          )
+
+
+@router.post("/sade-sati-periods")
+@limiter.limit("20/minute")
+async def get_sade_periods(request: Request, birth_data: BirthData):
+    """Past/present/future Sade Sati windows for the natal Moon sign."""
+    _validate_location(birth_data)
+    cache_key = f"sade-periods:{birth_data.birth_date}:{birth_data.birth_time}"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        return cached
+    try:
+        positions = get_planetary_positions(
+            year=birth_data.birth_date.year, month=birth_data.birth_date.month,
+            day=birth_data.birth_date.day, hour=birth_data.birth_time.hour,
+            minute=birth_data.birth_time.minute,
+            timezone_offset=birth_data.timezone_offset,
+            latitude=birth_data.latitude, longitude=birth_data.longitude,
         )
+        moon_sign = next(
+            (p["sign"] for p in positions["planets"] if p.get("planet") == "Moon"), 0
+        )
+        periods = await asyncio.to_thread(
+            get_sade_sati_periods, moon_sign, 1950, 2061)
+        response = {"moon_sign": moon_sign, "periods": periods}
+        await cache_service.set(cache_key, response, expiry=86400)
+        return response
+    except Exception as e:
+        logger.error(f"Sade periods error: {e}")
+        raise HTTPException(status_code=500, detail="Error calculating Sade Sati periods.")

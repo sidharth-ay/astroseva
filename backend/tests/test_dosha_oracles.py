@@ -225,14 +225,65 @@ def test_pitru_clean_chart():
     assert r["has_dosha"] is False
 
 
-# --- Kaal Sarp removal + aggregate ---
+# --- Kaal Sarp oracles (longitude axis + degree rule + 12 types) ---
 
-def test_no_kaal_sarp_key_and_total_max_3():
+def _hemmed_chart():
+    # All 7 classical planets in the (Rahu 350° -> Ketu 170°) arc.
+    planets = [
+        {"planet": n, "longitude": float(d), "house": 2}
+        for n, d in [("Sun", 10), ("Moon", 40), ("Mars", 70), ("Mercury", 100),
+                     ("Jupiter", 130), ("Venus", 150), ("Saturn", 170)]
+    ]
+    planets += [
+        {"planet": "Rahu", "longitude": 350.0, "house": 12},
+        {"planet": "Ketu", "longitude": 170.0, "house": 6},
+    ]
+    return planets
+
+
+def test_kaal_sarp_present_with_type():
+    from app.core.doshas import detect_kaal_sarp
+    r = detect_kaal_sarp(_hemmed_chart())
+    assert r["has_dosha"] is True
+    assert r["kaal_sarp_type"] == "Sheshnaag"  # Rahu house 12
+    assert r["severity"] == "High"
+    assert r["planets_outside"] == []
+
+
+def test_kaal_sarp_broken_axis():
+    from app.core.doshas import detect_kaal_sarp
+    planets = _hemmed_chart()
+    planets[0]["longitude"] = 200.0  # Sun escapes the arc
+    r = detect_kaal_sarp(planets)
+    assert r["has_dosha"] is False
+    assert r["kaal_sarp_type"] is None
+    assert r["planets_outside"] == ["Sun"]
+
+
+def test_kaal_sarp_degree_rule():
+    # Same-sign degree: Sun 10° exceeds Rahu 5° in Aries -> breaks axis.
+    from app.core.doshas import detect_kaal_sarp
+    planets = _hemmed_chart()
+    for p in planets:
+        if p["planet"] == "Rahu":
+            p["longitude"] = 5.0
+    r = detect_kaal_sarp(planets)
+    assert r["has_dosha"] is False
+    assert "Sun" in r["planets_outside"]
+
+
+def test_kaal_sarp_outer_planets_ignored():
+    from app.core.doshas import detect_kaal_sarp
+    planets = _hemmed_chart()
+    planets.append({"planet": "Uranus", "longitude": 250.0, "house": 9})
+    r = detect_kaal_sarp(planets)
+    assert r["has_dosha"] is True
+
+
+def test_aggregate_has_kaal_sarp_total_max_4():
     planets = [{"planet": "Mars", "sign": 0, "house": 5}]
     r = detect_all_doshas(planets, 8, 10, transit_saturn_sign=7)
-    assert "kaal_sarp" not in r
-    assert set(r.keys()) == {"manglik", "sade_sati", "pitru_dosha", "total_doshas"}
-    assert 0 <= r["total_doshas"] <= 3
-    # Pydantic model accepts the shape (no kaal_sarp field required)
+    assert set(r.keys()) == {"manglik", "kaal_sarp", "sade_sati", "pitru_dosha", "total_doshas"}
+    assert 0 <= r["total_doshas"] <= 4
     m = DoshaResponse(**r)
     assert m.total_doshas == r["total_doshas"]
