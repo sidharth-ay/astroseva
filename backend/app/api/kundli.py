@@ -143,6 +143,9 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
             calculate_nakshatra, calculate_sunrise_sunset,
         )
         from ..core.planets import SIGN_LORDS
+        from ..core.grahayukti import (
+            build_aspects, build_consideration, build_ghatak, build_somatilak,
+        )
 
         sun_lon = next(p["longitude"] for p in positions["planets"] if p["planet"] == "Sun")
         moon = next(p for p in positions["planets"] if p["planet"] == "Moon")
@@ -183,6 +186,10 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
                         for p in positions["planets"]
                         if p["planet"] in SEVEN_PLANETS},
             "friendships": FRIENDSHIPS,
+            "aspects": build_aspects(positions["planets"]),
+            "consideration": build_consideration(positions["planets"]),
+            "ghatak": build_ghatak(positions["ascendant"]),
+            "somatilak": build_somatilak(asc_sign),
         }
     except Exception as e:
         logger.warning(f"Kundli extras error: {e}")

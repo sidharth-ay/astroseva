@@ -107,6 +107,20 @@ export interface DashaInfo {
     chara_karakas?: { role: string; planet: string }[];
     avastha?: Record<string, string>;
     friendships?: Record<string, { friends: string[]; enemies: string[]; neutral: string[] }>;
+    aspects?: {
+      by_planet: Record<string, { planet: string; aspect: string; aspect_index: number; nature: string; sign: number }[]>;
+      on_sign: Record<string, string[]>;
+    };
+    consideration?: {
+      planet: string; pakshi: string; sign: number | null; sign_degree: number | null;
+      dignity: string; combust: boolean; combust_note: string | null; pakshi_note?: string;
+    }[];
+    ghatak?: {
+      ascendant: number; asc_sign: number; benefic_count: number;
+      ascendant_ghatak: { index: number; name: string; lord: string; longitude: number; sign: number; deg_in_sign: number; benefic_for_ascendant: boolean; applied: boolean }[];
+      all: { index: number; name: string; lord: string; longitude: number; sign: number; deg_in_sign: number; benefic_for_ascendant: boolean; applied: boolean }[];
+    };
+    somatilak?: { asc_sign: number; somatilak: string; lord: string; nakshatra: string };
   } | null;
 }
 

@@ -188,7 +188,58 @@ function PlanetsTab({ result }: { result: KundliResponse }) {
         </div>
       </div>
 
-      <ComingSoon what="Planets Consideration (combust, pakshi, rules)" />
+      <ConsiderationTab result={result} />
+    </div>
+  );
+}
+
+/* ─── 2b. Planets Consideration ────────────────────────────── */
+
+function ConsiderationTab({ result }: { result: KundliResponse }) {
+  const cons = result.extras?.consideration ?? [];
+  if (cons.length === 0) return <ComingSoon what="Planets Consideration" />;
+
+  return (
+    <div className="glass-card p-4">
+      <SubHeading count={cons.length}>Planets Consideration</SubHeading>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr style={{ borderBottom: "1px solid var(--border)" }}>
+              {["Graha", "Pakshi", "Sign", "Dignity", "Combust"].map((h) => (
+                <th key={h} className="text-left py-2 px-2 font-medium" style={{ color: "var(--text-tertiary)" }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {cons.map((c) => (
+              <tr key={c.planet} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                <td className="py-2 px-2 font-medium" style={{ color: "var(--text-primary)" }}>{c.planet}</td>
+                <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{c.pakshi}</td>
+                <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>
+                  {c.sign !== null ? SIGN_NAMES[c.sign] : "—"}
+                  {c.sign_degree !== null ? ` ${Math.floor(c.sign_degree)}°` : ""}
+                </td>
+                <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{c.dignity}</td>
+                <td className="py-2 px-2">
+                  {c.combust ? (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-medium"
+                      style={{ background: "rgba(239,83,80,0.1)", color: "var(--danger)" }}>
+                      Combust
+                    </span>
+                  ) : (
+                    <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                      {c.pakshi_note || "—"}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -322,9 +373,89 @@ function NakshatraTab({ result }: { result: KundliResponse }) {
           </p>
         )}
       </div>
-      <ComingSoon what="Vimshopaka bala & full nakshatra-pada profile" />
+      <NakshatraProfileTab result={result} />
     </div>
   );
+}
+
+/* ─── 6b. Vimshopaka Bala ──────────────────────────────────── */
+
+const VIMSHOPAKA = [
+  { name: "Bala", lord: "Sun", scores: [1.5, 1.5, 0.5, 0.5, 2.0, 1.0, 3.5, 1.5, 2.5, 2.0, 1.0, 0.5] },
+  { name: "Kala", lord: "Saturn", scores: [3.0, 1.5, 1.5, 3.0, 3.0, 3.0, 2.5, 0.0, 0.0, 2.0, 1.5, 5.0] },
+  { name: "Cheshta", lord: "Jupiter", scores: [5.0, 1.0, 1.5, 1.0, 1.5, 1.0, 1.0, 2.5, 5.0, 3.0, 1.0, 6.0] },
+  { name: "Aiswarya", lord: "Mercury", scores: [1.0, 6.0, 2.0, 1.5, 2.5, 5.0, 2.0, 4.0, 2.0, 2.0, 4.0, 1.5] },
+  { name: "Maitri", lord: "Mars", scores: [3.5, 1.5, 1.5, 3.0, 3.5, 1.0, 0.5, 1.5, 1.5, 4.0, 4.0, 1.0] },
+  { name: "Dhana", lord: "Venus", scores: [2.0, 6.0, 2.0, 2.0, 2.0, 2.0, 6.0, 2.0, 2.0, 1.5, 5.0, 1.0] },
+];
+
+const VIMSHOPAKA_TOTAL = 20.0
+
+function NakshatraProfileTab({ result }: { result: KundliResponse }) {
+  const asc = result.asc_sign;
+  const dasha = result.dasha_info;
+  const moon = result.planets.find((p) => p.planet === "Moon");
+
+  const scoreFor = (signIdx: number) =>
+    VIMSHOPAKA.reduce((tot, v) => tot + v.scores[signIdx], 0);
+
+  const ascTotal = scoreFor(asc);
+  const moonTotal = moon ? scoreFor(moon.sign) : null;
+
+  const rows = [
+    { label: "Moon", idx: moon?.sign ?? null, total: moonTotal, nak: moonSignNak(moon) },
+    { label: "Ascendant", idx: asc, total: ascTotal, nak: ascSignNak(asc) },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="glass-card p-4">
+        <SubHeading>Vimshopaka Bala</SubHeading>
+        <p className="text-[10px] mb-3" style={{ color: "var(--text-tertiary)" }}>
+          Six-fold strength of the six natural benefics by sign. Total 20 across all six.
+        </p>
+        <div className="space-y-2">
+          {rows.map((r) => (
+            <Box key={r.label}>
+              <BoxLabel>{r.label}</BoxLabel>
+              <Value>
+                {r.idx !== null ? `${SIGN_NAMES[r.idx]} · ${r.total?.toFixed(2)} / ${VIMSHOPAKA_TOTAL}` : "—"}
+              </Value>
+              {r.nak && (
+                <div className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>
+                  {r.nak}
+                </div>
+              )}
+            </Box>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass-card p-4">
+        <SubHeading>Nakshatra Breakdown</SubHeading>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Field label="Birth nakshatra" value={dasha?.birth_nakshatra?.name ?? "—"} />
+          <Field label="Pada" value={dasha?.birth_nakshatra?.pada ?? "—"} />
+          <Field label="Nakshatra lord" value={dasha?.birth_nakshatra?.lord ?? "—"} />
+          <Field label="Moon sign" value={moon?.sign_name ?? "—"} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function moonSignNak(moon: Planet | undefined): string | null {
+  if (!moon) return null;
+  const idx = Math.floor((moon.sign * 30 + moon.sign_degree) / (360 / 27));
+  return `${NAK_NAMES[Math.min(idx, 26)]} · pada ${Math.floor(
+    ((moon.sign * 30 + moon.sign_degree) % (360 / 27)) / (360 / 108)
+  ) + 1}`;
+}
+
+function ascSignNak(ascSign: number): string {
+  const deg = 15;
+  const idx = Math.floor((ascSign * 30 + deg) / (360 / 27));
+  return `${NAK_NAMES[Math.min(idx, 26)]}`;
 }
 
 /* ─── 7. Relationships ─────────────────────────────────────── */
@@ -369,7 +500,111 @@ function RelationshipsTab({ result }: { result: KundliResponse }) {
           </div>
         </div>
       )}
-      <ComingSoon what="Planetary aspects, Navatara & Arudha charts" />
+      <AspectsTab result={result} />
+      <GhatakTab result={result} />
+      <ComingSoon what="Navatara & Arudha charts" />
+    </div>
+  );
+}
+
+/* ─── 7b. Planetary Aspects ────────────────────────────────── */
+
+function AspectsTab({ result }: { result: KundliResponse }) {
+  const aspects = result.extras?.aspects;
+  if (!aspects) return <ComingSoon what="Planetary Aspects" />;
+  const rows = Object.entries(aspects.by_planet);
+  if (rows.length === 0) return <ComingSoon what="Planetary Aspects" />;
+
+  return (
+    <div className="glass-card p-4">
+      <SubHeading>Planetary Aspects</SubHeading>
+      <p className="text-[10px] mb-3" style={{ color: "var(--text-tertiary)" }}>
+        Every graha aspects the 7th from itself; Mars, Jupiter and Saturn add the
+        5th, Jupiter and Saturn the 9th, Saturn the 3rd.
+      </p>
+      <div className="space-y-3">
+        {rows.map(([planet, list]) => (
+          <div key={planet} className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold" style={{ color: "var(--champagne)", minWidth: 62 }}>
+              {planet}
+            </span>
+            {list.map((a) => (
+              <Pill
+                key={`${a.planet}-${a.aspect_index}`}
+                small
+                color={a.nature === "Benefic" ? "var(--success)" : "var(--danger)"}
+              >
+                {a.planet} · {a.aspect}
+              </Pill>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── 7c. Ghatak & Somatilak ───────────────────────────────── */
+
+function GhatakTab({ result }: { result: KundliResponse }) {
+  const g = result.extras?.ghatak;
+  const s = result.extras?.somatilak;
+  if (!g) return null;
+
+  return (
+    <div className="space-y-6">
+      <div className="glass-card p-4">
+        <SubHeading>Ghatak (Malefics) &amp; Favourable Points</SubHeading>
+        {g.ascendant_ghatak.map((x) => (
+          <Box key={x.index}>
+            <BoxLabel>Ghatak {x.index + 1}</BoxLabel>
+            <Value>
+              {x.name} <span style={{ color: "var(--text-secondary)" }}>({x.lord})</span>
+            </Value>
+            <div className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>
+              {SIGN_NAMES[x.sign]} {x.deg_in_sign.toFixed(2)}° —{" "}
+              {x.benefic_for_ascendant ? "favourable" : "malefic"} for this ascendant
+            </div>
+          </Box>
+        ))}
+        <p className="text-[10px] mt-3" style={{ color: "var(--text-tertiary)" }}>
+          Favourable Ghatak points for this chart: {g.benefic_count} of 27.
+        </p>
+      </div>
+
+      {s && (
+        <div className="glass-card p-4">
+          <SubHeading>Somatilak</SubHeading>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Field label="Somatilak" value={s.somatilak} />
+            <Field label="Sign lord" value={s.lord} />
+            <Field label="Nakshatra" value={s.nakshatra} />
+          </div>
+        </div>
+      )}
+
+      <div className="glass-card p-4">
+        <SubHeading count={27}>All 27 Ghatakas</SubHeading>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+          {g.all.map((x) => (
+            <div
+              key={x.index}
+              className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg"
+              style={{
+                background: x.applied ? "rgba(200,149,109,0.1)" : "var(--bg-surface)",
+                border: `1px solid ${x.applied ? "var(--border-active)" : "var(--border-subtle)"}`,
+              }}
+            >
+              <span style={{ color: x.applied ? "var(--champagne)" : "var(--text-secondary)" }}>
+                {x.index + 1}. {x.name}
+              </span>
+              <span style={{ color: x.benefic_for_ascendant ? "var(--success)" : "var(--text-tertiary)" }}>
+                {x.benefic_for_ascendant ? "benefic" : "malefic"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
