@@ -37,9 +37,8 @@ def _fresh_payload():
     }
 
 
-@pytest.fixture
-def client():
-    return TestClient(app)
+# `client` (authenticated TestClient) comes from tests/conftest.py -- the
+# doshas router is gated with Depends(get_current_user).
 
 
 def test_detect_endpoint_returns_all_four_doshas(client):

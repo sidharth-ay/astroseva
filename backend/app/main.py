@@ -10,7 +10,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -103,28 +103,36 @@ async def security_headers(request: Request, call_next):
 
 
 # Include routers
-app.include_router(kundli.router)
-app.include_router(matching.router)
-app.include_router(predictions.router)
-app.include_router(horoscope.router)
-app.include_router(panchang.router)
-app.include_router(numerology.router)
-app.include_router(doshas.router)
+#
+# Every feature router requires a valid JWT. The frontend AuthGate blocks the
+# page shell, but this is the real boundary: without it the APIs were callable
+# anonymously with curl. The auth router is intentionally NOT gated here --
+# /register and /login must stay reachable -- and it already applies
+# get_current_user per-endpoint to /me, /logout and /change-password.
+require_auth = [Depends(get_current_user)]
+
+app.include_router(kundli.router, dependencies=require_auth)
+app.include_router(matching.router, dependencies=require_auth)
+app.include_router(predictions.router, dependencies=require_auth)
+app.include_router(horoscope.router, dependencies=require_auth)
+app.include_router(panchang.router, dependencies=require_auth)
+app.include_router(numerology.router, dependencies=require_auth)
+app.include_router(doshas.router, dependencies=require_auth)
 app.include_router(auth.router)
-app.include_router(charts.router)
-app.include_router(chat.router)
-app.include_router(cities.router)
-app.include_router(transit.router)
-app.include_router(gemstones.router)
-app.include_router(varshphal.router)
-app.include_router(baby_names.router)
-app.include_router(festivals.router)
-app.include_router(lalkitab.router)
-app.include_router(kp.router)
-app.include_router(reports.router)
-app.include_router(celebrity.router)
-app.include_router(mantra.router)
-app.include_router(healing.router)
+app.include_router(charts.router, dependencies=require_auth)
+app.include_router(chat.router, dependencies=require_auth)
+app.include_router(cities.router, dependencies=require_auth)
+app.include_router(transit.router, dependencies=require_auth)
+app.include_router(gemstones.router, dependencies=require_auth)
+app.include_router(varshphal.router, dependencies=require_auth)
+app.include_router(baby_names.router, dependencies=require_auth)
+app.include_router(festivals.router, dependencies=require_auth)
+app.include_router(lalkitab.router, dependencies=require_auth)
+app.include_router(kp.router, dependencies=require_auth)
+app.include_router(reports.router, dependencies=require_auth)
+app.include_router(celebrity.router, dependencies=require_auth)
+app.include_router(mantra.router, dependencies=require_auth)
+app.include_router(healing.router, dependencies=require_auth)
 
 
 @app.get("/")
@@ -178,14 +186,47 @@ async def health_check():
     )
 
 
+# Cache namespaces an admin may clear.
+CACHE_CLEAR_ALLOWED_PREFIXES = (
+    "horoscope:", "kundli:", "panchang:", "prediction:",
+    "report:", "doshas:", "remedies:", "transit:",
+)
+
+
+def _is_admin(user) -> bool:
+    """Admin check via the ADMIN_EMAILS env allowlist.
+
+    Empty/unset means nobody is an admin, so the default deployment exposes
+    no cache-wipe capability at all.
+    """
+    raw = os.getenv("ADMIN_EMAILS", "")
+    allowed = {e.strip().lower() for e in raw.split(",") if e.strip()}
+    if not allowed:
+        return False
+    email = (getattr(user, "email", "") or "").strip().lower()
+    return email in allowed
+
+
 @app.post("/api/v1/admin/clear-cache")
 @limiter.limit("10/minute")
-async def clear_cache(request: Request, pattern: str = "*", user=Depends(get_current_user)):
-    """Clear cache entries matching a pattern (authenticated users only)."""
+async def clear_cache(request: Request, pattern: str, user=Depends(get_current_user)):
+    """Clear cache entries matching a pattern (admin only).
+
+    `pattern` is required: a namespace must be named explicitly, and the
+    full-wipe "*" is never accepted.
+    """
+    if not _is_admin(user):
+        raise HTTPException(
+            status_code=403, detail="Administrator privileges required"
+        )
     from .services.cache_service import cache_service
-    # Restrict to safe namespaces to prevent full-wipe abuse.
-    allowed_prefixes = ("horoscope:", "kundli:", "panchang:", "prediction:", "report:", "doshas:", "remedies:", "transit:")
-    if pattern != "*" and not pattern.startswith(allowed_prefixes):
-        return JSONResponse(status_code=400, content={"error": "Pattern not allowed"})
+    # Reject anything outside the allowlist, including the "*" full wipe.
+    # Previously `pattern != "*"` let "*" skip this check entirely, so any
+    # authenticated user could flush the whole cache by omitting the argument.
+    if not pattern.startswith(CACHE_CLEAR_ALLOWED_PREFIXES):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Pattern not allowed", "allowed_prefixes": list(CACHE_CLEAR_ALLOWED_PREFIXES)},
+        )
     deleted = await cache_service.clear_pattern(pattern)
     return {"cleared": deleted, "pattern": pattern}

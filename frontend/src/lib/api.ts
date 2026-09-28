@@ -367,15 +367,37 @@ export interface DoshaResponse {
   total_doshas: number;
 }
 
+// Endpoints where a 401 is a normal, expected response rather than an expired
+// session: bad credentials on login, or a register attempt. Redirecting there
+// would bounce the user off the form instead of showing the error.
+const NO_REDIRECT_ON_401 = ["/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/me"];
+
+/** Clear the dead session and send the user to the login form. */
+function handleExpiredSession() {
+  if (typeof window === "undefined") return;
+  const { pathname, search } = window.location;
+  // Already on the login page: let the form render its own error.
+  if (pathname.startsWith("/login")) return;
+  clearSession();
+  window.location.replace(`/login?next=${encodeURIComponent(pathname + search)}`);
+}
+
 export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  // Feature routers are gated server-side, so every call must carry the token.
+  // Previously only fetchAuth() sent one, which left all feature calls anonymous.
+  const token = getToken();
   const res = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
   if (!res.ok) {
+    if (res.status === 401 && !NO_REDIRECT_ON_401.some((p) => endpoint.startsWith(p))) {
+      handleExpiredSession();
+    }
     const error = await res.json().catch(() => ({ detail: res.statusText }));
     // FastAPI 422 details arrive as an array — humanize them.
     let message: string;

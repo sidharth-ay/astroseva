@@ -14,6 +14,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const reduced = useReducedMotion();
   const router = useRouter();
   const search = useSearchParams();
@@ -34,6 +35,7 @@ function LoginForm() {
 
   const submit = async () => {
     setError("");
+    setNotice("");
     if (!email.includes("@")) {
       setError("Please enter a valid email address.");
       return;
@@ -51,14 +53,16 @@ function LoginForm() {
       if (mode === "login") {
         const res = await api.login(email, password);
         setSession(res.token, res.user);
+        router.replace(next);
       } else {
-        // Register returns a generic message (anti-enumeration);
-        // log in immediately afterwards to establish the session.
+        // Register returns a generic message (anti-enumeration) and no token.
+        // We deliberately do NOT log in automatically: a new account must go
+        // through the login form so every session is established explicitly.
         await api.register(email, name.trim(), password);
-        const res = await api.login(email, password);
-        setSession(res.token, res.user);
+        setNotice("Account created. Please log in to continue.");
+        setMode("login");
+        setPassword("");
       }
-      router.replace(next);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Authentication failed.");
     } finally {
@@ -85,13 +89,13 @@ function LoginForm() {
 
         <div className="flex gap-2 mb-5">
           <button
-            onClick={() => { setMode("login"); setError(""); }}
+            onClick={() => { setMode("login"); setError(""); setNotice(""); }}
             className={mode === "login" ? "btn-primary flex-1" : "btn-ghost flex-1"}
           >
             Login
           </button>
           <button
-            onClick={() => { setMode("register"); setError(""); }}
+            onClick={() => { setMode("register"); setError(""); setNotice(""); }}
             className={mode === "register" ? "btn-primary flex-1" : "btn-ghost flex-1"}
           >
             Register
@@ -133,6 +137,10 @@ function LoginForm() {
             onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
           />
         </div>
+
+        {notice && (
+          <p className="text-sm mb-4 text-center" style={{ color: "var(--success)" }}>{notice}</p>
+        )}
 
         {error && (
           <p className="text-sm mb-4 text-center" style={{ color: "var(--danger)" }}>{error}</p>
