@@ -5,27 +5,9 @@ import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, Download, ChevronRight, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import CitySearch from "@/components/CitySearch";
-import KundliChart from "@/components/KundliChart";
+import KundliTabsPanel from "@/components/kundli/KundliTabsPanel";
 
 import { api, getToken, clearSession, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
-import {
-  useReducedMotion,
-  staggerContainer,
-  staggerItem,
-  slideUp,
-  fadeIn,
-  duration,
-  ease,
-} from "@/lib/motion";
-
-const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
-
-function fmtHour(h: unknown): string {
-  if (typeof h !== "number" || isNaN(h)) return "—";
-  const hh = Math.floor(h);
-  const mm = Math.round((h - hh) * 60);
-  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-}
 
 export default function KundliPage() {
   const [form, setForm] = useState<BirthData>({
@@ -36,7 +18,6 @@ export default function KundliPage() {
   const [chartStyle, setChartStyle] = useState<"north" | "south">("north");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const reduced = useReducedMotion();
 
   useEffect(() => {
     document.title = "Kundli Generator | AstroSeva";
@@ -194,230 +175,13 @@ export default function KundliPage() {
         {savedMsg && <p className="text-xs mt-3" style={{ color: "var(--success)" }}>{savedMsg}</p>}
       </motion.div>
 
-      {/* Results */}
       {result && (
-        <motion.div
-          variants={staggerContainer}
-          initial={reduced ? false : "hidden"}
-          animate="visible"
-          className="space-y-6"
-        >
-          {/* Birth Details */}
-          <motion.div className="glass-card p-4" variants={staggerItem}>
-            <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Birth Details</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-              {[
-                ["Name", result.name || "—"],
-                ["Date", result.birth_date],
-                ["Time", result.birth_time],
-                ["Place", result.birth_place],
-                ["Ascendant", `${SIGN_NAMES[result.asc_sign]} ${result.asc_sign_degree.toFixed(1)}°`],
-                ["Ayanamsa", `${result.ayanamsa.toFixed(2)}°`],
-              ].map(([label, val]) => (
-                <div key={label}>
-                  <div className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: "var(--text-tertiary)" }}>{label}</div>
-                  <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{val}</div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Chart */}
-          <motion.div className="glass-card p-5" variants={staggerItem}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#C8956D" }}>
-                Birth Chart — {chartStyle === "north" ? "North Indian" : "South Indian"} Style
-              </h3>
-              <div className="flex gap-1 p-0.5 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-                {(["north", "south"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setChartStyle(s)}
-                    className="px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors"
-                    style={chartStyle === s
-                      ? { background: "rgba(200, 149, 109, 0.15)", color: "#C8956D" }
-                      : { color: "var(--text-tertiary)" }
-                    }
-                  >
-                    {s === "north" ? "North" : "South"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <KundliChart chart={result.chart} ascSign={result.asc_sign} chartStyle={chartStyle} />
-          </motion.div>
-
-          {/* Planetary Positions */}
-          <motion.div className="glass-card p-4" variants={staggerItem}>
-            <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Planetary Positions</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                    {["Planet", "Sign", "Degree", "Retro", "Dignity"].map((h) => (
-                      <th key={h} className="text-left py-2 px-2 font-medium" style={{ color: "var(--text-tertiary)" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.planets.map((p) => (
-                    <tr key={p.planet} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td className="py-2 px-2 font-medium" style={{ color: "var(--text-primary)" }}>{p.planet}</td>
-                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.sign_name}</td>
-                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.sign_degree.toFixed(1)}°</td>
-                      <td className="py-2 px-2">
-                        {p.retrograde && <span className="px-1.5 py-0.5 rounded text-[9px] font-medium" style={{ background: "rgba(200, 149, 109, 0.08)", color: "var(--danger)" }}>R</span>}
-                      </td>
-                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{p.dignity}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-
-          {/* Dasha */}
-          {result.dasha_info?.current_dasha && (
-            <motion.div className="glass-card p-4" variants={staggerItem}>
-              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Vimshottari Dasha</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  { label: "Mahadasha", value: result.dasha_info.current_dasha.mahadasha, period: `${result.dasha_info.current_dasha.mahadasha_start} — ${result.dasha_info.current_dasha.mahadasha_end}` },
-                  { label: "Antardasha", value: result.dasha_info.current_dasha.antardasha || "—", period: result.dasha_info.current_dasha.antardasha ? `${result.dasha_info.current_dasha.antardasha_start} — ${result.dasha_info.current_dasha.antardasha_end}` : "" },
-                  { label: "Pratyantardasha", value: result.dasha_info.current_dasha.pratyantardasha || "—", period: "" },
-                  { label: "Sookshma", value: result.dasha_info.current_dasha.sookshma || "—", period: "" },
-                  { label: "Prana", value: result.dasha_info.current_dasha.prana || "—", period: "" },
-                ].map((d) => (
-                  <div key={d.label} className="p-3 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-                    <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-tertiary)" }}>{d.label}</div>
-                    <div className="text-sm font-medium" style={{ color: "var(--champagne)" }}>{d.value}</div>
-                    {d.period && <div className="text-[10px] mt-1" style={{ color: "var(--text-tertiary)" }}>{d.period}</div>}
-                  </div>
-                ))}
-              </div>
-              {(result.dasha_info.current_yogini || result.dasha_info.current_chara) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                  {result.dasha_info.current_yogini && (
-                    <div className="p-3 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-                      <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-tertiary)" }}>Yogini Dasha</div>
-                      <div className="text-sm font-medium" style={{ color: "var(--champagne)" }}>{result.dasha_info.current_yogini.yogini}</div>
-                    </div>
-                  )}
-                  {result.dasha_info.current_chara && (
-                    <div className="p-3 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-                      <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--text-tertiary)" }}>Chara Dasha (sign {result.dasha_info.current_chara.sign + 1})</div>
-                      <div className="text-sm font-medium" style={{ color: "var(--champagne)" }}>{result.dasha_info.current_chara.lord}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* Yogas */}
-          {(result.dasha_info?.yogas || []).length > 0 && (
-            <motion.div className="glass-card p-4" variants={staggerItem}>
-              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>
-                Yogas ({(result.dasha_info?.yogas || []).length})
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {(result.dasha_info?.yogas || []).map((y: { name: string; description: string; strength: string }) => (
-                  <div key={y.name} className="p-3 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
-                    <div className="text-sm font-medium mb-1" style={{ color: "var(--champagne)" }}>{y.name}</div>
-                    <div className="text-xs" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>{y.description}</div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Navamsha */}
-          {result.dasha_info?.navamsa && (
-            <motion.div className="glass-card p-4" variants={staggerItem}>
-              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Navamsha (D9)</h3>
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(result.dasha_info.navamsa).map(([planet, sign]) => (
-                  <span key={planet} className="text-xs px-2 py-1 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
-                    {planet}: {SIGN_NAMES[sign as number]}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Avakahada Chakra */}
-          {result.extras?.avakahada && (
-            <motion.div className="glass-card p-4" variants={staggerItem}>
-              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Avakahada Chakra</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(result.extras.avakahada).map(([k, v]) => (
-                  <div key={k}>
-                    <div className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: "var(--text-tertiary)" }}>
-                      {k.replace(/_/g, " ")}
-                    </div>
-                    <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{String(v)}</div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Birth Panchang */}
-          {result.extras?.birth_panchang && (
-            <motion.div className="glass-card p-4" variants={staggerItem}>
-              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>
-                Panchang at Birth · Sunrise {fmtHour(result.extras.sunrise)} · Sunset {fmtHour(result.extras.sunset)} · JD {result.extras.julian_day}
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {[
-                  ["Tithi", `${result.extras.birth_panchang.tithi} (${result.extras.birth_panchang.paksha})`],
-                  ["Nakshatra", `${result.extras.birth_panchang.nakshatra} · Pada ${result.extras.birth_panchang.pada}`],
-                  ["Yoga", `${result.extras.birth_panchang.yoga}`],
-                  ["Karana", `${result.extras.birth_panchang.karana}`],
-                ].map(([label, val]) => (
-                  <div key={label}>
-                    <div className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: "var(--text-tertiary)" }}>{label}</div>
-                    <div className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{String(val)}</div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Ishta, Karakas, Avastha */}
-          {result.extras && (
-            <motion.div className="glass-card p-4" variants={staggerItem}>
-              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Deity, Karakas & States</h3>
-              {result.extras.ishta_devata?.deity && (
-                <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
-                  Ishta Devata: <strong style={{ color: "var(--champagne)" }}>{result.extras.ishta_devata.deity}</strong>
-                  {result.extras.ishta_devata.planet ? ` (Atmakaraka ${result.extras.ishta_devata.planet})` : ""}
-                </p>
-              )}
-              {(result.extras?.chara_karakas || []).length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {(result.extras?.chara_karakas || []).map((k: { role: string; planet: string }) => (
-                    <span key={k.role} className="text-xs px-2 py-1 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}>
-                      {k.role}: {k.planet}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {result.extras.avastha && (
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(result.extras.avastha).map(([planet, state]) => (
-                    <span key={planet} className="text-[11px] px-2 py-0.5 rounded-lg" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-tertiary)" }}>
-                      {planet} · {String(state).split(" ")[0]}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </motion.div>
+        <KundliTabsPanel
+          result={result}
+          chartStyle={chartStyle}
+          setChartStyle={setChartStyle}
+        />
       )}
-
-
     </div>
   );
 }

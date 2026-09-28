@@ -136,7 +136,7 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
     try:
         from ..core.kundli_extras import (
             build_avakahada, ishta_devata, chara_karakas, avastha_of,
-            julian_day, FRIENDSHIPS,
+            julian_day, FRIENDSHIPS, SEVEN_PLANETS,
         )
         from ..core.panchang import (
             calculate_tithi, calculate_karana, calculate_yoga,
@@ -177,8 +177,11 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
                 birth_data.birth_date.day, utc_hour),
             "ishta_devata": ishta_devata(positions["planets"]),
             "chara_karakas": chara_karakas(positions["planets"]),
+            # Avastha is the classical seven-graha age ladder, so nodes and
+            # outer planets are excluded (same filter as chara_karakas).
             "avastha": {p["planet"]: avastha_of(p["sign"], p["sign_degree"])
-                        for p in positions["planets"]},
+                        for p in positions["planets"]
+                        if p["planet"] in SEVEN_PLANETS},
             "friendships": FRIENDSHIPS,
         }
     except Exception as e:
