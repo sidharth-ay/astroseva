@@ -263,6 +263,63 @@ def test_navatara_own_sign_beats_enemy_sign():
     assert own > enemy
 
 
+# --- planetary dignity --------------------------------------------------------
+#
+# The three tables that judge a planet's dignity must never disagree. They used
+# to: core/planets.py had Mars exalted in Cancer and debilitated in Capricorn
+# -- the right pair of signs, the wrong way round -- and Jupiter in Leo and
+# Scorpio rather than Cancer and Sagittarius. That reached the `dignity` field
+# on every planet of every chart, so a Mars in Capricorn was reported
+# "Debilitated" when it is exalted.
+#
+# These assertions compare the tables against each other AND against the
+# classical values written out literally, so a future edit to one and not the
+# others fails here rather than in a user's chart.
+
+
+def test_dignity_tables_agree_across_the_core_modules():
+    from app.core.navatara import _DEBILITATED, _EXALTED
+    from app.core.planets import DEBILITATION, EXALTATION
+    from app.core.yogas import DEBILITATED, EXALTED
+
+    assert EXALTATION == EXALTED == _EXALTED
+    assert DEBILITATION == DEBILITATED == _DEBILITATED
+
+
+def test_exaltation_matches_the_classical_signs():
+    from app.core.planets import EXALTATION
+
+    # Aries, Taurus, Capricorn, Virgo, Cancer, Pisces, Libra
+    assert EXALTATION == {
+        "Sun": 0, "Moon": 1, "Mars": 9, "Mercury": 5,
+        "Jupiter": 3, "Venus": 11, "Saturn": 6,
+    }
+
+
+def test_debilitation_is_the_sign_opposite_exaltation():
+    from app.core.planets import DEBILITATION, EXALTATION
+
+    for planet, exalt in EXALTATION.items():
+        assert DEBILITATION[planet] == (exalt + 6) % 12, planet
+        assert DEBILITATION[planet] != exalt, (
+            f"{planet} is listed as both exalted and debilitated in the same sign"
+        )
+
+
+def test_dignity_reports_the_classical_result_for_mars_and_jupiter():
+    from app.core.planets import _get_dignity
+
+    # The two that were wrong: Mars is exalted in Capricorn, Jupiter in Cancer.
+    assert _get_dignity("Mars", 9) == "Exalted"
+    assert _get_dignity("Mars", 3) == "Debilitated"
+    assert _get_dignity("Jupiter", 3) == "Exalted"
+    assert _get_dignity("Jupiter", 9) == "Debilitated"
+    # And the ones that were already right must stay right.
+    assert _get_dignity("Sun", 0) == "Exalted"
+    assert _get_dignity("Saturn", 6) == "Exalted"
+    assert _get_dignity("Venus", 11) == "Exalted"
+
+
 def test_navatara_totals_within_range():
     for sign in range(12):
         for graha in GRAHAS:

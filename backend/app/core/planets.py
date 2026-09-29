@@ -56,9 +56,21 @@ SIGN_LORDS = {
     6: "Venus", 7: "Mars", 8: "Jupiter", 9: "Saturn", 10: "Saturn", 11: "Jupiter"
 }
 
-# Exaltation and debilitation signs (sign index)
-EXALTATION = {"Sun": 0, "Moon": 1, "Mars": 3, "Mercury": 5, "Jupiter": 4, "Venus": 11, "Saturn": 6}
-DEBILITATION = {"Sun": 6, "Moon": 7, "Mars": 9, "Mercury": 11, "Jupiter": 8, "Venus": 4, "Saturn": 0}
+# Exaltation and debilitation signs (sign index).
+#
+# Debilitation is the sign opposite the exaltation, so it is DERIVED rather than
+# tabulated. Writing both out independently let them drift: Mars was listed as
+# exalted in Cancer and debilitated in Capricorn -- the same pair of signs, the
+# right ones, assigned the wrong way round -- and Jupiter was given Leo and
+# Scorpio instead of Cancer and Sagittarius. That fed the `dignity` field on
+# every planet of every chart, so a Mars in Capricorn was reported debilitated.
+#
+# These are the values `core/yogas.py` and `core/navatara.py` already use, and
+# they match the classical tables.
+EXALTATION = {"Sun": 0, "Moon": 1, "Mars": 9, "Mercury": 5, "Jupiter": 3,
+              "Venus": 11, "Saturn": 6}
+# The debilitated sign is the seventh from the exaltation (six places away).
+DEBILITATION = {p: (s + 6) % 12 for p, s in EXALTATION.items()}
 
 # Own signs
 OWN_SIGNS = {
