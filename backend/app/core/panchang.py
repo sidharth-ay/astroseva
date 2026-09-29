@@ -207,10 +207,30 @@ def calculate_sunrise_sunset(target_date, latitude: float, longitude: float, tz_
     b = math.radians(360 / 365 * (day_of_year - 81))
     eot = 9.87 * math.sin(2 * b) - 7.53 * math.cos(b) - 1.5 * math.sin(b)
 
-    cos_ha = (math.cos(math.radians(90.833)) - math.sin(lat_rad) * math.sin(decl)) / (
-        math.cos(lat_rad) * math.cos(decl)
-    )
-    cos_ha = max(-1.0, min(1.0, cos_ha))
+    denominator = math.cos(lat_rad) * math.cos(decl)
+
+    if abs(denominator) < 1e-9 or abs(math.cos(lat_rad)) < 1e-9:
+        # Polar night or midnight sun: the sun is above or below the horizon all
+        # day and acos has no real solution. The previous code clamped the
+        # ratio into [-1, 1] regardless, so an arctic latitude silently
+        # returned the sunrise and sunset of a latitude 90 degrees away, and
+        # every kaal derived from it was wrong rather than absent.
+        return {
+            "sunrise": None,
+            "sunset": None,
+            "solar_noon": None,
+            "polar_day_or_night": True,
+        }
+
+    cos_ha = (math.cos(math.radians(90.833)) - math.sin(lat_rad) * math.sin(decl)) / denominator
+    if cos_ha < -1.0 or cos_ha > 1.0:
+        # Sun never rises or never sets on this date at this latitude.
+        return {
+            "sunrise": None,
+            "sunset": None,
+            "solar_noon": None,
+            "polar_day_or_night": True,
+        }
     ha_deg = math.degrees(math.acos(cos_ha))
 
     # Solar noon in local time, then +/- hour angle
@@ -220,11 +240,36 @@ def calculate_sunrise_sunset(target_date, latitude: float, longitude: float, tz_
         "sunrise": round(solar_noon - delta, 4),
         "sunset": round(solar_noon + delta, 4),
         "solar_noon": round(solar_noon, 4),
+        "polar_day_or_night": False,
     }
 
 
+def _format_clock(hours: float) -> str:
+    """Format a decimal hour as HH:MM, or "--:--" if it is not a clock time.
+
+    Slicing with `int()` and a minute remainder produced impossible values
+    where the input was out of range: a polar day can put sunset before
+    sunrise, and the scaling then yields negative or past-midnight hours, which
+    came out as "-1:-30" or "24:45". Rounding to the nearest minute can also
+    roll 59.7 up to 60, which printed as "12:60".
+
+    Anything that is not within 00:00-23:59 is reported as unavailable rather
+    than dressed up as a time.
+    """
+    if hours is None or not math.isfinite(hours) or hours < 0.0 or hours >= 24.0:
+        return "--:--"
+    total = int(round(hours * 60))
+    total = min(total, 24 * 60 - 1)
+    return f"{total // 60:02d}:{total % 60:02d}"
+
+
 def calculate_rahu_kaal(sunrise_hour: float, sunset_hour: float, day_of_week: int) -> dict:
-    """Calculate Rahu Kaal for the day."""
+    """Calculate Rahu Kaal for the day.
+
+    `day_of_week` is 0=Sunday, matching RAHU_KAAL_BASE and the convention
+    `calculate_vara` converts to. Passing Python's `date.weekday()` (0=Monday)
+    looks up the wrong day's window.
+    """
     base_start, base_end = RAHU_KAAL_BASE.get(day_of_week, (4.5, 6.0))
 
     # Scale to actual day length
@@ -234,14 +279,9 @@ def calculate_rahu_kaal(sunrise_hour: float, sunset_hour: float, day_of_week: in
     scaled_start = sunrise_hour + (base_start - 4.5) * (day_length / standard_day)
     scaled_end = sunrise_hour + (base_end - 4.5) * (day_length / standard_day)
 
-    start_hours = int(scaled_start)
-    start_minutes = int((scaled_start - start_hours) * 60)
-    end_hours = int(scaled_end)
-    end_minutes = int((scaled_end - end_hours) * 60)
-
     return {
-        "start": f"{start_hours:02d}:{start_minutes:02d}",
-        "end": f"{end_hours:02d}:{end_minutes:02d}",
+        "start": _format_clock(scaled_start),
+        "end": _format_clock(scaled_end),
         "start_decimal": scaled_start,
         "end_decimal": scaled_end,
     }
@@ -256,14 +296,9 @@ def calculate_gulika_kaal(sunrise_hour: float, sunset_hour: float, day_of_week: 
     # Gulika starts at the end of the day for each weekday
     gulika_start = sunset_hour - gulika_duration
 
-    start_hours = int(gulika_start)
-    start_minutes = int((gulika_start - start_hours) * 60)
-    end_hours = int(sunset_hour)
-    end_minutes = int((sunset_hour - end_hours) * 60)
-
     return {
-        "start": f"{start_hours:02d}:{start_minutes:02d}",
-        "end": f"{end_hours:02d}:{end_minutes:02d}",
+        "start": _format_clock(gulika_start),
+        "end": _format_clock(sunset_hour),
         "duration_minutes": int(gulika_duration * 60),
     }
 

@@ -433,6 +433,22 @@ def _day_sample(d: date, lat: float, lon: float, tz: float, rule: str) -> dict:
     in the window -- which is what the rules actually mean.
     """
     sun_times = calculate_sunrise_sunset(d, lat, lon, tz)
+    if sun_times["sunrise"] is None:
+        # Polar day or polar night: the sun does not cross the horizon, so there
+        # is no sunrise window to test. Falling back to the 6.0/18.0 defaults
+        # would sample the wrong time and report a festival that the rule
+        # cannot actually justify at this latitude.
+        return {
+            "tithi": None,
+            "nakshatra": None,
+            "window_start": None,
+            "window_end": None,
+            "sunrise": None,
+            "sunset": None,
+            "solar_noon": None,
+            "alt_tithi": None,
+            "polar_day_or_night": True,
+        }
     start, end = _rule_window(rule, sun_times["sunrise"], sun_times["sunset"])
     probe = (start + end) / 2.0
     tithi, moon_l = _tithi_at(d, probe, tz)
@@ -474,6 +490,7 @@ def _day_sample(d: date, lat: float, lon: float, tz: float, rule: str) -> dict:
         "alt_tithi": alt_tithi,
         "nakshatra": calculate_nakshatra(moon_l),
         "moon_longitude": moon_l,
+        "polar_day_or_night": False,
     }
 
 
@@ -869,7 +886,10 @@ def _build(rule: dict, d: date, s: dict, rule_time: str, tithi: dict,
            lat: float, lon: float, tz: float) -> dict:
     span = rule.get("span_days", 1)
     end_date = d + timedelta(days=span - 1) if span > 1 else d
-    rahu = calculate_rahu_kaal(s["sunrise"], s["sunset"], d.weekday())
+    # RAHU_KAAL_BASE is keyed 0=Sunday, the same convention `get_panchang`
+    # uses. `date.weekday()` is 0=Monday, so passing it directly looked up
+    # Monday's window on a Sunday and shifted every other day by one.
+    rahu = calculate_rahu_kaal(s["sunrise"], s["sunset"], (d.weekday() + 1) % 7)
     name = rule["name"]
     if "{nakshatra}" in name:
         name = name.format(nakshatra=s["nakshatra"]["nakshatra_name"])
