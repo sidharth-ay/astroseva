@@ -26,6 +26,10 @@ GEMSTONE_MAP = {
 async def recommend_gemstones(request: Request, birth_data: BirthData):
     """Recommend gemstones based on birth chart."""
     try:
+        # The birth coordinates must be passed: the ascendant depends on where
+        # on Earth the birth happened, and it drives the house placement the
+        # recommendations are built from. Omitting them fell back to the
+        # Delhi default, so a Mumbai or London birth was charted for Delhi.
         positions = get_planetary_positions(
             year=birth_data.birth_date.year,
             month=birth_data.birth_date.month,
@@ -33,6 +37,8 @@ async def recommend_gemstones(request: Request, birth_data: BirthData):
             hour=birth_data.birth_time.hour,
             minute=birth_data.birth_time.minute,
             timezone_offset=birth_data.timezone_offset,
+            latitude=birth_data.latitude,
+            longitude=birth_data.longitude,
         )
 
         asc_sign = int(positions["ascendant"] / 30)

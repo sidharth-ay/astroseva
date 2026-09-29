@@ -35,10 +35,15 @@ async def generate_report(request: Request, payload: ReportRequest):
     """Generate a personalized astrology report."""
     try:
         bd = payload.birth_data
+        # The birth coordinates must be passed: the ascendant depends on where
+        # on Earth the birth happened, and it drives the house placement the
+        # report is built from. Omitting them fell back to the Delhi default.
         positions = get_planetary_positions(
             year=bd.birth_date.year, month=bd.birth_date.month, day=bd.birth_date.day,
             hour=bd.birth_time.hour, minute=bd.birth_time.minute,
             timezone_offset=bd.timezone_offset,
+            latitude=bd.latitude,
+            longitude=bd.longitude,
         )
 
         asc_sign = int(positions["ascendant"] / 30)

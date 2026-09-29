@@ -23,10 +23,15 @@ MONTHS = ["January", "February", "March", "April", "May", "June",
 async def calculate_varshphal(request: Request, data: VarshphalRequest):
     """Calculate annual horoscope (Varshphal)."""
     try:
+        # The birth coordinates must be passed: the ascendant depends on where
+        # on Earth the birth happened, and it is read into the response.
+        # Omitting them fell back to the Delhi default.
         positions = get_planetary_positions(
             year=data.year, month=data.birth_date.month, day=data.birth_date.day,
             hour=data.birth_time.hour, minute=data.birth_time.minute,
             timezone_offset=data.timezone_offset,
+            latitude=data.latitude,
+            longitude=data.longitude,
         )
         asc_sign = int(positions["ascendant"] / 30)
         RASHI = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",

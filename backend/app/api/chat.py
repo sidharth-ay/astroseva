@@ -45,12 +45,22 @@ def compute_chat_birth_context(birth_details: dict) -> str:
         hour = float(birth_details.get("birth_hour", 12))
         minute = float(birth_details.get("birth_minute", 0))
         tz = float(birth_details.get("timezone_offset", 5.5))
+        # The context builder is fed the user's own birth details, so the
+        # coordinates are available here too. Without them the ascendant fell
+        # back to the Delhi default and every house in the AI's context was
+        # counted from the wrong ascendant.
+        lat = birth_details.get("latitude")
+        lon = birth_details.get("longitude")
         name = birth_details.get("name", "User")
 
         if not all([year, month, day]):
             return ""
 
-        result = get_planetary_positions(year, month, day, hour, minute, tz)
+        result = get_planetary_positions(
+            year, month, day, hour, minute, tz,
+            **({"latitude": float(lat), "longitude": float(lon)}
+               if lat is not None and lon is not None else {}),
+        )
         planets = result["planets"]
         asc_sign = result["asc_sign"]
 

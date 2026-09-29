@@ -27,9 +27,15 @@ async def get_today_transit(request: Request):
         return cached
 
     try:
+        # Today's transits are the same for everyone on Earth: the Sun, Moon and
+        # planets are placed from the date and the timezone offset, and the
+        # ascendant plays no part in a transit report. The coordinates are
+        # pinned to the Delhi default explicitly rather than left implicit, so
+        # that it is clear the omission is deliberate.
         positions = get_planetary_positions(
             year=today.year, month=today.month, day=today.day,
             hour=12, minute=0, timezone_offset=5.5,
+            latitude=28.6139, longitude=77.2090,
         )
 
         RASHI_NAMES = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",

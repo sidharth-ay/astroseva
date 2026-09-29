@@ -30,6 +30,9 @@ async def generate_ai_prediction(request: Request, payload: PredictionRequest):
 
     try:
         # Calculate birth chart details
+        # The birth coordinates must be passed: the ascendant depends on where
+        # on Earth the birth happened, and it is read into the prediction
+        # output. Omitting them fell back to the Delhi default.
         positions = get_planetary_positions(
             year=payload.birth_data.birth_date.year,
             month=payload.birth_data.birth_date.month,
@@ -37,6 +40,8 @@ async def generate_ai_prediction(request: Request, payload: PredictionRequest):
             hour=payload.birth_data.birth_time.hour,
             minute=payload.birth_data.birth_time.minute,
             timezone_offset=payload.birth_data.timezone_offset,
+            latitude=payload.birth_data.latitude,
+            longitude=payload.birth_data.longitude,
         )
 
         # Get ascendant and moon signs

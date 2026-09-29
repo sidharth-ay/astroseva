@@ -139,6 +139,10 @@ RASHI_NAMES = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
 async def get_lalkitab_chart(birth_data: BirthData):
     """Generate Lal Kitab chart with house placements and remedies."""
     try:
+        # The birth coordinates must be passed: the ascendant depends on where
+        # on Earth the birth happened, and every house placement below is
+        # counted from it. Omitting them fell back to the Delhi default, so a
+        # Mumbai or London birth was charted for Delhi.
         positions = get_planetary_positions(
             year=birth_data.birth_date.year,
             month=birth_data.birth_date.month,
@@ -146,6 +150,8 @@ async def get_lalkitab_chart(birth_data: BirthData):
             hour=birth_data.birth_time.hour,
             minute=birth_data.birth_time.minute,
             timezone_offset=birth_data.timezone_offset,
+            latitude=birth_data.latitude,
+            longitude=birth_data.longitude,
         )
 
         asc_sign = int(positions["ascendant"] / 30)

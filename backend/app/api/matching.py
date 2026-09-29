@@ -27,7 +27,10 @@ router = APIRouter(prefix="/api/v1/matching", tags=["matching"])
 async def analyze_marriage_matching(request: Request, matching_data: MatchingData):
     """Analyze marriage compatibility between two charts."""
     try:
-        # Calculate boy's chart
+        # Both charts need their own birth coordinates. The ascendant depends on
+        # where on Earth the birth happened, and the nakshatra and house maths
+        # below are counted from it, so omitting them charted both people for
+        # the Delhi default regardless of where they were born.
         boy_positions = get_planetary_positions(
             year=matching_data.boy.birth_date.year,
             month=matching_data.boy.birth_date.month,
@@ -35,9 +38,10 @@ async def analyze_marriage_matching(request: Request, matching_data: MatchingDat
             hour=matching_data.boy.birth_time.hour,
             minute=matching_data.boy.birth_time.minute,
             timezone_offset=matching_data.boy.timezone_offset,
+            latitude=matching_data.boy.latitude,
+            longitude=matching_data.boy.longitude,
         )
 
-        # Calculate girl's chart
         girl_positions = get_planetary_positions(
             year=matching_data.girl.birth_date.year,
             month=matching_data.girl.birth_date.month,
@@ -45,6 +49,8 @@ async def analyze_marriage_matching(request: Request, matching_data: MatchingDat
             hour=matching_data.girl.birth_time.hour,
             minute=matching_data.girl.birth_time.minute,
             timezone_offset=matching_data.girl.timezone_offset,
+            latitude=matching_data.girl.latitude,
+            longitude=matching_data.girl.longitude,
         )
 
         # Get Moon's longitude for matching
@@ -137,13 +143,18 @@ async def get_sample_matching(request: Request):
 async def export_matching_pdf(request: Request, matching_data: MatchingData):
     """Export marriage matching report as PDF, including Manglik cross-check."""
     try:
-        result = await analyze_marriage_matching(matching_data)
+        # `analyze_marriage_matching` takes the request first, for the rate
+        # limiter. This called it with one argument, so every PDF export raised
+        # TypeError and surfaced as a 500.
+        result = await analyze_marriage_matching(request, matching_data)
 
         def _manglik_status(bd: BirthData) -> str:
             positions = get_planetary_positions(
                 year=bd.birth_date.year, month=bd.birth_date.month, day=bd.birth_date.day,
                 hour=bd.birth_time.hour, minute=bd.birth_time.minute,
                 timezone_offset=bd.timezone_offset,
+                latitude=bd.latitude,
+                longitude=bd.longitude,
             )
             planets = positions["planets"]
             asc_sign = int(positions["ascendant"] / 30)
@@ -228,6 +239,8 @@ async def analyze_love_match(request: Request, data: LoveMatchData):
                 hour=bd.birth_time.hour,
                 minute=bd.birth_time.minute,
                 timezone_offset=bd.timezone_offset,
+                latitude=bd.latitude,
+                longitude=bd.longitude,
             )
 
         c1 = _chart(p1)["planets"]
