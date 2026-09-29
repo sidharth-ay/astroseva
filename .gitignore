@@ -34,6 +34,13 @@ build/
 .DS_Store
 Thumbs.db
 
+# Marketplace uploads. These are identity documents, so they must never be
+# committed under any path.
+backend/storage/
+storage/
+# Local database backups made during maintenance.
+*.db.bak*
+
 # JPL ephemeris (large, auto-downloaded)
 de421.bsp
 

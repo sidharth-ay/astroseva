@@ -5,6 +5,7 @@ gunicorn==22.0.0
 pydantic==2.9.0
 pydantic[email]==2.9.0
 python-dotenv==1.0.1
+# Required by the marketplace document upload endpoint.
 python-multipart==0.0.9
 
 # Rate Limiting
@@ -16,7 +17,10 @@ google-generativeai==0.8.6
 # Database
 sqlalchemy==2.0.35
 psycopg2-binary==2.9.9
-alembic==1.13.2
+# Schema migrations. Run `alembic upgrade head` with the dev server STOPPED:
+# uvicorn --reload calls create_all at import time, which would create tables
+# ahead of the migration and leave the two out of step.
+alembic==1.20.0
 
 # Caching
 redis==5.0.8
