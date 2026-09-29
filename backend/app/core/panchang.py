@@ -106,6 +106,12 @@ def calculate_tithi(sun_longitude: float, moon_longitude: float) -> dict:
         tithi = tithi - 15
 
     tithi_name = TITHI_NAMES.get(tithi, {"en": "Unknown", "hi": "अज्ञात"})
+    # The 15th tithi is Purnima in the waxing fortnight but Amavasya in the
+    # waning one. TITHI_NAMES keys the waning half 16-30, so after the -15
+    # normalisation above both collapse onto key 15; without this the waning
+    # new moon would be reported as "Purnima".
+    if paksha == "Krishna" and tithi == 15:
+        tithi_name = TITHI_NAMES[30]
 
     return {
         "tithi_number": tithi,

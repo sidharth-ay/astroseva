@@ -411,6 +411,39 @@ export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Prom
   return res.json();
 }
 
+export interface Festival {
+  name: string;
+  date: string;
+  end_date: string;
+  span_days: number;
+  category: "major" | "minor" | "vrat";
+  description: string;
+  significance: string;
+  rule_time: string;
+  rule_time_label: string;
+  paksha: string;
+  paksha_hi: string;
+  tithi_name: string;
+  tithi_name_hi: string;
+  tithi_number: number;
+  nakshatra: string;
+  nakshatra_pada: number;
+  sunrise: string;
+  sunset: string;
+  muhurat: { label: string; start: string; end: string };
+  rahu_kaal: { start: string; end: string };
+  tithi_basis?: "rule_window" | "evening";
+}
+
+export interface FestivalsResponse {
+  year: number;
+  month: number | null;
+  location: { latitude: number; longitude: number; timezone_offset: number; label: string };
+  count: number;
+  festivals: Festival[];
+  note: string;
+}
+
 const TOKEN_KEY = "astroseva_token";
 const USER_KEY = "astroseva_user";
 
@@ -602,12 +635,26 @@ export const api = {
   getBabyNames: (gender: string, birth_date: string) =>
     fetchAPI<{ gender: string; names: { name: string; meaning: string; origin: string; lucky_number: number }[]; lucky_numbers: number[]; lucky_letters: string[] }>(`/api/v1/baby-names/suggest?gender=${gender}&birth_date=${birth_date}`),
 
-  getFestivals: (month?: number, year?: number) => {
+  getFestivals: (opts: {
+    month?: number;
+    year?: number;
+    latitude?: number;
+    longitude?: number;
+    timezone_offset?: number;
+    category?: string;
+  } = {}) => {
     const params = new URLSearchParams();
-    if (month) params.set("month", String(month));
-    if (year) params.set("year", String(year));
-    return fetchAPI<{ month: number; year: number; festivals: { name: string; date: string; description: string; type: string }[] }>(`/api/v1/festivals/list?${params.toString()}`);
+    if (opts.month) params.set("month", String(opts.month));
+    if (opts.year) params.set("year", String(opts.year));
+    if (opts.latitude != null) params.set("latitude", String(opts.latitude));
+    if (opts.longitude != null) params.set("longitude", String(opts.longitude));
+    if (opts.timezone_offset != null) params.set("timezone_offset", String(opts.timezone_offset));
+    if (opts.category) params.set("category", opts.category);
+    return fetchAPI<FestivalsResponse>(`/api/v1/festivals/list?${params.toString()}`);
   },
+
+  getFestivalCategories: () =>
+    fetchAPI<{ categories: { id: string; label: string }[] }>("/api/v1/festivals/categories"),
 
   getDailyMantra: () =>
     fetchAPI<{ date: string; mantra: Mantra }>("/api/v1/mantra/daily"),
