@@ -302,14 +302,24 @@ export interface HealingRecommendation {
   };
 }
 
+/** Mirrors the backend remedy list: a list, not a dict keyed by planet. */
+export interface LalKitabRemedy {
+  planet: string;
+  house: number;
+  sign: string | null;
+  remedy: string;
+  general_remedy: string;
+}
+
 export interface LalKitabResponse {
   name: string;
   birth_date: string;
   birth_time: string;
   birth_place: string;
-  houses: Record<string, { planet: string; sign: string; degree: number }[]>;
-  planets: { planet: string; house: number; sign: string; degree: number }[];
-  remedies: { planet: string; house: number; sign: string; remedy: string; gemstone?: string; mantra?: string }[];
+  /** House keys are strings; each cell holds objects, not bare planet names. */
+  houses: Record<string, { planet: string; sign: string | null }[]>;
+  planets: { planet: string; house: number; sign: string | null; degree: number }[];
+  remedies: LalKitabRemedy[];
 }
 
 export interface ReportResponse {

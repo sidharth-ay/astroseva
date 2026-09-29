@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, ChevronRight, RotateCcw } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
-import { api, type BirthData, type CityEntry } from "@/lib/api";
+import { api, type BirthData, type CityEntry, type LalKitabResponse } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
@@ -13,25 +13,6 @@ import {
   duration,
   ease,
 } from "@/lib/motion";
-
-interface PlanetRemedy {
-  planet: string;
-  house: number;
-  sign: string;
-  remedy: string;
-  gemstone?: string;
-  mantra?: string;
-}
-
-interface LalKitabResponse {
-  name: string;
-  birth_date: string;
-  birth_time: string;
-  birth_place: string;
-  houses: Record<string, { planet: string; sign: string; degree: number }[]>;
-  planets: { planet: string; house: number; sign: string; degree: number }[];
-  remedies: PlanetRemedy[];
-}
 
 const HOUSE_LABELS = [
   "1st House", "2nd House", "3rd House", "4th House", "5th House", "6th House",
@@ -212,14 +193,9 @@ export default function LalKitabPage() {
                     <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>in {r.sign}</span>
                   </div>
                   <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{r.remedy}</p>
-                  {r.gemstone && (
+                  {r.remedy !== r.general_remedy && (
                     <p className="text-xs mt-2" style={{ color: "var(--text-tertiary)" }}>
-                      <span className="font-medium" style={{ color: "#C8956D" }}>Gemstone:</span> {r.gemstone}
-                    </p>
-                  )}
-                  {r.mantra && (
-                    <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
-                      <span className="font-medium" style={{ color: "#C8956D" }}>Mantra:</span> {r.mantra}
+                      <span className="font-medium" style={{ color: "#C8956D" }}>General:</span> {r.general_remedy}
                     </p>
                   )}
                 </div>

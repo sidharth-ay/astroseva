@@ -152,42 +152,84 @@ async def get_lalkitab_chart(birth_data: BirthData):
 
         # Assign planets to houses (whole-sign from ascendant)
         planet_houses = {}
+        planet_signs = {}
         for p in positions["planets"]:
-            name = p["planet"]
-            if name in ("Rahu", "Ketu"):
-                house = get_house_from_longitude(p["longitude"], positions["ascendant"])
-            else:
-                house = get_house_from_longitude(p["longitude"], positions["ascendant"])
-            planet_houses[name] = house
+            planet_houses[p["planet"]] = get_house_from_longitude(
+                p["longitude"], positions["ascendant"]
+            )
+            planet_signs[p["planet"]] = RASHI_NAMES[int(p["longitude"] / 30) % 12]
 
         # Build Lal Kitab chart (12 houses)
         lalkitab_chart = {}
         for house_num in range(1, 13):
-            planets_in_house = [name for name, h in planet_houses.items() if h == house_num]
+            occupants = [
+                name for name, h in planet_houses.items() if h == house_num
+            ]
             lalkitab_chart[house_num] = {
                 "house_number": house_num,
                 "sign": RASHI_NAMES[(asc_sign + house_num - 1) % 12],
-                "planets": planets_in_house,
+                "planets": occupants,
+                # The page reads `occ.planet` for each occupant, so each needs
+                # to be an object. The old response listed bare name strings,
+                # which rendered as "undefined" in all twelve house cells.
+                "occupants": [
+                    {"planet": name, "sign": planet_signs.get(name)}
+                    for name in occupants
+                ],
             }
 
-        # Collect remedies for each planet in chart
-        planet_remedies = {}
+        # Collect remedies for each planet in chart.
+        #
+        # Returned as a LIST. The page renders `result.remedies.map(...)` and
+        # reads `r.house`, `r.planet`, `r.sign` and `r.remedy`, but this was a
+        # dict keyed by planet name with `house_remedy` and no `sign` at all,
+        # so the page threw on the first call: `.map` is not a function.
+        remedies_list = []
         for planet_name, house_num in planet_houses.items():
-            if planet_name in LALKITAB_REMEDIES:
-                remedies = LALKITAB_REMEDIES[planet_name]
-                house_remedy = remedies["house_remedies"].get(house_num, remedies["general"])
-                planet_remedies[planet_name] = {
-                    "planet": planet_name,
-                    "house": house_num,
-                    "house_remedy": house_remedy,
-                    "general_remedy": remedies["general"],
-                }
+            if planet_name not in LALKITAB_REMEDIES:
+                continue
+            remedies = LALKITAB_REMEDIES[planet_name]
+            remedies_list.append({
+                "planet": planet_name,
+                "house": house_num,
+                "sign": planet_signs.get(planet_name),
+                "remedy": remedies["house_remedies"].get(
+                    house_num, remedies["general"]
+                ),
+                "general_remedy": remedies["general"],
+            })
+        remedies_list.sort(key=lambda r: r["house"])
+
+        # A per-planet list, which is what the placements table renders. The
+        # page formats `p.degree` to one decimal, so the within-sign degree is
+        # included; the old response had no per-planet list at all.
+        planets_list = [
+            {
+                "planet": p["planet"],
+                "house": planet_houses[p["planet"]],
+                "sign": planet_signs.get(p["planet"]),
+                "degree": round(p["longitude"] % 30, 2),
+            }
+            for p in positions["planets"]
+        ]
+        planets_list.sort(key=lambda p: p["house"])
+
+        # `houses` keyed by string, matching what the 12-house grid looks up.
+        houses = {
+            str(num): cell["occupants"] for num, cell in lalkitab_chart.items()
+        }
 
         return {
-            "birth_data": {"name": birth_data.name, "date": str(birth_data.birth_date), "time": str(birth_data.birth_time), "place": birth_data.birth_place},
+            "name": birth_data.name,
+            "birth_date": str(birth_data.birth_date),
+            "birth_time": str(birth_data.birth_time),
+            "birth_place": birth_data.birth_place,
+            "asc_sign": RASHI_NAMES[asc_sign % 12],
+            "houses": houses,
+            "planets": planets_list,
+            "remedies": remedies_list,
             "chart": lalkitab_chart,
             "planet_houses": planet_houses,
-            "remedies": planet_remedies,
             "summary": "Lal Kitab remedies are simple, practical solutions based on planetary house placements in your birth chart.",
         }
     except Exception as e:
