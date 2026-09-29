@@ -6,6 +6,7 @@ load_dotenv()
 import asyncio
 import logging
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -17,10 +18,13 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from .core.rate_limit import limiter
-from .services.auth_service import get_current_user
+from .services.auth_service import get_current_user, require_admin
 
 from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities, transit, gemstones, varshphal, baby_names, festivals, lalkitab, reports, celebrity, mantra, healing
+from .api import astrologers, admin_astrologers, directory
 from .db.database import init_db
+# Importing this module registers the background job handlers.
+from .services import job_handlers as _job_handlers  # noqa: F401
 
 # Logging configuration
 logging.basicConfig(
@@ -32,8 +36,19 @@ logger = logging.getLogger(__name__)
 # Initialize database
 init_db()
 
-# CORS origins from environment
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+# CORS origins from environment.
+#
+# Both spellings of the dev host are listed by default. They are different
+# origins to a browser, so a request from `127.0.0.1:3000` is rejected when only
+# `localhost:3000` is allowed -- which makes the whole site look broken (every
+# API call, including login, fails) purely because of how the URL was typed.
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:3000,http://127.0.0.1:3000,"
+    "http://localhost:3001,http://127.0.0.1:3001"
+)
+CORS_ORIGINS = [
+    o.strip() for o in os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS).split(",") if o.strip()
+]
 
 # Docs visibility
 ENABLE_DOCS = os.getenv("ENABLE_DOCS", "false").lower() == "true"
@@ -69,6 +84,44 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
+
+
+_RATE_LIMIT_PATTERN = re.compile(r"(\d+)\s+per\s+(\d+)?\s*(second|minute|hour|day)", re.I)
+
+
+async def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    """Return a 429 a human (and the frontend) can act on.
+
+    slowapi's built-in handler emits {"error": ...} and no Retry-After, so the
+    client had no way to tell the user how long to wait -- it surfaced as a
+    generic "API request failed", indistinguishable from a real fault.
+
+    An endpoint may supply its own ``error_message``, in which case that text
+    replaces the "N per M" string, so the window is only derived when the
+    default form is present.
+    """
+    raw = str(getattr(exc, "detail", "") or "")
+    match = _RATE_LIMIT_PATTERN.search(raw)
+    if match:
+        count, _, unit = match.groups()
+        seconds = {"second": 1, "minute": 60, "hour": 3600, "day": 86400}[unit.lower()]
+        message = (
+            f"Too many attempts. You may do this {count} times per "
+            f"{unit.lower()}; please wait {seconds} seconds and try again."
+        )
+        error = f"Rate limit exceeded: {count} per {match.group(2) or 1} {unit.lower()}"
+    else:
+        seconds = 60
+        message = raw or "Too many attempts. Please wait a moment and try again."
+        error = raw or "Rate limit exceeded"
+
+    return JSONResponse(
+        status_code=429,
+        content={"detail": message, "error": error},
+        headers={"Retry-After": str(seconds)},
+    )
+
+
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
@@ -133,6 +186,15 @@ app.include_router(celebrity.router, dependencies=require_auth)
 app.include_router(mantra.router, dependencies=require_auth)
 app.include_router(healing.router, dependencies=require_auth)
 
+# Astrologer marketplace. Each carries its own role dependency rather than the
+# plain require_auth, so authorisation cannot be forgotten per-endpoint:
+#   astrologers/       - the caller's own application, any signed-in account
+#   admin_astrologers/ - require_reviewer, applied per endpoint
+#   directory/         - verified practitioners, any signed-in account
+app.include_router(astrologers.router, dependencies=require_auth)
+app.include_router(directory.router, dependencies=require_auth)
+app.include_router(admin_astrologers.router, dependencies=require_auth)
+
 
 @app.get("/")
 async def root():
@@ -193,31 +255,25 @@ CACHE_CLEAR_ALLOWED_PREFIXES = (
 
 
 def _is_admin(user) -> bool:
-    """Admin check via the ADMIN_EMAILS env allowlist.
+    """Deprecated shim. The real check is services.auth_service.is_admin.
 
-    Empty/unset means nobody is an admin, so the default deployment exposes
-    no cache-wipe capability at all.
+    Kept so nothing else in the codebase reaches for the old private helper.
     """
-    raw = os.getenv("ADMIN_EMAILS", "")
-    allowed = {e.strip().lower() for e in raw.split(",") if e.strip()}
-    if not allowed:
-        return False
-    email = (getattr(user, "email", "") or "").strip().lower()
-    return email in allowed
+    from .services.auth_service import is_admin
+
+    return is_admin(user)
 
 
 @app.post("/api/v1/admin/clear-cache")
 @limiter.limit("10/minute")
-async def clear_cache(request: Request, pattern: str, user=Depends(get_current_user)):
+async def clear_cache(request: Request, pattern: str, user=Depends(require_admin)):
     """Clear cache entries matching a pattern (admin only).
 
     `pattern` is required: a namespace must be named explicitly, and the
-    full-wipe "*" is never accepted.
+    full-wipe "*" is never accepted. Authorisation is now the shared
+    `require_admin` dependency rather than a check inside the handler, so the
+    gate cannot be bypassed by a future edit to this function body.
     """
-    if not _is_admin(user):
-        raise HTTPException(
-            status_code=403, detail="Administrator privileges required"
-        )
     from .services.cache_service import cache_service
     # Reject anything outside the allowlist, including the "*" full wipe.
     # Previously `pattern != "*"` let "*" skip this check entirely, so any

@@ -19,6 +19,20 @@ const navLinks = [
   { href: "/chat", label: "AI Chat" },
 ];
 
+// Role-gated entries. Only the review queue appears here, and only to
+// reviewers and admins.
+//
+// The applicant dashboard used to be shown to every logged-in user, which meant
+// the marketplace was one click away for anyone. The entry point is now a
+// single card on /services, which relabels itself once someone has applied, so
+// there is no need to advertise the dashboard to people with no application.
+function roleLinks(role?: string) {
+  if (role === "reviewer" || role === "admin") {
+    return [{ href: "/admin/astrologers", label: "Review Queue" }];
+  }
+  return [];
+}
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -62,6 +76,15 @@ export default function Navbar() {
                 </Link>
               );
             })}
+            {user &&
+              roleLinks(user.role).map((link) => {
+                const active = pathname.startsWith(link.href);
+                return (
+                  <Link key={link.href} href={link.href} className={`nav-link ${active ? "active" : ""}`}>
+                    {link.label}
+                  </Link>
+                );
+              })}
           </div>
 
           {/* CTA + logout */}
@@ -111,10 +134,20 @@ export default function Navbar() {
                 return (
                   <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
                     className={`nav-link block ${active ? "active" : ""}`}>
-                    {link.label}
-                  </Link>
-                );
+                  {link.label}
+                </Link>
+              );
               })}
+              {user &&
+                roleLinks(user.role).map((link) => {
+                  const active = pathname.startsWith(link.href);
+                  return (
+                    <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
+                      className={`nav-link block ${active ? "active" : ""}`}>
+                      {link.label}
+                    </Link>
+                  );
+                })}
               <div className="pt-2 pb-1">
                 <Link
                   href="/kundli"

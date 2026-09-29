@@ -207,7 +207,14 @@ FESTIVAL_RULES = [
       description="Birth anniversary of Guru Nanak Dev Ji, on Kartika Purnima.",
       significance="Prabhat Gurmukhi Sahib, a 48-hour unbroken reading of the Guru Granth Sahib, and processions."),
     F(name="Gita Jayanti", paksha="Shukla", tithi=11, rule=RULE_SUNRISE,
-      category="minor", months=(12, 1),
+      # Margashirsha (Magha) runs from mid-January, so the Ekadashi of that
+      # month is the FIRST Shukla Ekadashi of the calendar year. The guard was
+      # (12, 1) which straddles the year boundary and matched the December
+      # Ekadashi too -- the tail of the month that closes the lunar year -- so
+      # the festival was reported twice a year. `pick="first"` plus these months
+      # yields the single Magha Ekadashi, and January holds exactly one in every
+      # year from 2026 to 2033.
+      category="minor", months=(1, 2), pick="first",
       description="Appearance of the Bhagavad Gita, on Margashirsha Shukla Ekadashi.",
       significance="Recitation of the Gita and discussion of its teaching."),
 
@@ -309,6 +316,22 @@ EVENING_SOURCED = {
     "Ugadi / Gudi Padwa", "Rishi Panchami", "Durga Ashtami", "Maha Navami",
 }
 
+# Rules identified by the Phalguna Purnima -- the last Purnima before the Sun
+# enters Meena -- rather than by an ordinal within the lunar year.
+#
+# A lunar year holds 12 or 13 occurrences of any tithi, and Mesha Sankranti
+# falls in mid-April, so a festival's ordinal within its cycle is not fixed.
+# Phalguna Purnima is the 11th Shukla Purnima of the cycle that began the
+# previous April in 2026 and 2027, and the 12th from 2028 to 2033, purely
+# because of how many tithis the cycle contains. The original `occurrence=10`
+# was therefore wrong in most years, and counting from any single anchor
+# cannot fix it. Holi was reported on 12 January 2028 instead of 11 March.
+PHALGUNA_RULES = {"Holika Dahan", "Holi"}
+
+for _rule in FESTIVAL_RULES:
+    if _rule["name"] in PHALGUNA_RULES:
+        _rule["phalguna"] = True
+
 for _rule in FESTIVAL_RULES:
     _occ = OCCURRENCE_FOR.get(_rule["name"])
     if _occ is not None:
@@ -352,8 +375,43 @@ def _hhmm(hour: float) -> str:
 
 # --- day sampling -----------------------------------------------------------
 
+# How far before sunrise to sample when recovering a tithi the window probe
+# missed. The window is narrow on purpose, and the two known cases that bound it
+# are the reason:
+#
+#   * 2028-03-11 -- Purnima ends 8 seconds AFTER the 06:37 sunrise, so a zero
+#     lookback misses the month's only Purnima and Holi lands in January.
+#   * 2025-05-28 -- Pratipada ends 25 minutes before sunrise, so a lookback of
+#     25 minutes or more resurrects a tithi that was already over and adds a
+#     phantom occurrence, pushing every later festival a month early.
+#
+# Twenty minutes sits between the two.
+TITHI_RECOVERY_MINUTES = 20.0
+
+
+def _tithi_at(d: date, hour: float, tz: float) -> tuple[dict, float]:
+    """(tithi, moon longitude) at a local clock hour on a date.
+
+    The minutes are ROUNDED, not truncated. Truncating 06:37.5 to 06:37 is
+    normally harmless, but a tithi boundary landing between the two values
+    flips the answer: on 2028-03-11 Purnima ends at 06:45 and sunrise is 06:37,
+    so probing at 06:36 reports Krishna Pratipada and loses the month's only
+    Purnima. That single miss is what put Holi in January.
+    """
+    h = int(hour)
+    minute = int(round((hour - h) * 60))
+    if minute == 60:
+        h, minute = h + 1, 0
+    h = min(max(h, 0), 23)
+    minute = min(max(minute, 0), 59)
+    sun_l, moon_l = get_sun_moon_longitudes(
+        d.year, d.month, d.day, float(h), float(minute), tz
+    )
+    return calculate_tithi(sun_l, moon_l), moon_l
+
+
 def _day_sample(d: date, lat: float, lon: float, tz: float, rule: str) -> dict:
-    """Tithi, nakshatra, lunar month and sun times for one day under one rule.
+    """Tithi, nakshatra and sun times for one day under one rule.
 
     The tithi is sampled at the MIDPOINT of the rule's window, not at its
     start. A rule window is a span in which the tithi must hold, and the
@@ -361,22 +419,49 @@ def _day_sample(d: date, lat: float, lon: float, tz: float, rule: str) -> dict:
     misses tithis that begin a couple of hours into the window (this is what
     made Ram Navami match no day at all in 2026), while sampling at a fixed
     clock time such as solar noon pulls Purnima-based festivals a day early.
+
+    One problem survives that choice. A tithi can END between sunrise and the
+    midpoint of the sunrise window, in which case the window probe reports the
+    NEXT tithi and this one is lost for the whole lunar month. That is not a
+    cosmetic miss: occurrence counting then slips by one, and every festival
+    counted after it in that lunar year lands a month early. Ten Shukla
+    Purnimas are missed this way between 2026 and 2033, which is why Holi was
+    reported in January 2028, 2029 and 2030 rather than March.
+
+    `alt_tithi` carries the tithi in progress earlier the same day, so the
+    caller can accept the day if the target tithi was under way at ANY point
+    in the window -- which is what the rules actually mean.
     """
     sun_times = calculate_sunrise_sunset(d, lat, lon, tz)
     start, end = _rule_window(rule, sun_times["sunrise"], sun_times["sunset"])
     probe = (start + end) / 2.0
-    hour = int(probe)
-    minute = int(round((probe - hour) * 60))
-    if minute == 60:
-        hour, minute = hour + 1, 0
-    hour = min(max(hour, 0), 23)
-    minute = min(max(minute, 0), 59)
+    tithi, moon_l = _tithi_at(d, probe, tz)
 
-    sun_l, moon_l = get_sun_moon_longitudes(
-        d.year, d.month, d.day, float(hour), float(minute), tz
-    )
-    tithi = calculate_tithi(sun_l, moon_l)
-    naks = calculate_nakshatra(moon_l)
+    # A tithi can END between sunrise and the midpoint of the sunrise window,
+    # in which case the window probe reports the NEXT tithi and this one is lost
+    # for the whole lunar month. That is not a cosmetic miss: occurrence
+    # counting then slips by one and every festival counted after it in that
+    # lunar year lands a month early. Ten Shukla Purnimas are missed this way
+    # between 2026 and 2033, which is why Holi was reported in January 2028,
+    # 2029 and 2030 rather than March.
+    #
+    # The recovery is the tithi in force just BEFORE sunrise, which is the
+    # moment the sunrise rule tests. The lookback is short on purpose: on
+    # 2028-03-11 Purnima ends eight seconds after the 06:37 sunrise, so a zero
+    # lookback misses it, while a large one would resurrect tithis that had
+    # already ended hours earlier (on 2026-06-16 Pratipada ended at 04:00 and
+    # admitting it added a phantom occurrence that pushed every later festival a
+    # month early and broke the correct 2026 Sharad Navratri). Thirty minutes
+    # clears the seconds-long edge cases without reaching back past dawn.
+    alt_tithi = None
+    if rule == RULE_SUNRISE:
+        alt_tithi, _ = _tithi_at(
+            d, max(start - TITHI_RECOVERY_MINUTES / 60.0, 0.0), tz
+        )
+        if (alt_tithi["paksha"], alt_tithi["tithi_number"]) == (
+            tithi["paksha"], tithi["tithi_number"]
+        ):
+            alt_tithi = None
 
     return {
         "date": d,
@@ -386,7 +471,8 @@ def _day_sample(d: date, lat: float, lon: float, tz: float, rule: str) -> dict:
         "window_start": start,
         "window_end": end,
         "tithi": tithi,
-        "nakshatra": naks,
+        "alt_tithi": alt_tithi,
+        "nakshatra": calculate_nakshatra(moon_l),
         "moon_longitude": moon_l,
     }
 
@@ -508,8 +594,25 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
         for rule_time in rules_by_time:
             samples[(rule_time, d)] = _day_sample(d, latitude, longitude, timezone_offset, rule_time)
 
+    # One extra day BEFORE the window, so the first scanned day can be
+    # de-duplicated against its predecessor. The window opens on Mesha
+    # Sankranti, and the tithi still in force at that moment belongs to the
+    # lunar month that closed the day before. Without the lookback there is
+    # nothing to compare against, that stale occurrence is admitted, and every
+    # index after it shifts -- which is how Buddha Purnima came out as
+    # 2026-04-02 instead of 2026-05-01.
+    lookback = days[0] - timedelta(days=1)
+    for rule_time in rules_by_time:
+        samples[(rule_time, lookback)] = _day_sample(
+            lookback, latitude, longitude, timezone_offset, rule_time
+        )
+
     out: list[dict] = []
     seen: set[tuple[str, date]] = set()
+    # Rules whose chosen occurrence fell outside their declared months. Recorded
+    # rather than raised: a festival with a late date is recoverable, one that
+    # vanished is not. The test suite fails on a non-empty list.
+    misplaced: list[tuple[str, str, list[int]]] = []
 
     # Solar ingress rules: the Sun crossing a sidereal sign boundary.
     for rule in FESTIVAL_RULES:
@@ -571,10 +674,49 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
                 s = samples[(rule_time, d)]
                 t = s["tithi"]
                 basis = "rule_window"
-            if rule["paksha"] is not None and t["paksha"] != rule["paksha"]:
+            if t["tithi_number"] == rule["tithi"] and (
+                rule["paksha"] is None or t["paksha"] == rule["paksha"]
+            ):
+                candidates.append((d, samples[(rule_time, d)], t))
                 continue
-            if t["tithi_number"] != rule["tithi"]:
+            if evening_tithi is not None:
                 continue
+            # The window probe can land just after a tithi ended, in which case
+            # the tithi that was in force a moment earlier still counts: the
+            # rule asks whether the tithi holds during the window, not only at
+            # its midpoint. Ten Shukla Purnimas are missed this way between 2026
+            # and 2033, and each miss slips the occurrence count by one, which
+            # is how Holi came to be reported in January rather than March.
+            alt = s.get("alt_tithi")
+            if alt is None:
+                continue
+            if rule["paksha"] is not None and alt["paksha"] != rule["paksha"]:
+                continue
+            if alt["tithi_number"] != rule["tithi"]:
+                continue
+            # Recover only a tithi that STARTS this day. If the same tithi was
+            # also in force on the previous day it is the tail of the previous
+            # lunar month, already counted there, and admitting it again adds a
+            # phantom occurrence that shifts every later festival. On 2025-04-13
+            # the probe reports Shukla Pratipada with a lingering Purnima, but
+            # that Purnima belongs to the month that ended the day before.
+            #
+            # Skip a tithi already counted on the previous day: it is the tail
+            # of the lunar month that closed there, and admitting it again adds
+            # a phantom occurrence that shifts every later festival a month.
+            # This applies to the first scanned day too. The window opens on Mesha
+            # Sankranti, whose own Purnima is genuinely the tail of the previous
+            # month, so exempting it would pull that stale occurrence back in and
+            # move Buddha Purnima from 2026-05-01 to 2026-04-02.
+            prev = samples.get((rule_time, d - timedelta(days=1)))
+            if prev is not None:
+                pt = prev["tithi"]
+                if (pt["paksha"], pt["tithi_number"]) == (
+                    alt["paksha"], alt["tithi_number"]
+                ):
+                    continue
+            t = alt
+            basis = "rule_window"
             candidates.append((d, samples[(rule_time, d)], t))
 
         if not candidates:
@@ -597,24 +739,104 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
             continue
 
         if target is not None:
-            # Count occurrences forward from the anchor. Consecutive days
-            # carrying the same tithi are one occurrence, so a tithi that
-            # lingers past sunrise is not counted twice.
-            n = 0
-            prev_day = None
-            picked = None
-            for d, s, t in sorted(candidates, key=lambda c: c[0]):
-                if prev_day is None or (d - prev_day).days > 1:
-                    n += 1
-                if n == target:
-                    picked = (d, s, t)
-                    break
-                prev_day = d
-            if picked is None:
-                continue
-            chosen = [picked]
+            months = rule.get("months")
+            ordered = sorted(candidates, key=lambda c: c[0])
+
+            # A lunar year holds 12 or 13 occurrences of any given tithi, and
+            # Mesha Sankranti falls in mid-April, so a festival's ordinal within
+            # its cycle is not fixed. Phalguna Purnima -- Holi -- is the 11th
+            # Shukla Purnima of the cycle that began the previous April in 2026
+            # and 2027, and the 12th from 2028 to 2033, purely because of how
+            # many tithis that cycle happens to contain.
+            #
+            # An index therefore cannot identify these festivals, and the
+            # original `occurrence=10` is simply wrong in most years. The month
+            # guard is the stable signal: Holi is the Purnima in March, full
+            # stop. For a rule marked `lunar_month` the month wins outright.
+            if rule.get("phalguna") and months:
+                # Holi and Holika Dahan are the Phalguna Purnima specifically:
+                # the LAST Purnima before the Sun enters Meena, which is the end
+                # of the lunar month rather than simply the last Purnima in the
+                # month. Taking the last Purnima of March works because the
+                # month ends there, and it is stable across the 12- and
+                # 13-occurrence cycles that made the ordinal unusable.
+                in_month = [c for c in ordered if c[0].month in months]
+                if in_month:
+                    chosen = [in_month[-1]]
+                else:
+                    chosen = [ordered[-1]]
+                    misplaced.append(
+                        (rule["name"], ordered[-1][0].isoformat(), sorted(months))
+                    )
+            else:
+                # Count occurrences forward from the anchor. Consecutive days
+                # carrying the same tithi are one occurrence, so a tithi that
+                # lingers past sunrise is not counted twice.
+                #
+                # The month guard is applied to the COUNT, not just the result:
+                # when the Nth occurrence lands in a disallowed month the counter
+                # has slipped, and the true festival is a later occurrence.
+                #
+                # Applying the guard as a filter instead would DELETE Holi for
+                # six years, because in exactly those years the slipped
+                # occurrence was the only one in the list. A wrong date is
+                # recoverable; a festival that vanished is not.
+                n = 0
+                prev_day = None
+                picked = None
+                fallback = None
+                for d, s, t in ordered:
+                    if prev_day is None or (d - prev_day).days > 1:
+                        n += 1
+                    if n >= target:
+                        if months and d.month not in months:
+                            prev_day = d
+                            continue
+                        picked = (d, s, t)
+                        break
+                    if months and d.month in months and (fallback is None or d >= fallback[0]):
+                        fallback = (d, s, t)
+                    prev_day = d
+                if picked is None:
+                    if fallback is not None:
+                        # The scan ended before the target index. Return the
+                        # closest in-month occurrence rather than deleting the
+                        # festival, and record the mismatch.
+                        chosen = [fallback]
+                        misplaced.append(
+                            (rule["name"], fallback[0].isoformat(), sorted(months))
+                        )
+                    else:
+                        continue
+                else:
+                    chosen = [picked]
         else:
-            chosen = candidates
+            # No occurrence index: this rule matches every tithi of its kind, so
+            # the month guard is the only thing narrowing it. A rule marked
+            # `pick` then chooses which of the in-month candidates it means:
+            # "first" for a festival defined by the start of a lunar month (the
+            # Ekadashi of Magha, i.e. Gita Jayanti), "last" for one defined by
+            # its end. Without this, Gita Jayanti was reported on every Shukla
+            # Ekadashi of the allowed months rather than once a year.
+            months = rule.get("months")
+            pick = rule.get("pick")
+            if months:
+                in_month = [c for c in candidates if c[0].month in months]
+                if in_month:
+                    if pick == "first":
+                        chosen = [in_month[0]]
+                    elif pick == "last":
+                        chosen = [in_month[-1]]
+                    else:
+                        chosen = in_month
+                else:
+                    chosen = candidates
+                    for d, _s, _t in candidates:
+                        misplaced.append(
+                            (rule["name"], d.isoformat(), sorted(months))
+                        )
+            else:
+                chosen = candidates
 
         for d, s, t in chosen:
             name = _rule_name(rule, s)

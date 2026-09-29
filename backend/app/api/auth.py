@@ -34,7 +34,11 @@ class ChangePasswordRequest(BaseModel):
 
 
 @router.post("/register")
-@limiter.limit("5/minute")
+# Deliberately looser than /login. Registration is not the endpoint worth
+# attacking -- each call only creates a row -- and a tight limit here locks out
+# a real person who mistypes a password twice. The stricter limit belongs on
+# /login, which is what credential-stuffing actually targets.
+@limiter.limit("20/hour", error_message="Too many accounts created from this address. Please try again later.")
 async def register(request: Request, register_data: RegisterRequest, db: Session = Depends(get_db)):
     if not PASSWORD_REGEX.match(register_data.password):
         raise HTTPException(
@@ -60,7 +64,9 @@ async def register(request: Request, register_data: RegisterRequest, db: Session
 
 
 @router.post("/login")
-@limiter.limit("10/minute")
+# Tight on purpose: this is the endpoint worth attacking. Combined with a
+# generic failure message it is the main brake on credential stuffing.
+@limiter.limit("10/minute", error_message="Too many sign-in attempts. Please wait a minute and try again.")
 async def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data.email).first()
     if not user or not verify_password(login_data.password, user.hashed_password):
@@ -71,7 +77,14 @@ async def login(request: Request, login_data: LoginRequest, db: Session = Depend
     return {
         "message": "Login successful",
         "token": token,
-        "user": {"id": user.id, "email": user.email, "name": user.name},
+        # `role` is included so the client can render role-gated UI immediately,
+        # without a second round trip to /auth/me.
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "role": getattr(user, "role", "client") or "client",
+        },
     }
 
 
@@ -108,5 +121,6 @@ async def get_me(user: User = Depends(get_current_user)):
         "id": user.id,
         "email": user.email,
         "name": user.name,
+        "role": getattr(user, "role", "client"),
         "created_at": str(user.created_at),
     }

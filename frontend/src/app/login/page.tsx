@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
+import { Check } from "lucide-react";
 import { Suspense } from "react";
 import { api, setSession, getToken, clearSession } from "@/lib/api";
 import { useReducedMotion, slideUp } from "@/lib/motion";
@@ -48,6 +49,21 @@ function LoginForm() {
       setError("Password must be at least 8 characters.");
       return;
     }
+    // Checked here so the rules are visible up front. The server enforces
+    // exactly this, so without the check a user who followed the old
+    // "8+ characters" hint got a 400 with no explanation.
+    if (mode === "register" && !/[A-Z]/.test(password)) {
+      setError("Password needs at least one uppercase letter.");
+      return;
+    }
+    if (mode === "register" && !/[a-z]/.test(password)) {
+      setError("Password needs at least one lowercase letter.");
+      return;
+    }
+    if (mode === "register" && !/\d/.test(password)) {
+      setError("Password needs at least one number.");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "login") {
@@ -64,7 +80,20 @@ function LoginForm() {
         setPassword("");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Authentication failed.");
+      const err = e as Error & { status?: number; retryAfter?: number };
+      if (err.status === 429) {
+        // A rate limit is temporary and self-explanatory. The backend sends
+        // Retry-After; the message says how long, so the user waits instead of
+        // assuming the site is broken.
+        const secs = err.retryAfter ?? 60;
+        setError(
+          `Too many attempts. Please wait ${secs} second${secs === 1 ? "" : "s"} and try again.`
+        );
+      } else if (err.status === 400 && /password/i.test(err.message)) {
+        setError(err.message);
+      } else {
+        setError(err.message || "Authentication failed.");
+      }
     } finally {
       setLoading(false);
     }
@@ -133,9 +162,28 @@ function LoginForm() {
             className="input-field"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={mode === "register" ? "Uppercase + lowercase + number, 8+ chars" : "Your password"}
+            placeholder={mode === "register" ? "At least 8 characters" : "Your password"}
             onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
           />
+          {mode === "register" && (
+            <ul className="mt-2 space-y-0.5 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+              {[
+                { label: "At least 8 characters", ok: password.length >= 8 },
+                { label: "One uppercase letter", ok: /[A-Z]/.test(password) },
+                { label: "One lowercase letter", ok: /[a-z]/.test(password) },
+                { label: "One number", ok: /\d/.test(password) },
+              ].map((r) => (
+                <li
+                  key={r.label}
+                  className="flex items-center gap-1.5"
+                  style={{ color: r.ok ? "var(--success)" : "var(--text-tertiary)" }}
+                >
+                  {r.ok ? <Check className="w-3 h-3" /> : <span className="w-3 h-3 rounded-full border" style={{ borderColor: "var(--border-subtle)" }} />}
+                  {r.label}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {notice && (

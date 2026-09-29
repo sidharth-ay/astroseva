@@ -9,7 +9,13 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from ..db.models import User
+from ..db.models import (
+    ROLE_ADMIN,
+    ROLE_ASTROLOGER,
+    ROLE_CLIENT,
+    ROLE_REVIEWER,
+    User,
+)
 from ..db.database import get_db
 
 # Password hashing
@@ -87,4 +93,72 @@ async def get_current_user(
     current_version = getattr(user, "token_version", 0) or 0
     if token_version != current_version:
         raise HTTPException(status_code=401, detail="Session revoked, please log in again")
+    return user
+
+
+# --- role-based authorisation ------------------------------------------------
+#
+# `users.role` is a single string (client | astrologer | reviewer | admin). These
+# dependencies are the only access-control mechanism; every marketplace router
+# composes one of them so an endpoint can never be accidentally public.
+#
+# "Astrologer" here means an account that is entitled to practise. It requires
+# an onboarding application in a practising status (verified or probation), not
+# merely the role string, so an approved-but-not-yet-verified applicant cannot
+# act as an astrologer.
+
+def _role_of(user: User) -> str:
+    return (getattr(user, "role", None) or ROLE_CLIENT).strip().lower()
+
+
+def is_admin(user: User) -> bool:
+    """Admin check via the ADMIN_EMAILS allowlist.
+
+    Kept as a separate mechanism from `users.role` so that a deployment with no
+    ADMIN_EMAILS configured still has no administrator, whatever the role
+    column happens to contain.
+    """
+    raw = os.getenv("ADMIN_EMAILS", "")
+    allowed = {e.strip().lower() for e in raw.split(",") if e.strip()}
+    if not allowed:
+        return False
+    return (getattr(user, "email", "") or "").strip().lower() in allowed
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    """Require administrator rights."""
+    if not is_admin(user) and _role_of(user) != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Administrator privileges required")
+    return user
+
+
+async def require_reviewer(user: User = Depends(get_current_user)) -> User:
+    """Require reviewer or administrator rights (runs onboarding assessments)."""
+    if is_admin(user) or _role_of(user) in (ROLE_REVIEWER, ROLE_ADMIN):
+        return user
+    raise HTTPException(status_code=403, detail="Reviewer privileges required")
+
+
+async def require_astrologer_account(user: User = Depends(get_current_user)) -> User:
+    """Require the astrologer role, before onboarding status is considered."""
+    if is_admin(user) or _role_of(user) == ROLE_ASTROLOGER:
+        return user
+    raise HTTPException(status_code=403, detail="Astrologer account required")
+
+
+async def require_practising_astrologer(user: User = Depends(get_current_user),
+                                        db: Session = Depends(get_db)) -> User:
+    """Require an astrologer whose application is verified or on probation."""
+    from ..db.models import PRACTISING_STATUSES, Astrologer
+
+    if is_admin(user) or _role_of(user) == ROLE_ADMIN:
+        return user
+    if _role_of(user) != ROLE_ASTROLOGER:
+        raise HTTPException(status_code=403, detail="Astrologer account required")
+    profile = db.query(Astrologer).filter(Astrologer.user_id == user.id).first()
+    if profile is None or profile.status not in PRACTISING_STATUSES:
+        raise HTTPException(
+            status_code=403,
+            detail="Your astrologer application is not yet verified",
+        )
     return user

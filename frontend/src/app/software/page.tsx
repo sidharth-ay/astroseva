@@ -7,7 +7,6 @@ import {
   Sparkles,
   Star,
   Brain,
-  Bot,
   ChevronRight,
   Calendar,
   Compass,
@@ -24,6 +23,7 @@ import {
   Cpu,
   FileCode2,
   Blocks,
+  Info,
 } from "lucide-react";
 import {
   useReducedMotion,
@@ -73,7 +73,9 @@ const tiers = [
       { text: "API Access", included: false },
       { text: "White-Label Solutions", included: false },
     ],
-    cta: { text: "Start Pro Trial", href: "#" },
+    // No checkout exists, so these point somewhere real rather than at "#",
+    // which silently did nothing when clicked.
+    cta: { text: "See what's free today", href: "/services" },
   },
   {
     name: "Enterprise",
@@ -93,7 +95,7 @@ const tiers = [
       { text: "Volume Discounts", included: true },
       { text: "On-Premise Deployment", included: true },
     ],
-    cta: { text: "Contact Sales", href: "#" },
+    cta: { text: "See what's free today", href: "/services" },
   },
 ];
 
@@ -328,9 +330,26 @@ export default function SoftwarePage() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
           >
-            Start free and upgrade as you grow. All plans include our core
-            astrology engine.
+            The tiers below describe intended packaging. Paid plans are not
+            on sale yet and nothing here takes a payment.
           </motion.p>
+          <div
+            className="max-w-2xl mx-auto mb-8 rounded-lg p-4 text-sm flex gap-2"
+            style={{
+              background: "var(--bg-surface)",
+              border: "1px solid #C8956D40",
+              color: "var(--text-secondary)",
+              lineHeight: 1.6,
+            }}
+            role="note"
+          >
+            <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#C8956D" }} />
+            <span>
+              Every astrological tool on this site is free to use today, and the
+              API runs on the same engine. Paid tiers, API keys and invoicing are
+              still to be built, so the buttons below will not take a payment.
+            </span>
+          </div>
           <motion.div
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
             variants={staggerContainerCustom(stagger.normal, 0.08)}
@@ -557,21 +576,21 @@ export default function SoftwarePage() {
                 },
                 {
                   icon: Zap,
-                  title: "Low Latency",
+                  title: "Ephemeral Calculations",
                   description:
-                    "Sub-100ms response times for chart generation and calculations.",
+                    "Chart calculations run server-side in one request, so there is no client-side engine to keep in step with the API.",
                 },
                 {
                   icon: Blocks,
-                  title: "Webhook Support",
+                  title: "Versioned API",
                   description:
-                    "Get notified of transit events, dasha changes, and more.",
+                    "Every feature endpoint sits behind a versioned path, so a breaking change is announced rather than silent.",
                 },
                 {
                   icon: Globe,
-                  title: "Global Access",
+                  title: "Rate Limiting",
                   description:
-                    "99.9% uptime SLA with servers across multiple regions.",
+                    "Per-endpoint limits are enforced server-side, and responses say how long to wait when one is hit.",
                 },
               ].map((item) => (
                 <motion.div
@@ -729,7 +748,7 @@ export default function SoftwarePage() {
                 <ArrowRight size={14} />
               </Link>
               <Link
-                href="#"
+                href="/services"
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200"
                 style={{
                   background: "transparent",
@@ -744,7 +763,7 @@ export default function SoftwarePage() {
                   e.currentTarget.style.opacity = "1";
                 }}
               >
-                View API Docs
+                Browse all features
                 <Code2 size={14} />
               </Link>
             </div>

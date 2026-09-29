@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
   Sparkles,
@@ -12,6 +12,7 @@ import {
   BookOpen,
   Bot,
   MessageCircle,
+  ClipboardCheck,
   ChevronRight,
   Gem,
   Calendar,
@@ -34,6 +35,8 @@ import {
 } from "@/lib/motion";
 import { Tilt } from "@/components/motion-primitives/tilt";
 import { TextShimmer } from "@/components/motion-primitives/text-shimmer";
+import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 const categories = [
   {
@@ -127,12 +130,82 @@ const categories = [
   },
 ];
 
+// The one marketplace entry point, added at the end rather than mixed in with
+// the tools. It is the only astrologer-related link anywhere in the UI: nothing
+// in the nav bar or the footer points at the marketplace, because a normal
+// logged-in user has no business seeing it until they go looking for it.
+//
+// The card is stateful on purpose. Before applying it invites; afterwards it
+// becomes the way back into the application, so an applicant who lands here
+// again is not told to start over.
+function practitionerCategory(hasApplication: boolean) {
+  return {
+    title: "Practise With Us",
+    services: [
+      hasApplication
+        ? {
+            title: "My Application",
+            description:
+              "Track your progress through document review, the qualification test, and verification.",
+            href: "/astrologer/dashboard",
+            icon: ClipboardCheck,
+            color: "#5DC88F",
+            cta: "Open",
+          }
+        : {
+            title: "Become an Astrologer",
+            description:
+              "Apply to consult on AstroSeva. Verification by document review, a qualification test, and a mock consultation.",
+            href: "/astrologer/apply",
+            icon: Sparkles,
+            color: "#C8956D",
+            cta: "Apply now",
+          },
+    ],
+  };
+}
+
 export default function ServicesPage() {
   const reduced = useReducedMotion();
+  const { user } = useAuth();
+  // Read-only and safe to call on render: the server creates no row here, so
+  // visiting this page cannot leave an application behind.
+  const [hasApplication, setHasApplication] = useState<boolean | null>(null);
 
   useEffect(() => {
     document.title = "Services | AstroSeva";
   }, []);
+
+  useEffect(() => {
+    // Anonymous visitors are sent to login to start an application, so there is
+    // nothing to check and no reason to make a request that would 401. The
+    // state is set inside the promise chain rather than synchronously here, to
+    // avoid a cascading render on mount.
+    if (!user) return;
+    let cancelled = false;
+    api
+      .hasApplication()
+      .then((res) => {
+        if (!cancelled) setHasApplication(res.has_application);
+      })
+      .catch(() => {
+        // A failed check must not change the page: fall back to the invitation.
+        if (!cancelled) setHasApplication(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // Rendered after the tool categories so the marketplace sits at the end
+  // rather than competing with the astrology tools for attention.
+  //
+  // An anonymous visitor is treated as having no application: they are shown
+  // the invitation, and clicking it sends them to log in first.
+  const allCategories = [
+    ...categories,
+    practitionerCategory(hasApplication === true),
+  ];
 
   return (
     <div className="py-20 px-5">
@@ -173,7 +246,7 @@ export default function ServicesPage() {
         </motion.div>
 
         {/* Categories */}
-        {categories.map((cat) => (
+        {allCategories.map((cat) => (
           <section key={cat.title} className="mb-14">
             <motion.h2
               className="text-sm font-bold tracking-[0.2em] uppercase mb-6"
@@ -250,7 +323,10 @@ export default function ServicesPage() {
                             e.currentTarget.style.gap = "0.25rem";
                           }}
                         >
-                          Explore <ChevronRight size={12} />
+                          {/* Most entries are tools you explore; a few are
+                              actions, and "Explore Apply now" would be wrong. */}
+                          {"cta" in service && service.cta ? service.cta : "Explore"}{" "}
+                          <ChevronRight size={12} />
                         </span>
                       </div>
                     </Link>

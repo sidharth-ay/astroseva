@@ -204,6 +204,148 @@ def test_results_differ_by_location():
     assert l["muhurat"]["start"] != d["muhurat"]["start"]
 
 
+
+
+# --- Delhi baseline ---------------------------------------------------------
+#
+# Delhi is the reference location for the whole platform: the default on the API
+# and on the festivals page. These pin that, so a change to the default, to the
+# timezone handling, or to the sunrise maths cannot pass unnoticed.
+
+DELHI = {"latitude": 28.6139, "longitude": 77.2090, "timezone_offset": 5.5}
+
+
+def test_defaults_are_delhi():
+    """get_festivals with no location must answer for Delhi.
+
+    The keyword defaults are also the API's defaults, so this covers both.
+    """
+    default = get_festivals(2026, month=1)
+    explicit = get_festivals(2026, **DELHI, month=1)
+    assert [f["date"] for f in default] == [f["date"] for f in explicit]
+    assert [f["sunrise"] for f in default] == [f["sunrise"] for f in explicit]
+
+
+def _hhmm(text):
+    """'06:47' -> 6 + 47/60. The API returns clock strings, not decimal hours."""
+    h, m = text.split(":")
+    return int(h) + int(m) / 60.0
+
+
+def test_delhi_sunrise_and_sunset_are_ist():
+    """Delhi's March sun times, read from the festival rows themselves.
+
+    Expected for 28.61N 77.21E: sunrise near 06:47, sunset near 18:21 IST. The
+    tolerance is generous because these come from an ephemeris, but far tighter
+    than the 5.5 hours separating IST from UTC, so a timezone regression cannot
+    hide inside it.
+    """
+    fests = get_festivals(2026, **DELHI, month=3)
+    assert fests
+    for f in fests:
+        rise, set_ = _hhmm(f["sunrise"]), _hhmm(f["sunset"])
+        assert 6.2 < rise < 7.2, f"{f['name']} sunrise {f['sunrise']}"
+        assert 17.8 < set_ < 18.8, f"{f['name']} sunset {f['sunset']}"
+
+
+def test_delhi_timing_shifts_with_the_timezone():
+    """The same date and coordinates must differ by 5.5h between IST and UTC.
+
+    A direct test that timezone_offset is genuinely applied rather than
+    accepted and ignored.
+    """
+    ist = get_festivals(2026, **DELHI, month=3)
+    utc = get_festivals(2026, **{**DELHI, "timezone_offset": 0.0}, month=3)
+    assert ist and utc
+    a, b = ist[0], utc[0]
+    assert a["date"] == b["date"]
+    assert abs((_hhmm(a["sunrise"]) - _hhmm(b["sunrise"])) - 5.5) < 0.1
+    assert abs((_hhmm(a["sunset"]) - _hhmm(b["sunset"])) - 5.5) < 0.1
+
+
+def test_memo_keys_separate_timezones():
+    """Two timezones at the same coordinates must not share a memo slot.
+
+    The memo is keyed on (year, lat, lon, tz); a dropped tz would let one
+    location's answer be served for another.
+    """
+    from app.core.festivals import _MEMO
+
+    _MEMO.clear()
+    ist = get_festivals(2026, **DELHI, month=3)
+    ist2 = get_festivals(2026, **DELHI, month=3)
+    utc = get_festivals(2026, **{**DELHI, "timezone_offset": 0.0}, month=3)
+    assert ist[0]["sunrise"] == ist2[0]["sunrise"]
+    assert ist[0]["sunrise"] != utc[0]["sunrise"]
+
+
+# --- month placement, every year -------------------------------------------
+#
+# The month guard on each rule is the only thing that distinguishes, say, Holi
+# (Phalguna Purnima) from a Purnima in any other month. It was declared on all
+# 32 lunar rules but never consulted by the lunar code path, so festivals
+# drifted out of their proper months from 2028 onward. These assert the
+# invariant for every year rather than spot-checking two.
+
+
+def _allowed_months():
+    allowed = {}
+    for rule in FESTIVAL_RULES:
+        if rule.get("months"):
+            allowed.setdefault(rule["name"], set()).update(rule["months"])
+    return allowed
+
+
+@pytest.mark.parametrize("year", range(2026, 2034))
+def test_every_festival_falls_in_its_declared_months(year):
+    """No festival may be reported outside the months its own rule allows."""
+    allowed = _allowed_months()
+    fests = get_festivals(year, **DELHI)
+    offenders = [
+        (f["name"], f["date"], sorted(allowed[f["name"]]))
+        for f in fests
+        if f["name"] in allowed
+        and int(f["date"][5:7]) not in allowed[f["name"]]
+    ]
+    assert not offenders, f"{year}: {offenders}"
+
+
+@pytest.mark.parametrize("year", range(2026, 2034))
+def test_headline_festivals_appear_exactly_once_per_year(year):
+    """Each major festival must resolve to a single date, not none or several.
+
+    A guard that only dropped out-of-month results would make Holi vanish
+    entirely in the years where the counter drifted, so presence is asserted
+    here as well as placement.
+    """
+    fests = get_festivals(year, **DELHI)
+    for name in ("Holi", "Maha Shivaratri", "Raksha Bandhan", "Ganesh Chaturthi",
+                 "Krishna Janmashtami", "Vijayadashami (Dussehra)", "Diwali (Lakshmi Puja)"):
+        hits = [f["date"] for f in fests if f["name"] == name]
+        assert len(hits) == 1, f"{year} {name}: {hits}"
+
+
+@pytest.mark.parametrize("year", range(2026, 2034))
+def test_solar_festivals_land_in_their_own_season(year):
+    """Sankranti in January, Dussehra in October, Diwali in Oct/Nov, Chhath in November."""
+    fests = {f["name"]: f["date"] for f in get_festivals(year, **DELHI)}
+    assert fests["Makar Sankranti"][5:7] == "01", fests["Makar Sankranti"]
+    assert fests["Vijayadashami (Dussehra)"][5:7] == "10", fests["Vijayadashami (Dussehra)"]
+    assert fests["Diwali (Lakshmi Puja)"][5:7] in ("10", "11"), fests["Diwali (Lakshmi Puja)"]
+    assert fests["Chhath Puja"][5:7] == "11", fests["Chhath Puja"]
+
+
+@pytest.mark.parametrize("year", range(2026, 2034))
+def test_gita_jayanti_is_annual_not_monthly(year):
+    """Gita Jayanti has no occurrence index, so it matched every Purnima.
+
+    A rule with no occurrence still has to be pinned to its months, otherwise it
+    is reported a dozen times a year.
+    """
+    fests = get_festivals(year, **DELHI)
+    hits = [f["date"] for f in fests if f["name"] == "Gita Jayanti"]
+    assert len(hits) == 1, f"{year} Gita Jayanti: {hits}"
+
 def test_memo_returns_equal_results():
     a = get_festivals(2026)
     b = get_festivals(2026)
