@@ -14,7 +14,10 @@ import uuid
 import httpx
 
 BASE = os.environ.get("SMOKE_BASE", "http://127.0.0.1:8000")
-PASSWORD = "Str0ng-Passw0rd!"
+# A throwaway password for the throwaway `smoke_*@example.com` accounts this
+# script creates and clean_smoke_data.py deletes. It is not a credential for
+# anything real, and it must satisfy the register endpoint's password rules.
+PASSWORD = "Sm0ke-Test-Only!"
 
 failures: list[str] = []
 
