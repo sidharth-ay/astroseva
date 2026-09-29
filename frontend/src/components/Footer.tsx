@@ -89,6 +89,8 @@ export default function Footer() {
                   { href: "/matrimony", label: "Matrimony" },
                   { href: "/services", label: "All Services" },
                   { href: "/chat", label: "AI Astrologer" },
+                  { href: "/astrologers", label: "Our Astrologers" },
+                  { href: "/astrologer/apply", label: "Become an Astrologer" },
                 ].map((l) => (
                   <li key={l.href}>
                     <Link
