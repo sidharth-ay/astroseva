@@ -12,7 +12,6 @@ const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://astroseva.com";
 // member area.
 const AUTHENTICATED = new Set([
   "/saved-charts",
-  "/astrologer/apply",
 ]);
 
 const routes = [
@@ -25,11 +24,12 @@ const routes = [
   "/doshas", "/lakshan",
   "/terms", "/privacy", "/refund", "/grievance",
   "/samudra", "/moles", "/face-match", "/photo-consult", "/remedies",
-  "/academy", "/analytics", "/notifications", "/community",
-  // The directory is listed; individual profiles are not, since they are only
-  // reachable by slug and the set changes as practitioners are verified.
-  "/astrologers",
-];
+    "/academy", "/analytics", "/notifications", "/community",
+    // The marketplace is deliberately absent. /services carries the only link
+    // to the application flow, and the directory is not ready to advertise, so
+    // listing these would invite crawlers to pages a normal user should not
+    // stumble into. They still work at their URLs.
+  ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // The build timestamp, not `new Date()`. Claiming every page changed on every

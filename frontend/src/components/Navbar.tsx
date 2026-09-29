@@ -16,18 +16,21 @@ const navLinks = [
   { href: "/numerology", label: "Numerology" },
   { href: "/panchang", label: "Panchang" },
   { href: "/services", label: "Services" },
-  { href: "/astrologers", label: "Astrologers" },
   { href: "/chat", label: "AI Chat" },
 ];
 
-// Role-gated entries. The review queue is only meaningful to reviewers and
-// admins, and the applicant dashboard only to someone with an application, so
-// they are kept out of the main bar rather than shown and then refused.
+// Role-gated entries. Only the review queue appears here, and only to
+// reviewers and admins.
+//
+// The applicant dashboard used to be shown to every logged-in user, which meant
+// the marketplace was one click away for anyone. The entry point is now a
+// single card on /services, which relabels itself once someone has applied, so
+// there is no need to advertise the dashboard to people with no application.
 function roleLinks(role?: string) {
   if (role === "reviewer" || role === "admin") {
     return [{ href: "/admin/astrologers", label: "Review Queue" }];
   }
-  return [{ href: "/astrologer/dashboard", label: "My Application" }];
+  return [];
 }
 
 export default function Navbar() {

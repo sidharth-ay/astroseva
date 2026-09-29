@@ -295,6 +295,132 @@ def test_review_queue_allows_an_admin(admin_client):
     assert admin_client.get("/api/v1/admin/astrologers").status_code == 200
 
 
+@pytest.fixture
+def fresh_client(test_sessionmaker):
+    """A client authenticated as a brand-new user with no application.
+
+    The shared `client` fixture is one fixed user, and these tests assert on
+    "has no application yet", so they each need an identity nobody has applied
+    with before.
+    """
+    from tests.conftest import _clear_overrides, _make_client
+    from app.db.models import ROLE_CLIENT, User
+
+    session = test_sessionmaker()
+    try:
+        user = User(
+            email=f"fresh{uuid.uuid4().hex}@example.com",
+            name="Fresh User",
+            hashed_password="x",
+            role=ROLE_CLIENT,
+            token_version=0,
+        )
+        session.add(user)
+        session.commit()
+        c = _make_client(user, test_sessionmaker)
+        try:
+            yield c
+        finally:
+            _clear_overrides()
+    finally:
+        session.rollback()
+        session.close()
+
+
+def test_client_with_no_application_is_told_so(fresh_client):
+    """No application is a normal answer, not a 404.
+
+    The /services card asks this question while rendering, so it needs a
+    clean "you have not applied" response it can act on.
+    """
+    resp = fresh_client.get("/api/v1/astrologer/me")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["has_application"] is False
+    assert body["application"] is None
+
+
+def test_reading_the_application_creates_nothing(fresh_client, isolated_db):
+    """GET /me is read-only. A viewer must not leave a row behind.
+
+    This is the reason the endpoint was split: rendering the /services card,
+    or simply opening the form, used to create a draft for every visitor.
+    """
+    before = isolated_db.query(Astrologer).count()
+
+    resp = fresh_client.get("/api/v1/astrologer/me")
+    assert resp.status_code == 200
+    assert resp.json()["has_application"] is False
+    assert isolated_db.query(Astrologer).count() == before
+
+    # A second read is still a no-op.
+    fresh_client.get("/api/v1/astrologer/me")
+    assert isolated_db.query(Astrologer).count() == before
+
+
+def test_starting_creates_exactly_one_draft(fresh_client, isolated_db):
+    """POST /me/start is the only call that creates a row."""
+    before = isolated_db.query(Astrologer).count()
+    resp = fresh_client.post("/api/v1/astrologer/me/start")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == STATUS_DRAFT
+    assert isolated_db.query(Astrologer).count() == before + 1
+
+    # And it is now visible to the read-only endpoint.
+    assert fresh_client.get("/api/v1/astrologer/me").json()["has_application"] is True
+
+
+def test_starting_twice_is_idempotent(fresh_client, isolated_db):
+    """A double click or a retry must not produce two applications."""
+    before = isolated_db.query(Astrologer).count()
+    first = fresh_client.post("/api/v1/astrologer/me/start")
+    second = fresh_client.post("/api/v1/astrologer/me/start")
+    assert first.status_code == 200 and second.status_code == 200
+    assert first.json()["id"] == second.json()["id"]
+    # Counted as a delta: other tests in this module have created profiles in
+    # the shared test database, so an absolute count would be meaningless.
+    assert isolated_db.query(Astrologer).count() == before + 1
+
+
+def test_exists_check_never_writes(fresh_client, isolated_db):
+    """The label on /services is decided by this call, so it must be inert."""
+    before = isolated_db.query(Astrologer).count()
+    resp = fresh_client.get("/api/v1/astrologer/me/exists")
+    assert resp.status_code == 200
+    assert resp.json()["has_application"] is False
+    assert isolated_db.query(Astrologer).count() == before
+
+    fresh_client.post("/api/v1/astrologer/me/start")
+    assert fresh_client.get("/api/v1/astrologer/me/exists").json()["has_application"] is True
+
+
+def test_an_abandoned_draft_is_not_in_the_reviewer_queue(reviewer_client, isolated_db):
+    """A draft is not a submission, so it must not take up a reviewer's time."""
+    before_queue = len(reviewer_client.get("/api/v1/admin/astrologers").json()["applications"])
+
+    user = _user(isolated_db, name="Started Then Left")
+    p = _profile(isolated_db, user, status=STATUS_DRAFT)  # never submitted
+
+    body = reviewer_client.get("/api/v1/admin/astrologers").json()
+    slugs = [a["slug"] for a in body["applications"]]
+    assert not any("started-then-left" in s for s in slugs), slugs
+    assert len(body["applications"]) == before_queue
+
+    counts = reviewer_client.get("/api/v1/admin/astrologers/counts").json()
+    assert counts["drafts"] >= 1
+    assert counts["total"] == before_queue
+    assert p.status == STATUS_DRAFT
+
+
+def test_a_submitted_application_appears_in_the_queue(reviewer_client, isolated_db):
+    """The counterpart: submitting puts it back in the queue."""
+    user = _user(isolated_db, name="Real Applicant")
+    p = _profile(isolated_db, user, status=STATUS_APPLIED)
+
+    body = reviewer_client.get("/api/v1/admin/astrologers").json()
+    assert any(a["id"] == p.id for a in body["applications"]), body
+
+
 def test_client_can_read_own_application(client):
     assert client.get("/api/v1/astrologer/me").status_code == 200
 

@@ -79,9 +79,36 @@ def slugify(name: str, fallback_id: int) -> str:
     return f"{base or 'astrologer'}-{fallback_id}"
 
 
-def get_or_create_profile(db: Session, user) -> Astrologer:
-    """The caller's astrologer profile, created as a draft on first use."""
-    profile = db.query(Astrologer).filter(Astrologer.user_id == user.id).first()
+def find_profile(db: Session, user) -> Astrologer | None:
+    """The caller's astrologer profile, or None. Never writes.
+
+    Used by the public "do I have an application?" check, which runs while
+    rendering a page. Creating a draft there would leave a row for every
+    visitor who merely looked.
+    """
+    return db.query(Astrologer).filter(Astrologer.user_id == user.id).first()
+
+
+def has_application(db: Session, user) -> bool:
+    """Whether the caller has started an application.
+
+    Deliberately a bool rather than the profile: the caller only needs to know
+    which label to show, and returning the row would invite callers to render
+    data they have no use for.
+    """
+    return (
+        db.query(Astrologer.id).filter(Astrologer.user_id == user.id).first() is not None
+    )
+
+
+def start_application(db: Session, user) -> Astrologer:
+    """Create the caller's draft application, or return the existing one.
+
+    This is the only path that creates a row, and it runs only when someone
+    deliberately starts the form. It is idempotent, so a double click or a
+    retry cannot produce two applications.
+    """
+    profile = find_profile(db, user)
     if profile is not None:
         return profile
     profile = Astrologer(user_id=user.id, slug=slugify(user.name, user.id))
@@ -90,6 +117,15 @@ def get_or_create_profile(db: Session, user) -> Astrologer:
     db.refresh(profile)
     record_event(db, profile, "profile_created", None, STATUS_DRAFT, user.id, {})
     return profile
+
+
+def get_or_create_profile(db: Session, user) -> Astrologer:
+    """The caller's astrologer profile, creating a draft if none exists.
+
+    Kept for the endpoints that are only reachable once someone is already
+    inside the application flow. Read-only paths must use ``find_profile``.
+    """
+    return start_application(db, user)
 
 
 def can_transition(current: str, target: str) -> bool:

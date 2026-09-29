@@ -89,7 +89,9 @@ export default function AstrologerDashboardPage() {
   const load = useCallback(async () => {
     try {
       const [a, t] = await Promise.all([api.getMyApplication(), api.getMyTimeline()]);
-      setApp(a);
+      // No application is a normal state, not an error: it only means the
+      // caller has not started one yet.
+      setApp(a.application);
       setEvents(t.events);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load your application.");
@@ -105,7 +107,7 @@ export default function AstrologerDashboardPage() {
     Promise.all([api.getMyApplication(), api.getMyTimeline()])
       .then(([a, t]) => {
         if (cancelled) return;
-        setApp(a);
+        setApp(a.application);
         setEvents(t.events);
       })
       .catch((e: unknown) => {
@@ -155,7 +157,31 @@ export default function AstrologerDashboardPage() {
     );
   }
 
-  if (!app) return null;
+  if (!app) {
+    // Reachable now that GET /me no longer creates a draft: someone who has
+    // not started an application has no row, so the dashboard has nothing to
+    // show. Previously this rendered a blank page.
+    return (
+      <div className="max-w-2xl mx-auto px-5 py-20 text-center">
+        <div
+          className="rounded-xl p-8"
+          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
+        >
+          <FileText className="w-8 h-8 mx-auto mb-3" style={{ color: ACCENT }} />
+          <h1 className="font-display text-2xl mb-2" style={{ color: "var(--text-primary)" }}>
+            No application yet
+          </h1>
+          <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
+            You have not started an application to practise on AstroSeva. Nothing is
+            created until you begin, so there is nothing to track yet.
+          </p>
+          <Link href="/services" className="btn-primary text-sm">
+            Apply to become an astrologer
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const reached = reachedIndex(app.status);
   const canSubmit = app.status === "draft";

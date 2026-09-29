@@ -84,25 +84,32 @@ function ApplyWizard() {
   const [view, setView] = useState<AssessmentView | null>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [result, setResult] = useState<AssessmentResult | null>(null);
+  // The application itself tells us whether one exists, so there is no
+  // separate `started` flag to keep in sync with it.
+
+  /** Pull the application into the form fields. No-op when there is none. */
+  const hydrate = useCallback((a: MyApplication | null) => {
+    setApp(a);
+    if (!a) return;
+    setHeadline(a.headline ?? "");
+    setBio(a.bio ?? "");
+    setExperience(String(a.experience_years ?? 0));
+    setLocation(a.location ?? "");
+    setSpecialties(a.specialties ?? []);
+    setLanguages(a.languages ?? []);
+  }, []);
 
   // Both fetchers only publish data; `loading` is entered by whoever triggers
   // them, so neither effect sets state synchronously while mounting.
   const load = useCallback(async () => {
     try {
-      const a = await api.getMyApplication();
-      setApp(a);
-      setHeadline(a.headline ?? "");
-      setBio(a.bio ?? "");
-      setExperience(String(a.experience_years ?? 0));
-      setLocation(a.location ?? "");
-      setSpecialties(a.specialties ?? []);
-      setLanguages(a.languages ?? []);
+      hydrate((await api.getMyApplication()).application);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load your application.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hydrate]);
 
   const loadAssessment = useCallback(async () => {
     try {
@@ -116,15 +123,12 @@ function ApplyWizard() {
     let cancelled = false;
     api
       .getMyApplication()
-      .then((a) => {
+      .then((res) => {
         if (cancelled) return;
-        setApp(a);
-        setHeadline(a.headline ?? "");
-        setBio(a.bio ?? "");
-        setExperience(String(a.experience_years ?? 0));
-        setLocation(a.location ?? "");
-        setSpecialties(a.specialties ?? []);
-        setLanguages(a.languages ?? []);
+        // Read-only: landing here creates nothing. A visitor who has not
+        // committed gets an explanation and an explicit "Start application"
+        // button, so a row is only written on a deliberate click.
+        hydrate(res.application);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
@@ -136,7 +140,20 @@ function ApplyWizard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hydrate]);
+
+  /** The one call that creates the application. Idempotent server-side. */
+  const start = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      hydrate(await api.startApplication());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not start your application.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!startAtAssessment) return;
@@ -182,7 +199,7 @@ function ApplyWizard() {
     setError(null);
     try {
       await api.uploadDocument(kind, file);
-      setApp(await api.getMyApplication());
+      hydrate((await api.getMyApplication()).application);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
@@ -194,7 +211,7 @@ function ApplyWizard() {
     setBusy(true);
     try {
       await api.deleteDocument(id);
-      setApp(await api.getMyApplication());
+      hydrate((await api.getMyApplication()).application);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not remove the document.");
     } finally {
@@ -210,7 +227,7 @@ function ApplyWizard() {
         Object.fromEntries(Object.entries(answers).map(([k, v]) => [k, v]))
       );
       setResult(res);
-      setApp(await api.getMyApplication());
+      hydrate((await api.getMyApplication()).application);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not submit the assessment.");
     } finally {
@@ -230,12 +247,97 @@ function ApplyWizard() {
     );
   }
 
-  if (!app) {
+  if (error && !app && !loading) {
     return (
       <div className="max-w-3xl mx-auto px-5 py-16 text-center">
         <AlertTriangle className="w-8 h-8 mx-auto mb-3" style={{ color: "var(--danger)" }} />
         <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>{error}</p>
         <button className="btn-secondary text-sm" onClick={load}>Retry</button>
+      </div>
+    );
+  }
+
+  if (!app) {
+    // The start gate. Landing here creates nothing, so an application row is
+    // only written when someone commits by pressing the button below. The
+    // criteria are stated first so that is an informed choice.
+    return (
+      <div className="max-w-2xl mx-auto px-5 py-14">
+        <header className="mb-8 text-center">
+          <h1 className="font-display text-3xl mb-2" style={{ color: "var(--text-primary)" }}>
+            Practise on AstroSeva
+          </h1>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            Here is what applying involves, before you create anything.
+          </p>
+        </header>
+
+        <ol className="space-y-3 mb-8">
+          {[
+            {
+              t: "Fill in your profile",
+              d: "What you specialise in, your experience, and the languages you consult in.",
+            },
+            {
+              t: "Upload documents",
+              d: "A qualification or experience document is required. Identity documents are optional.",
+            },
+            {
+              t: "Take a qualification test",
+              d: "10 questions, auto-graded, 8 to pass. Unattended and free.",
+            },
+            {
+              t: "Complete a mock consultation",
+              d: "A reviewer scores you on accuracy, clarity, empathy and structure.",
+            },
+            {
+              t: "Get a decision",
+              d: "Verified, approved on probation, or told why.",
+            },
+          ].map((s, i) => (
+            <li
+              key={s.t}
+              className="flex gap-3 p-3 rounded-lg"
+              style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
+            >
+              <span
+                className="w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0"
+                style={{ background: "rgba(200,149,109,0.15)", color: ACCENT }}
+              >
+                {i + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm" style={{ color: "var(--text-primary)" }}>
+                  {s.t}
+                </span>
+                <span className="block text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                  {s.d}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        <div
+          className="rounded-lg p-3 text-xs flex gap-2 mb-6"
+          style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}
+        >
+          <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: ACCENT }} />
+          <span>
+            Documents are <strong>self-declared</strong> and checked by a human reviewer.
+            AstroSeva does not verify identity against any government register.
+          </span>
+        </div>
+
+        <div className="text-center">
+          <button className="btn-primary text-sm" onClick={start} disabled={busy}>
+            {busy ? "Creating…" : "Start application"}
+          </button>
+          <p className="text-[11px] mt-3" style={{ color: "var(--text-tertiary)" }}>
+            This creates a draft you can leave and come back to. Nothing is submitted until
+            you choose to submit it.
+          </p>
+        </div>
       </div>
     );
   }

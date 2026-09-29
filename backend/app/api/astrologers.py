@@ -126,8 +126,44 @@ def _serialise_profile(db: Session, profile: Astrologer) -> dict:
 @limiter.limit("60/minute")
 async def my_application(request: Request, db: Session = Depends(get_db),
                          user: User = Depends(get_current_user)):
-    """The caller's own application, created as a draft if it does not exist."""
-    return _serialise_profile(db, _my_profile(db, user))
+    """The caller's own application. Read-only: this creates no row.
+
+    A caller with no application gets ``has_application: false`` and a null
+    profile rather than an error, so a page can ask the question without
+    having to catch a 404. Writing here would mean that simply loading the
+    form created a draft, leaving an empty application in the reviewer's queue
+    for everyone who took a look and left.
+    """
+    profile = svc.find_profile(db, user)
+    if profile is None:
+        return {"has_application": False, "application": None}
+    return {"has_application": True, "application": _serialise_profile(db, profile)}
+
+
+@router.get("/me/exists")
+@limiter.limit("120/minute")
+async def application_exists(request: Request, db: Session = Depends(get_db),
+                             user: User = Depends(get_current_user)):
+    """Whether the caller has started an application. Never writes.
+
+    This backs the "Become an Astrologer" / "My Application" label on the
+    services page, so it has to be safe to call while merely rendering a page
+    that anyone can visit.
+    """
+    return {"has_application": svc.has_application(db, user)}
+
+
+@router.post("/me/start")
+@limiter.limit("10/minute")
+async def start_application(request: Request, db: Session = Depends(get_db),
+                            user: User = Depends(get_current_user)):
+    """Begin an application, creating the draft. Idempotent.
+
+    The only endpoint that creates an application row, and it runs on
+    deliberate intent rather than on a page view.
+    """
+    profile = svc.start_application(db, user)
+    return _serialise_profile(db, profile)
 
 
 @router.put("/me")

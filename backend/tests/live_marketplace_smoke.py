@@ -76,10 +76,30 @@ print(f"  role at registration: {applicant['user'].get('role')}")
 check("registration does not grant the astrologer role",
       applicant["user"].get("role") in (None, "client"))
 
+print("== 1b. viewing the application creates nothing; starting does ==")
+# The /services card asks this question while rendering, so it must be inert.
 r = httpx.get(f"{BASE}/api/v1/astrologer/me", headers=auth(app_tok), timeout=30)
-check("draft is created on demand", r.status_code == 200, r.text)
+check("no application yet is a normal 200", r.status_code == 200, r.text)
+check("has_application is false", r.json().get("has_application") is False, r.text)
+check("application is null", r.json().get("application") is None, r.text)
+
+r = httpx.get(f"{BASE}/api/v1/astrologer/me/exists", headers=auth(app_tok), timeout=30)
+check("the exists check agrees", r.json().get("has_application") is False, r.text)
+
+r = httpx.get(f"{BASE}/api/v1/astrologer/me", headers=auth(app_tok), timeout=30)
+check("reading twice still reports no application",
+      r.json().get("has_application") is False, r.text)
+
+r = httpx.post(f"{BASE}/api/v1/astrologer/me/start", headers=auth(app_tok), timeout=30)
+check("starting creates the draft", r.status_code == 200, r.text)
 app_id = r.json()["id"]
-check("new application is in draft", r.json()["status"] == "draft")
+check("the new application is in draft", r.json()["status"] == "draft", r.text)
+
+again = httpx.post(f"{BASE}/api/v1/astrologer/me/start", headers=auth(app_tok), timeout=30)
+check("starting twice is idempotent", again.json().get("id") == app_id, again.text)
+check("the exists check now agrees",
+      httpx.get(f"{BASE}/api/v1/astrologer/me/exists", headers=auth(app_tok),
+                timeout=30).json().get("has_application") is True)
 
 print("== 2. the directory is closed to anonymous callers ==")
 check("directory 401s without a token",
@@ -115,7 +135,8 @@ for kind in ("pan", "aadhaar", "degree_certificate"):
     check(f"{kind} uploads", r.status_code == 200, r.text)
 
 r = httpx.get(f"{BASE}/api/v1/astrologer/me", headers=auth(app_tok), timeout=30)
-check("three documents recorded", len(r.json()["documents"]) == 3, r.text)
+check("three documents recorded",
+      len(r.json()["application"]["documents"]) == 3, r.text)
 
 print("== 6. submitting now succeeds and grants the role ==")
 r = httpx.post(f"{BASE}/api/v1/astrologer/apply", headers=auth(app_tok), timeout=30)
@@ -149,6 +170,23 @@ check("application is in the queue",
 
 counts = httpx.get(f"{BASE}/api/v1/admin/astrologers/counts", headers=auth(rev_tok), timeout=30).json()
 check("counts include applied", counts["counts"].get("applied", 0) >= 1, str(counts))
+
+print("== 8b. an abandoned draft is invisible to the reviewer ==")
+# Someone who opens the form and leaves should not consume review time.
+lurker = register(f"smoke_lurk_{suffix}@example.com", "Smoke Lurker")
+l_tok = lurker["token"]
+started = httpx.post(f"{BASE}/api/v1/astrologer/me/start", headers=auth(l_tok), timeout=30)
+check("the lurker started an application", started.status_code == 200, started.text)
+lurk_id = started.json()["id"]
+check("it is a draft", started.json()["status"] == "draft", started.text)
+
+queue = httpx.get(f"{BASE}/api/v1/admin/astrologers", headers=auth(rev_tok), timeout=30).json()
+check("the draft is not in the queue",
+      all(a["id"] != lurk_id for a in queue["applications"]),
+      str([a["slug"] for a in queue["applications"]]))
+c = httpx.get(f"{BASE}/api/v1/admin/astrologers/counts", headers=auth(rev_tok), timeout=30).json()
+check("drafts are counted separately", c.get("drafts", 0) >= 1, str(c))
+check("the queue total excludes drafts", c["total"] == len(queue["applications"]), str(c))
 
 print("== 9. illegal status moves are refused ==")
 r = httpx.post(f"{BASE}/api/v1/admin/astrologers/{app_id}/status", headers=auth(rev_tok), timeout=30,

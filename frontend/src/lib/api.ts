@@ -1028,7 +1028,28 @@ export const api = {
       signal ? { signal } : undefined
     ),
 
-  getMyApplication: () => fetchAuth<MyApplication>("/api/v1/astrologer/me"),
+  /**
+   * The caller's own application. Read-only: the server creates no row here,
+   * so this is safe to call while merely rendering a page. A caller who has
+   * not started gets `{ has_application: false, application: null }` rather
+   * than a 404, so callers do not have to treat "no application" as an error.
+   */
+  getMyApplication: () =>
+    fetchAuth<{ has_application: boolean; application: MyApplication | null }>(
+      "/api/v1/astrologer/me"
+    ),
+
+  /**
+   * Whether the caller has started an application. Backs the
+   * "Become an Astrologer" / "My Application" label on /services, so it must
+   * never write -- rendering that page cannot create an application row.
+   */
+  hasApplication: () =>
+    fetchAuth<{ has_application: boolean }>("/api/v1/astrologer/me/exists"),
+
+  /** Begin an application. The only call that creates a row, and idempotent. */
+  startApplication: () =>
+    fetchAuth<MyApplication>("/api/v1/astrologer/me/start", { method: "POST" }),
 
   updateMyApplication: (payload: {
     headline: string;

@@ -17,6 +17,7 @@ from ..db.database import get_db
 from ..db.models import (
     STATUS_APPLIED,
     STATUS_ASSESSMENT_PENDING,
+    STATUS_DRAFT,
     STATUS_MOCK_PENDING,
     STATUS_REJECTED,
     STATUS_SUSPENDED,
@@ -124,8 +125,15 @@ async def list_applications(
     db: Session = Depends(get_db),
     reviewer: User = Depends(require_reviewer),
 ):
-    """The onboarding queue, oldest first within a status."""
-    q = db.query(Astrologer)
+    """The onboarding queue, oldest first within a status.
+
+    Drafts are excluded. A draft means someone opened the form and did not
+    finish, which is not a submission and there is nothing for a reviewer to
+    decide. Including them buried the real queue under empty rows. A draft can
+    still be inspected by id, and it enters the queue the moment it is
+    submitted (`draft -> applied`).
+    """
+    q = db.query(Astrologer).filter(Astrologer.status != STATUS_DRAFT)
     if status:
         q = q.filter(Astrologer.status == status)
     rows = q.order_by(Astrologer.created_at.asc()).all()
@@ -151,10 +159,13 @@ async def list_applications(
 async def queue_counts(request: Request, db: Session = Depends(get_db),
                         reviewer: User = Depends(require_reviewer)):
     from ..db.models import ONBOARDING_STATUSES
-    rows = db.query(Astrologer).all()
+    # Drafts are excluded to match the queue, so the two agree. Otherwise the
+    # tab badges would count rows the reviewer cannot see.
+    rows = db.query(Astrologer).filter(Astrologer.status != STATUS_DRAFT).all()
     return {
         "counts": {s: sum(1 for p in rows if p.status == s) for s in ONBOARDING_STATUSES},
         "total": len(rows),
+        "drafts": db.query(Astrologer).filter(Astrologer.status == STATUS_DRAFT).count(),
     }
 
 
