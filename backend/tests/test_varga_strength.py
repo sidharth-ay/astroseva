@@ -214,13 +214,52 @@ def test_ashtakavarga_own_sign_always_binds():
     r = build_ashtakavarga(_chart7(), 0)
     for graha, v in r["per_graha"].items():
         own = next(x for x in v["signs"] if x["sign"] == v["occupied_sign"])
-        assert own["points"] >= 1, graha
+        assert own["points"] == 6, graha
 
 
-def test_ashtakavarga_sign_points_sum_to_eight():
+def test_ashtakavarga_sign_points_sum_to_forty_eight():
+    """Eight contributing positions, each worth 6, is the classical 48."""
     r = build_ashtakavarga(_chart7(), 0)
     for graha, v in r["per_graha"].items():
-        assert sum(x["points"] for x in v["signs"]) == 8, graha
+        assert sum(x["points"] for x in v["signs"]) == 48, graha
+
+
+def test_ashtakavarga_bound_signs_are_never_graded_nil():
+    """The bug: every grade was the "nil" fallback, on every graha and sign.
+
+    The cutoffs that produced them ran from 5 to 32 and were applied to
+    single-sign bhavs, which top out at 6. A sign a graha binds has 6 points
+    and must not read "nil".
+    """
+    r = build_ashtakavarga(_chart7(), 0)
+    for graha, v in r["per_graha"].items():
+        for x in v["signs"]:
+            expected = "poorna" if x["points"] == 6 else "nil"
+            assert x["grade"] == expected, (graha, x["sign"], x["points"], x["grade"])
+        assert v["grade_own"] == "poorna", graha
+        if v["in_asc_sign"]:
+            assert v["grade_asc"] != "nil", graha
+
+
+def test_ashtakavarga_reports_its_maximum():
+    """total_points is a constant count of positions, not a grade.
+
+    Every graha binds all eight of its positions, so the old UI showing a bare
+    "8" in the emphasised colour implied a score. It is now rendered out of 8.
+    """
+    r = build_ashtakavarga(_chart7(), 0)
+    for graha, v in r["per_graha"].items():
+        assert v["total_points"] == 8, graha
+        assert v["max_total_points"] == 8, graha
+
+
+def test_ashtakavarga_house_bhav_scale():
+    r = build_ashtakavarga(_chart7(), 0)
+    for graha, v in r["per_graha"].items():
+        for x in v["signs"]:
+            assert x["points"] in (0, 6), (graha, x["points"])
+        assert v["in_own_sign"] in (0, 6), graha
+        assert v["in_asc_sign"] in (0, 6), graha
 
 
 def test_ashtakavarga_aggregate_within_seven():

@@ -497,7 +497,7 @@ function StrengthTab({ result }: { result: KundliResponse }) {
           <table className="w-full text-xs">
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Graha", "Sign", "Total", "Own sign", "Asc sign"].map((h) => (
+                {["Graha", "Sign", "Positions", "Own sign", "Asc sign"].map((h) => (
                   <th key={h} className="text-left py-2 px-2 font-medium" style={{ color: "var(--text-tertiary)" }}>{h}</th>
                 ))}
               </tr>
@@ -507,9 +507,9 @@ function StrengthTab({ result }: { result: KundliResponse }) {
                 <tr key={graha} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                   <td className="py-2 px-2 font-medium" style={{ color: "var(--text-primary)" }}>{graha}</td>
                   <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{SIGN_NAMES[v.occupied_sign]}</td>
-                  <td className="py-2 px-2 font-medium" style={{ color: "var(--champagne)" }}>{v.total_points}</td>
-                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{v.in_own_sign} · {v.grade_own}</td>
-                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{v.in_asc_sign} · {v.grade_asc}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{v.total_points} of 8</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{v.in_own_sign} of 6 · {v.grade_own}</td>
+                  <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{v.in_asc_sign} of 6 · {v.grade_asc}</td>
                 </tr>
               ))}
             </tbody>

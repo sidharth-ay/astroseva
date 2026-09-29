@@ -148,7 +148,7 @@ export interface DashaInfo {
       asc_sign: number; method: string; validated_against_published_tables: boolean;
       best_sign: number | null; best_house: number | null;
       per_graha: Record<string, {
-        occupied_sign: number; total_points: number;
+        occupied_sign: number; total_points: number; max_total_points: number;
         in_own_sign: number; in_asc_sign: number;
         grade_own: string; grade_asc: string;
         signs: { sign: number; house: number; points: number; grade: string }[];

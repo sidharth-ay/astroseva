@@ -27,24 +27,20 @@ _POSITIONS = {
     "Saturn": (1, 3, 4, 5, 6, 10, 11, 12),
 }
 
-# 3/4 strength cutoffs per classical Ashtakavarga: a sign needs this many of
-# the seven grahas to count as strong.
-QUARTER_RULAS = {
-    "Sun": {25: "excellent", 20: "very good", 15: "good",
-            10: "satisfactory", 5: "weak"},
-    "Moon": {30: "excellent", 25: "very good", 20: "good",
-             15: "satisfactory", 5: "weak"},
-    "Mars": {20: "excellent", 15: "very good", 10: "good",
-             7: "satisfactory", 5: "weak"},
-    "Mercury": {20: "excellent", 18: "very good", 15: "good",
-                12: "satisfactory", 7: "weak"},
-    "Jupiter": {32: "excellent", 25: "very good", 20: "good",
-                15: "satisfactory", 5: "weak"},
-    "Venus": {25: "excellent", 20: "very good", 15: "good",
-              10: "satisfactory", 5: "weak"},
-    "Saturn": {25: "excellent", 20: "very good", 15: "good",
-               10: "satisfactory", 5: "weak"},
-}
+# A graha's bhav in a single sign is out of 6: it draws on one of its eight
+# contributing positions, and each position is worth 6 points. The grading
+# below is on that 0-6 scale.
+#
+# This replaces a QUARTER_RULAS table whose cutoffs ran from 5 to 32 and which
+# was only ever applied to single-sign bhavs. Nothing in this module can reach
+# 32, so every grade it produced was the "nil" fallback -- the Ashtakavarga tab
+# read "nil" for all seven grahas, in all twelve signs, on every chart. The
+# 0-48 figure the cutoffs assumed is the total of a whole chart (six grahas x
+# eight positions), not a per-sign quantity, so those numbers could never apply
+# here. Deriving a real per-house table needs the published binding tables,
+# which this module does not have; it is flagged as not validated in the
+# response rather than approximated.
+HOUSE_BHAV_RULAS = {5: "poorna", 3: "ardha", 1: "rakta"}
 
 # Ascendant and seventh-lord (Nabansakavarga / Sukarmavarga) positions.
 _LAGNA_POSITIONS = (1, 2, 3, 4, 5, 6, 7, 8)
@@ -52,6 +48,12 @@ _SUKARMA_POSITIONS = (1, 2, 4, 5, 6, 7, 8, 9)
 
 GRAHAS = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
 
+# Each of the eight contributing positions scores 6.
+POINTS_PER_POSITION = 6
+
+# The number of positions a graha binds. This is a count, not a score: every
+# graha binds all eight, so `total_points` below is always 8. It is reported
+# with its maximum so the UI can show "8/8" instead of implying a grade.
 MAX_POINTS_PER_GRAHA = 8
 
 
@@ -59,8 +61,9 @@ def _sign_of(position: int, sign: int) -> int:
     return (sign + position - 1) % 12
 
 
-def _grade(graha: str, points: int) -> str:
-    for cutoff, label in sorted(QUARTER_RULAS[graha].items(), reverse=True):
+def _grade(points: int) -> str:
+    """Grade a single-sign (house) bhav on the 0-6 scale."""
+    for cutoff, label in sorted(HOUSE_BHAV_RULAS.items(), reverse=True):
         if points >= cutoff:
             return label
     return "nil"
@@ -76,29 +79,30 @@ def build_ashtakavarga(planets: list, asc_sign: int) -> dict:
         if not p or p.get("sign") is None:
             continue
         occ_sign = p["sign"]
-        points = {s: 0 for s in range(12)}
+        binding = {s: 0 for s in range(12)}
         for pos in _POSITIONS[graha]:
-            points[_sign_of(pos, occ_sign)] += 1
+            binding[_sign_of(pos, occ_sign)] += 1
+        points = {s: binding[s] * POINTS_PER_POSITION for s in range(12)}
         row = [
             {
                 "sign": s,
                 "house": (s - asc_sign) % 12 + 1,
                 "points": points[s],
-                "grade": _grade(graha, points[s]),
+                "grade": _grade(points[s]),
             }
             for s in range(12)
         ]
         own = points[occ_sign]
         asc = points[asc_sign]
-        total = sum(points.values())
         per_graha[graha] = {
             "occupied_sign": occ_sign,
             "signs": row,
-            "total_points": total,
+            "total_points": sum(binding.values()),
+            "max_total_points": MAX_POINTS_PER_GRAHA,
             "in_own_sign": own,
             "in_asc_sign": asc,
-            "grade_own": _grade(graha, own),
-            "grade_asc": _grade(graha, asc),
+            "grade_own": _grade(own),
+            "grade_asc": _grade(asc),
         }
 
     # Aggregate: how many grahas bind each sign (max 7).
