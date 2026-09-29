@@ -444,6 +444,34 @@ export interface FestivalsResponse {
   note: string;
 }
 
+export interface BabyName {
+  name: string;
+  meaning: string;
+  origin: string;
+  destiny_number: number;
+  is_master_number: boolean;
+  traits: string[];
+  compatibility: string;
+  compatibility_note: string;
+}
+
+export interface BabyNamesResponse {
+  gender: string;
+  birth_date: string | null;
+  life_path: {
+    life_path_number: number;
+    is_master_number: boolean;
+    reduction: string;
+    traits: string[];
+    lucky_color: string;
+    lucky_gem: string;
+    lucky_day: string;
+    planet: string;
+  } | null;
+  count: number;
+  names: BabyName[];
+}
+
 const TOKEN_KEY = "astroseva_token";
 const USER_KEY = "astroseva_user";
 
@@ -633,7 +661,7 @@ export const api = {
     }),
 
   getBabyNames: (gender: string, birth_date: string) =>
-    fetchAPI<{ gender: string; names: { name: string; meaning: string; origin: string; lucky_number: number }[]; lucky_numbers: number[]; lucky_letters: string[] }>(`/api/v1/baby-names/suggest?gender=${gender}&birth_date=${birth_date}`),
+    fetchAPI<BabyNamesResponse>(`/api/v1/baby-names/suggest?gender=${gender}&birth_date=${birth_date}`),
 
   getFestivals: (opts: {
     month?: number;
