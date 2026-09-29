@@ -22,7 +22,23 @@ TOTAL_MAX = 36
 def calculate_varna(boy_sign: int, girl_sign: int) -> dict:
     """Calculate Varna (1 point) - Spiritual compatibility."""
     # Brahmin=0, Kshatriya=1, Vaishya=2, Shudra=3
-    varna_map = {0: 0, 1: 0, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3, 7: 3, 8: 0, 9: 0, 10: 1, 11: 1}
+    #
+    # Brahmin: Aries, Taurus, Gemini, Cancer (four)
+    # Kshatriya: Leo, Virgo (two)
+    # Vaishya: Libra, Scorpio (two)
+    # Shudra: Sagittarius, Capricorn, Aquarius, Pisces (four)
+    #
+    # This table was shifted by one varna from Gemini onward and then wrapped:
+    # it gave Gemini and Cancer to the Kshatriyas, Leo and Virgo to the
+    # Vaishyas, Libra and Scorpio to the Shudras, and then restarted, so
+    # Sagittarius and Capricorn came out as Brahmin and Aquarius and Pisces as
+    # Kshatriya. Two of the twelve signs were right.
+    varna_map = {
+        0: 0, 1: 0, 2: 0, 3: 0,        # Brahmin
+        4: 1, 5: 1,                     # Kshatriya
+        6: 2, 7: 2,                     # Vaishya
+        8: 3, 9: 3, 10: 3, 11: 3,      # Shudra
+    }
 
     boy_varna = varna_map.get(boy_sign, 0)
     girl_varna = varna_map.get(girl_sign, 0)
@@ -68,23 +84,42 @@ def calculate_vashya(boy_sign: int, girl_sign: int) -> dict:
     }
 
 
+# Tara positions: 1 Visham, 2 Vipreet, 3 Shubh, 4 Labh, 5 Amrit, 6 Chandra,
+# 7 Atithi, 8 Mitra, 9 Paridhi. Visham, Vipreet and Atithi are the inauspicious
+# trio. The old set was {1, 5, 7}, which penalised Amrit -- the most favourable
+# of the nine -- and let Vipreet through unscored.
+TARA_INAUSPICIOUS = {1, 2, 7}
+
+
+def _tara_position(from_nakshatra: int, to_nakshatra: int) -> int:
+    """Which of the nine taras a placement falls on, counting 1-27 forward.
+
+    The 27 nakshatras are divided into nine groups of three, one group per tara,
+    so the tara is the count grouped by three and wrapped into 1-9.
+
+    The old expression was `(count + 1) % 9 if count > 0 else 9`. That returned
+    0 whenever the count was 8, so a boy and girl eight nakshatras apart were
+    recorded as "tara 0" -- not one of the nine -- in the API and the UI. The
+    `else 9` branch also gave identical nakshatras a 9 instead of a 1, scoring
+    the closest possible placement as though it fell on Paridhi. The modulo also
+    spread one tara per nakshatra where the scheme groups three nakshatras to
+    each tara.
+    """
+    count = (to_nakshatra - from_nakshatra) % 27
+    if count == 0:
+        count = 1
+    return ((count - 1) // 3) % 9 + 1
+
+
 def calculate_tara(boy_nakshatra: int, girl_nakshatra: int) -> dict:
     """Calculate Tara (3 points) - Birth star compatibility."""
-    # Count from boy to girl and girl to boy
-    boy_to_girl = (girl_nakshatra - boy_nakshatra) % 27
-    girl_to_boy = (boy_nakshatra - girl_nakshatra) % 27
-
-    # Remainder when divided by 9
-    b2g_rem = (boy_to_girl + 1) % 9 if boy_to_girl > 0 else 9
-    g2b_rem = (girl_to_boy + 1) % 9 if girl_to_boy > 0 else 9
-
-    # 1, 5, 7 are inauspicious (Visham, Sadhak, Atithi)
-    inauspicious = {1, 5, 7}
+    b2g = _tara_position(boy_nakshatra, girl_nakshatra)
+    g2b = _tara_position(girl_nakshatra, boy_nakshatra)
 
     score = 3
-    if b2g_rem in inauspicious:
+    if b2g in TARA_INAUSPICIOUS:
         score -= 1
-    if g2b_rem in inauspicious:
+    if g2b in TARA_INAUSPICIOUS:
         score -= 1
     score = max(0, score)
 
@@ -92,8 +127,8 @@ def calculate_tara(boy_nakshatra: int, girl_nakshatra: int) -> dict:
         "koota": "Tara",
         "max_points": 3,
         "score": score,
-        "boy_to_girl": b2g_rem,
-        "girl_to_boy": g2b_rem,
+        "boy_to_girl": b2g,
+        "girl_to_boy": g2b,
     }
 
 
