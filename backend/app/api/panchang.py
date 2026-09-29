@@ -6,14 +6,14 @@ import logging
 
 from ..models.response import PanchangResponse
 from ..core.planets import get_planetary_positions
-from ..core.panchang import get_panchang
+from ..core.panchang import calculate_sunrise_sunset, get_panchang
 from ..services.cache_service import cache_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/panchang", tags=["panchang"])
 
-# ─── Helper calculation functions ────────────────────────────────────────────
+# â”€â”€â”€ Helper calculation functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CHOGHADIYA_NAMES = ["Amrit", "Shubh", "Labh", "Char", "Ka", "Rog", "Udveg", "Amrit"]
 CHOGHADIYA_TYPES = ["good", "neutral", "good", "neutral", "bad", "bad", "bad", "good"]
@@ -44,7 +44,7 @@ def _hours_to_time_str(hours: float) -> str:
 def _calculate_choghadiya(sunrise_hour: float, sunset_hour: float, day_of_week: int) -> list:
     """Calculate Choghadiya periods for the day.
 
-    Returns 16 periods: 8 day choghadiyas (sunrise–sunset) + 8 night choghadiyas (sunset–next sunrise).
+    Returns 16 periods: 8 day choghadiyas (sunriseâ€“sunset) + 8 night choghadiyas (sunsetâ€“next sunrise).
     """
     results = []
 
@@ -65,7 +65,7 @@ def _calculate_choghadiya(sunrise_hour: float, sunset_hour: float, day_of_week: 
             "period": "day",
         })
 
-    # --- Night choghadiya (sunset to next sunrise → treat next sunrise as sunset + night_duration) ---
+    # --- Night choghadiya (sunset to next sunrise â†’ treat next sunrise as sunset + night_duration) ---
     night_duration = 24.0 - day_duration  # hours from sunset to next sunrise
     night_chog_duration = night_duration / 8
 
@@ -91,8 +91,8 @@ def _calculate_choghadiya(sunrise_hour: float, sunset_hour: float, day_of_week: 
 def _calculate_hora(sunrise_hour: float, sunset_hour: float, day_of_week: int) -> list:
     """Calculate Hora periods for the day.
 
-    24 horas: 12 day (sunrise–sunset) + 12 night (sunset–next sunrise).
-    Each day's first hora is ruled by the weekday ruler (Sun–Sat).
+    24 horas: 12 day (sunriseâ€“sunset) + 12 night (sunsetâ€“next sunrise).
+    Each day's first hora is ruled by the weekday ruler (Sunâ€“Sat).
     """
     results = []
 
@@ -277,7 +277,13 @@ async def get_muhurat(
 
     try:
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid date '{date_str}'. Expected YYYY-MM-DD.",
+        )
 
+    try:
         # Get Panchang first
         panchang = await get_daily_panchang(latitude, longitude, date_str)
 
@@ -299,6 +305,12 @@ async def get_muhurat(
             "note": "For precise muhurats, consult a Vedic calendar (Panchang)",
         }
 
+    except HTTPException:
+        # A bad date or an upstream failure should surface as itself, not be
+        # relabelled "Error calculating Muhurat". The bare `except Exception`
+        # below used to catch the 400 that `get_daily_panchang` raises for a
+        # malformed date and turn it into a 500.
+        raise
     except Exception as e:
         logger.error(f"Muhurat error: {e}")
         raise HTTPException(
@@ -325,13 +337,22 @@ async def get_choghadiya(
 
     try:
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        day_of_week = target_date.weekday()  # 0=Monday … 6=Sunday
-        # Convert to Sunday=0 convention for Vedic calculations
-        vedic_day = (day_of_week + 1) % 7
+        vedic_day = (target_date.weekday() + 1) % 7
 
-        # Approximate sunrise/sunset from latitude (rough estimate)
-        sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
-        sunset_hour = 18.0 + (abs(latitude) - 28.0) * 0.02
+        # Real sun times, as in /hora, instead of the latitude-only guess.
+        sun_times = calculate_sunrise_sunset(
+            target_date, latitude, longitude, tz_offset=5.5,
+        )
+        if sun_times["sunrise"] is None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The sun does not rise or set at this latitude on this "
+                    "date, so choghadiya cannot be computed."
+                ),
+            )
+        sunrise_hour = sun_times["sunrise"]
+        sunset_hour = sun_times["sunset"]
 
         all_periods = _calculate_choghadiya(sunrise_hour, sunset_hour, vedic_day)
 
@@ -349,6 +370,9 @@ async def get_choghadiya(
         await cache_service.set(cache_key, result, expiry=86400)
         return result
 
+    except HTTPException:
+        # The polar-day guard raises a 400 explaining why; do not relabel it.
+        raise
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
     except Exception as e:
@@ -373,15 +397,34 @@ async def get_hora(
 
     try:
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        day_of_week = target_date.weekday()
-        vedic_day = (day_of_week + 1) % 7
+        vedic_day = (target_date.weekday() + 1) % 7
 
-        sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
-        sunset_hour = 18.0 + (abs(latitude) - 28.0) * 0.02
+        # Sunrise and sunset come from the same NOAA calculation the rest of
+        # the app uses, rather than a linear guess off 28 degrees latitude.
+        # The old formula ignored longitude entirely and moved sunrise by
+        # 0.02h per degree of latitude, so it returned 6:00/18:00 for most of
+        # India and drifted the hora boundaries with it.
+        sun_times = calculate_sunrise_sunset(
+            target_date, latitude, longitude,
+            tz_offset=5.5,
+        )
+        if sun_times["sunrise"] is None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The sun does not rise or set at this latitude on this "
+                    "date, so hora cannot be computed."
+                ),
+            )
+        sunrise_hour = sun_times["sunrise"]
+        sunset_hour = sun_times["sunset"]
 
         all_periods = _calculate_hora(sunrise_hour, sunset_hour, vedic_day)
 
-        day_hora = [p for p in all_periods if "day" not in p or p.get("period") == "day"]
+        # The dicts carry a "period" key, never a "day" key, so the old guard
+        # `"day" not in p` was true for every entry and all 24 periods were
+        # returned as day_hora -- the 12 night horas included.
+        day_hora = [p for p in all_periods if p.get("period") == "day"]
         night_hora = [p for p in all_periods if p.get("period") == "night"]
 
         result = {
@@ -393,6 +436,10 @@ async def get_hora(
         await cache_service.set(cache_key, result, expiry=86400)
         return result
 
+    except HTTPException:
+        # The polar-day guard above raises a 400 with a specific explanation.
+        # `except Exception` would otherwise catch it and relabel it 500.
+        raise
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
     except Exception as e:
@@ -419,9 +466,19 @@ async def get_gowri(
         day_of_week = target_date.weekday()
         vedic_day = (day_of_week + 1) % 7
 
-        sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
+        sun_times = calculate_sunrise_sunset(
+            target_date, latitude, 77.2090, tz_offset=5.5,
+        )
+        if sun_times["sunrise"] is None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The sun does not rise or set at this latitude on this "
+                    "date, so Gowri cannot be computed."
+                ),
+            )
 
-        periods = _calculate_gowri(sunrise_hour, vedic_day)
+        periods = _calculate_gowri(sun_times["sunrise"], vedic_day)
 
         result = {
             "date": date_str,
@@ -431,6 +488,9 @@ async def get_gowri(
         await cache_service.set(cache_key, result, expiry=86400)
         return result
 
+    except HTTPException:
+        # The polar-day guard raises a 400 explaining why; do not relabel it.
+        raise
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
     except Exception as e:
@@ -444,7 +504,6 @@ async def get_ghati_muhurat(
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
 ):
-    """Get Do Ghati Muhurat (short auspicious windows of ~48 minutes each)."""
     if date_str is None:
         date_str = date.today().isoformat()
 
@@ -456,10 +515,19 @@ async def get_ghati_muhurat(
     try:
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
-        sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
-        sunset_hour = 18.0 + (abs(latitude) - 28.0) * 0.02
+        sun_times = calculate_sunrise_sunset(
+            target_date, latitude, longitude, tz_offset=5.5,
+        )
+        if sun_times["sunrise"] is None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The sun does not rise or set at this latitude on this "
+                    "date, so ghati windows cannot be computed."
+                ),
+            )
 
-        periods = _calculate_ghati_muhurat(sunrise_hour, sunset_hour)
+        periods = _calculate_ghati_muhurat(sun_times["sunrise"], sun_times["sunset"])
 
         result = {
             "date": date_str,
@@ -469,6 +537,9 @@ async def get_ghati_muhurat(
         await cache_service.set(cache_key, result, expiry=86400)
         return result
 
+    except HTTPException:
+        # The polar-day guard raises a 400 explaining why; do not relabel it.
+        raise
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
     except Exception as e:
@@ -480,10 +551,13 @@ async def get_ghati_muhurat(
 async def get_monthly_panchang(
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
-    month: int = Query(None, ge=1, le=12),
-    year: int = Query(None, ge=2000, le=2100),
+    # An explicit out-of-range value is rejected by validation here (422); the
+    # None default is the only path that reaches the body, so the bounds do
+    # cover the case that previously surfaced as a 500.
+    month: int | None = Query(None, ge=1, le=12),
+    year: int | None = Query(None, ge=2000, le=2100),
 ):
-    """Get monthly Panchang — daily summaries for every day in the given month."""
+    """Get monthly Panchang â€” daily summaries for every day in the given month."""
     today = date.today()
     if month is None:
         month = today.month
@@ -509,11 +583,18 @@ async def get_monthly_panchang(
         for day in range(1, days_in_month + 1):
             target_date = date(year, month, day)
             date_str = target_date.isoformat()
-            day_of_week = target_date.weekday()
-            vedic_day = (day_of_week + 1) % 7
+            vedic_day = (target_date.weekday() + 1) % 7
 
-            sunrise_hour = 6.0 - (abs(latitude) - 28.0) * 0.02
-            sunset_hour = 18.0 + (abs(latitude) - 28.0) * 0.02
+            # Real sun times, as in /hora, instead of the latitude-only guess.
+            sun_times = calculate_sunrise_sunset(
+                target_date, latitude, longitude, tz_offset=5.5,
+            )
+            if sun_times["sunrise"] is None:
+                # No sunrise on this date at this latitude; skip rather than
+                # invent a window for the choghadiya count.
+                continue
+            sunrise_hour = sun_times["sunrise"]
+            sunset_hour = sun_times["sunset"]
 
             # Get positions for this day
             positions = get_planetary_positions(
@@ -539,15 +620,19 @@ async def get_monthly_panchang(
                         sunrise_hour=sunrise_hour,
                         sunset_hour=sunset_hour,
                     )
+                    # `get_panchang` returns a dict, but the summary was built
+                    # with `getattr(panchang, ...)`, which is always None on a
+                    # dict. Every field came back null for every day of every
+                    # month, and the bare `except` swallowed it.
                     panchang_data = {
-                        "tithi": getattr(panchang, "tithi", None),
-                        "nakshatra": getattr(panchang, "nakshatra", None),
-                        "yoga": getattr(panchang, "yoga", None),
-                        "karana": getattr(panchang, "karana", None),
-                        "vara": getattr(panchang, "vara", None),
+                        key: panchang.get(key)
+                        for key in ("tithi", "nakshatra", "yoga", "karana", "vara")
                     }
                 except Exception:
-                    pass
+                    logger.exception(
+                        "Monthly panchang: could not build the panchang for %s",
+                        date_str,
+                    )
 
             # Add choghadiya summary for the day
             choghadiya = _calculate_choghadiya(sunrise_hour, sunset_hour, vedic_day)
