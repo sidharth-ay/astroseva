@@ -29,6 +29,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // These features were removed. The paths were listed in sitemap.ts and may
+  // be indexed, so send them somewhere useful instead of a dead-end 404.
+  async redirects() {
+    return ["/voice", "/kp", "/chinese-astrology", "/age-palm"].map((source) => ({
+      source,
+      destination: "/services",
+      permanent: true,
+    }));
+  },
 };
 
 export default nextConfig;

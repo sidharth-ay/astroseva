@@ -38,6 +38,7 @@ class KundliResponse(BaseModel):
     exalted_planets: List[str]
     debilitated_planets: List[str]
     dasha_info: Optional[Dict[str, Any]] = None
+    extras: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=datetime.now)
 
 
@@ -66,8 +67,9 @@ class PredictionResponse(BaseModel):
 
 
 class DoshaResponse(BaseModel):
-    """Dosha detection response (Manglik, Sade Sati, Pitru; total 0-3)."""
+    """Dosha detection response (Manglik, Kaal Sarp, Sade Sati, Pitru; total 0-4)."""
     manglik: Dict[str, Any]
+    kaal_sarp: Dict[str, Any]
     sade_sati: Dict[str, Any]
     pitru_dosha: Dict[str, Any]
     total_doshas: int

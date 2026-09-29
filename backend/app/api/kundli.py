@@ -136,13 +136,22 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
     try:
         from ..core.kundli_extras import (
             build_avakahada, ishta_devata, chara_karakas, avastha_of,
-            julian_day, FRIENDSHIPS,
+            julian_day, FRIENDSHIPS, SEVEN_PLANETS,
         )
         from ..core.panchang import (
             calculate_tithi, calculate_karana, calculate_yoga,
             calculate_nakshatra, calculate_sunrise_sunset,
         )
         from ..core.planets import SIGN_LORDS
+        from ..core.grahayukti import (
+            build_aspects, build_consideration, build_ghatak, build_somatilak,
+        )
+        from ..core.vargas import build_vargas
+        from ..core.shadbala import build_shadbala, build_bhavabala
+        from ..core.ashtakavarga import (
+            build_ashtakavarga, build_prasthara_ashtakavarga,
+        )
+        from ..core.navatara import build_navatara, build_arudha
 
         sun_lon = next(p["longitude"] for p in positions["planets"] if p["planet"] == "Sun")
         moon = next(p for p in positions["planets"] if p["planet"] == "Moon")
@@ -177,9 +186,23 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
                 birth_data.birth_date.day, utc_hour),
             "ishta_devata": ishta_devata(positions["planets"]),
             "chara_karakas": chara_karakas(positions["planets"]),
+            # Avastha is the classical seven-graha age ladder, so nodes and
+            # outer planets are excluded (same filter as chara_karakas).
             "avastha": {p["planet"]: avastha_of(p["sign"], p["sign_degree"])
-                        for p in positions["planets"]},
+                        for p in positions["planets"]
+                        if p["planet"] in SEVEN_PLANETS},
             "friendships": FRIENDSHIPS,
+            "aspects": build_aspects(positions["planets"]),
+            "consideration": build_consideration(positions["planets"]),
+            "ghatak": build_ghatak(positions["ascendant"]),
+            "somatilak": build_somatilak(asc_sign),
+            "vargas": build_vargas(positions["planets"], asc_sign),
+            "shadbala": build_shadbala(positions["planets"], asc_sign),
+            "bhavabala": build_bhavabala(positions["planets"], asc_sign),
+            "ashtakavarga": build_ashtakavarga(positions["planets"], asc_sign),
+            "pav": build_prasthara_ashtakavarga(positions["planets"], asc_sign),
+            "navatara": build_navatara(positions["planets"]),
+            "arudha": build_arudha(positions["planets"], asc_sign),
         }
     except Exception as e:
         logger.warning(f"Kundli extras error: {e}")

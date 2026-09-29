@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X, Sparkles, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useAuth } from "@/hooks/useAuth";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -20,7 +21,17 @@ const navLinks = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    setBusy(true);
+    await logout();
+    setOpen(false);
+    window.location.replace("/login");
+    setBusy(false);
+  };
 
   return (
     <nav
@@ -53,13 +64,23 @@ export default function Navbar() {
             })}
           </div>
 
-          {/* CTA button */}
-          <Link
-            href="/kundli"
-            className="hidden md:inline-flex btn-primary"
-          >
-            Get Kundli
-          </Link>
+          {/* CTA + logout */}
+          <div className="hidden md:flex items-center gap-2">
+            <Link href="/kundli" className="btn-primary inline-flex">
+              Get Kundli
+            </Link>
+            {user && (
+              <button
+                onClick={handleLogout}
+                disabled={busy}
+                className="btn-ghost inline-flex items-center gap-1.5"
+                title={user.email}
+              >
+                <LogOut size={14} />
+                {busy ? "..." : "Logout"}
+              </button>
+            )}
+          </div>
 
           {/* Mobile toggle */}
           <button
@@ -102,6 +123,15 @@ export default function Navbar() {
                 >
                   Get Kundli
                 </Link>
+                {user && (
+                  <button
+                    onClick={handleLogout}
+                    disabled={busy}
+                    className="btn-ghost block text-center mt-2 w-full"
+                  >
+                    {busy ? "Logging out…" : `Logout (${user.name || user.email})`}
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>

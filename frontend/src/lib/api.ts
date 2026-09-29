@@ -81,12 +81,103 @@ export interface CurrentDasha {
   pratyantardasha?: string;
   pratyantardasha_start?: string;
   pratyantardasha_end?: string;
+  sookshma?: string;
+  sookshma_start?: string;
+  sookshma_end?: string;
+  prana?: string;
+  prana_start?: string;
+  prana_end?: string;
 }
 
 export interface DashaInfo {
   birth_nakshatra: { index: number; name: string; lord: string; pada: number };
   all_mahadashas: DashaPeriod[];
   current_dasha: CurrentDasha | null;
+  current_yogini?: { yogini: string; start: string; end: string } | null;
+  current_chara?: { sign: number; lord: string; start: string; end: string } | null;
+  yogas?: { name: string; description: string; strength: string }[];
+  navamsa?: Record<string, number>;
+  extras?: {
+    avakahada?: Record<string, string | number>;
+    birth_panchang?: Record<string, string | number>;
+    sunrise?: number;
+    sunset?: number;
+    julian_day?: number;
+    ishta_devata?: { planet: string | null; deity: string | null };
+    chara_karakas?: { role: string; planet: string }[];
+    avastha?: Record<string, string>;
+    friendships?: Record<string, { friends: string[]; enemies: string[]; neutral: string[] }>;
+    aspects?: {
+      by_planet: Record<string, { planet: string; aspect: string; aspect_index: number; nature: string; sign: number }[]>;
+      on_sign: Record<string, string[]>;
+    };
+    consideration?: {
+      planet: string; pakshi: string; sign: number | null; sign_degree: number | null;
+      dignity: string; combust: boolean; combust_note: string | null; pakshi_note?: string;
+    }[];
+    ghatak?: {
+      ascendant: number; asc_sign: number; benefic_count: number;
+      ascendant_ghatak: { index: number; name: string; lord: string; longitude: number; sign: number; deg_in_sign: number; benefic_for_ascendant: boolean; applied: boolean }[];
+      all: { index: number; name: string; lord: string; longitude: number; sign: number; deg_in_sign: number; benefic_for_ascendant: boolean; applied: boolean }[];
+    };
+    somatilak?: { asc_sign: number; somatilak: string; lord: string; nakshatra: string };
+    vargas?: Record<string, {
+      name: string;
+      asc_sign: number;
+      planets: Record<string, number>;
+    }>;
+    shadbala?: {
+      max_rupa: number;
+      asc_sign: number;
+      strongest: string | null;
+      weakest: string | null;
+      planets: {
+        planet: string; sign: number; house: number; retrograde: boolean;
+        sthana: number; dig: number; kala: number; cheshta: number;
+        naisargika: number; drik: number; total_rupa: number;
+        rupor_virupada: number;
+        bhasa_rupa: boolean; bhava_rupa: boolean; dhruva_rupa: boolean;
+      }[];
+    };
+    bhavabala?: {
+      max_per_house: number; total_rava: number; max_total: number;
+      strongest: number | null;
+      houses: { house: number; sign: number; sign_name: string; planets: string[]; rava: number; raw_rava: number }[];
+    };
+    ashtakavarga?: {
+      asc_sign: number; method: string; validated_against_published_tables: boolean;
+      best_sign: number | null; best_house: number | null;
+      per_graha: Record<string, {
+        occupied_sign: number; total_points: number;
+        in_own_sign: number; in_asc_sign: number;
+        grade_own: string; grade_asc: string;
+        signs: { sign: number; house: number; points: number; grade: string }[];
+      }>;
+      by_sign: { sign: number; house: number; grahas_binding: number; grahas: string[] }[];
+    };
+    pav?: {
+      asc_sign: number; seventh_lord: string;
+      lagna_total: number; sukarma_total: number; nabansaka_total: number;
+      lagna_chart: { sign: number; house: number; points: number }[];
+      sukarma_chart: { sign: number; house: number; points: number }[];
+      nabansaka_chart: { sign: number; house: number; points: number }[];
+    };
+    navatara?: {
+      most_suitable: string | null; least_suitable: string | null;
+      grahas: {
+        planet: string; sign: number; sign_name: string;
+        total: number; published_total: number; suitable: boolean;
+        factors: Record<string, number>;
+        factor_names: string[];
+      }[];
+    };
+    arudha?: {
+      asc_sign: number; arudha_lagna: number; arudha_lagna_name: string;
+      arudha_house: number;
+      arudhas: { planet: string; sign: number; sign_name: string; arudha_sign: number; arudha_name: string; house: number }[];
+      parivartana: { signs: number[]; planets: string[] }[];
+    };
+  } | null;
 }
 
 export interface KundliResponse {
@@ -108,6 +199,7 @@ export interface KundliResponse {
   exalted_planets: string[];
   debilitated_planets: string[];
   dasha_info?: DashaInfo;
+  extras?: DashaInfo["extras"];
 }
 
 export interface MatchingResponse {
@@ -210,13 +302,6 @@ export interface HealingRecommendation {
   };
 }
 
-export interface KPResponse {
-  name: string;
-  ascendant: { sign: string; nakshatra: string; nak_lord: string; sub_lord: string; pada: number; degree: number };
-  planets: { planet: string; sign: string; sign_lord: string; nakshatra: string; nak_lord: string; sub_lord: string; pada: number; degree: number; retrograde: boolean }[];
-  ruling_planet: string;
-}
-
 export interface LalKitabResponse {
   name: string;
   birth_date: string;
@@ -260,20 +345,52 @@ export interface DoshaResponse {
     cancellation_reason?: string | null;
     positions?: { house?: number; chart?: string; severity?: string; description?: string }[];
   };
-  sade_sati: { is_active: boolean; description?: string; phase?: string | null; severity?: string };
+  kaal_sarp: {
+    has_dosha: boolean;
+    rahu_house?: number | null;
+    ketu_house?: number | null;
+    planets_between?: string[];
+    planets_outside?: string[];
+    kaal_sarp_type?: string | null;
+    severity?: string;
+    description?: string;
+  };
+  sade_sati: { is_active: boolean; description?: string; phase?: string | null; severity?: string; transit_based?: boolean; as_of_date?: string };
   pitru_dosha: { has_dosha: boolean; conditions: string[]; description: string };
   total_doshas: number;
 }
 
+// Endpoints where a 401 is a normal, expected response rather than an expired
+// session: bad credentials on login, or a register attempt. Redirecting there
+// would bounce the user off the form instead of showing the error.
+const NO_REDIRECT_ON_401 = ["/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/me"];
+
+/** Clear the dead session and send the user to the login form. */
+function handleExpiredSession() {
+  if (typeof window === "undefined") return;
+  const { pathname, search } = window.location;
+  // Already on the login page: let the form render its own error.
+  if (pathname.startsWith("/login")) return;
+  clearSession();
+  window.location.replace(`/login?next=${encodeURIComponent(pathname + search)}`);
+}
+
 export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  // Feature routers are gated server-side, so every call must carry the token.
+  // Previously only fetchAuth() sent one, which left all feature calls anonymous.
+  const token = getToken();
   const res = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
   if (!res.ok) {
+    if (res.status === 401 && !NO_REDIRECT_ON_401.some((p) => endpoint.startsWith(p))) {
+      handleExpiredSession();
+    }
     const error = await res.json().catch(() => ({ detail: res.statusText }));
     // FastAPI 422 details arrive as an array — humanize them.
     let message: string;
@@ -292,6 +409,39 @@ export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Prom
     throw err;
   }
   return res.json();
+}
+
+export interface Festival {
+  name: string;
+  date: string;
+  end_date: string;
+  span_days: number;
+  category: "major" | "minor" | "vrat";
+  description: string;
+  significance: string;
+  rule_time: string;
+  rule_time_label: string;
+  paksha: string;
+  paksha_hi: string;
+  tithi_name: string;
+  tithi_name_hi: string;
+  tithi_number: number;
+  nakshatra: string;
+  nakshatra_pada: number;
+  sunrise: string;
+  sunset: string;
+  muhurat: { label: string; start: string; end: string };
+  rahu_kaal: { start: string; end: string };
+  tithi_basis?: "rule_window" | "evening";
+}
+
+export interface FestivalsResponse {
+  year: number;
+  month: number | null;
+  location: { latitude: number; longitude: number; timezone_offset: number; label: string };
+  count: number;
+  festivals: Festival[];
+  note: string;
 }
 
 const TOKEN_KEY = "astroseva_token";
@@ -318,14 +468,25 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
+// Fired whenever the stored session changes so components (the Navbar's
+// logout control) can react without needing a context provider.
+export const AUTH_CHANGE_EVENT = "astroseva:auth-change";
+
+function notifyAuthChange() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
+}
+
 export function setSession(token: string, user: AuthUser) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  notifyAuthChange();
 }
 
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  notifyAuthChange();
 }
 
 export async function fetchAuth<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -435,6 +596,12 @@ export const api = {
       signal,
     }),
 
+  getSadePeriods: (data: BirthData) =>
+    fetchAPI<{ moon_sign: number; periods: { phase: string; start: string; end: string; saturn_sign: number; saturn_sign_name?: string }[] }>("/api/v1/doshas/sade-sati-periods", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   chatSend: (message: string, history: { role: string; content: string }[], language: string = "en", birthDetails?: Record<string, any>) =>
     fetchAPI<{ response: string; model: string }>("/api/v1/chat/send", {
       method: "POST",
@@ -468,12 +635,26 @@ export const api = {
   getBabyNames: (gender: string, birth_date: string) =>
     fetchAPI<{ gender: string; names: { name: string; meaning: string; origin: string; lucky_number: number }[]; lucky_numbers: number[]; lucky_letters: string[] }>(`/api/v1/baby-names/suggest?gender=${gender}&birth_date=${birth_date}`),
 
-  getFestivals: (month?: number, year?: number) => {
+  getFestivals: (opts: {
+    month?: number;
+    year?: number;
+    latitude?: number;
+    longitude?: number;
+    timezone_offset?: number;
+    category?: string;
+  } = {}) => {
     const params = new URLSearchParams();
-    if (month) params.set("month", String(month));
-    if (year) params.set("year", String(year));
-    return fetchAPI<{ month: number; year: number; festivals: { name: string; date: string; description: string; type: string }[] }>(`/api/v1/festivals/list?${params.toString()}`);
+    if (opts.month) params.set("month", String(opts.month));
+    if (opts.year) params.set("year", String(opts.year));
+    if (opts.latitude != null) params.set("latitude", String(opts.latitude));
+    if (opts.longitude != null) params.set("longitude", String(opts.longitude));
+    if (opts.timezone_offset != null) params.set("timezone_offset", String(opts.timezone_offset));
+    if (opts.category) params.set("category", opts.category);
+    return fetchAPI<FestivalsResponse>(`/api/v1/festivals/list?${params.toString()}`);
   },
+
+  getFestivalCategories: () =>
+    fetchAPI<{ categories: { id: string; label: string }[] }>("/api/v1/festivals/categories"),
 
   getDailyMantra: () =>
     fetchAPI<{ date: string; mantra: Mantra }>("/api/v1/mantra/daily"),
@@ -498,12 +679,6 @@ export const api = {
 
   getHealingRecommendation: (data: BirthData) =>
     fetchAPI<HealingRecommendation>("/api/v1/healing/recommend", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  getKpChart: (data: BirthData) =>
-    fetchAPI<KPResponse>("/api/v1/kp/chart", {
       method: "POST",
       body: JSON.stringify(data),
     }),

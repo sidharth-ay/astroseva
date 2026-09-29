@@ -4,57 +4,91 @@ import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { planetColors } from "@/components/icons/PlanetIcons";
 
+interface ChartPlanet {
+  planet: string;
+  sign: number;
+  sign_degree: number;
+  retrograde: boolean;
+  dignity?: string;
+}
+
 interface KundliChartProps {
   chart: Record<string, { sign: number; planets: string[] }>;
   ascSign: number;
   chartStyle?: "north" | "south";
+  /** Full planet list, needed for degrees and retrograde marks. */
+  planets?: ChartPlanet[];
 }
 
 const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
-const SIGN_SHORT = ["Ar","Ta","Ge","Cn","Le","Vi","Li","Sc","Sg","Cp","Aq","Pi"];
 
-// North Indian chart: fixed house positions, signs rotate from ascendant.
-// Outer square (0,0)-(400,400). Diamond midpoints: top(200,0), right(400,200), bottom(200,400), left(0,200).
-// Center: (200,200). Lines from center to each corner of the square.
-// 12 triangular house regions:
+// AstroSage 2-letter graha codes. The chart shows these nine only; outer
+// planets stay in the positions table where their data is actually useful.
+const GRAHA_CODE: Record<string, string> = {
+  Sun: "Su", Moon: "Mo", Mars: "Ma", Mercury: "Me",
+  Jupiter: "Ju", Venus: "Ve", Saturn: "Sa", Rahu: "Ra", Ketu: "Ke",
+};
+const CHART_GRAHAS = Object.keys(GRAHA_CODE);
+
+// North Indian chart: HOUSES ARE FIXED, SIGNS ROTATE.
+// Outer square (0,0)-(400,400), the centre diamond joining the four side
+// midpoints, and both corner-to-corner diagonals. The diagonals cut each
+// diamond edge at its midpoint and cross at the centre (200,200), which is
+// what splits the interior into 4 diamonds and the border into 8 triangles.
+// Only the two diagonals are drawn - there is no vertical/horizontal cross.
+//
+// House 1 is always the top-centre diamond and counting runs ANTICLOCKWISE,
+// so the 2nd house is the top-left triangle and the MC (10th) the right
+// diamond. Verified by area: the 12 cells tile the 400x400 frame exactly.
 const HOUSES: { house: number; points: string; labelX: number; labelY: number; textAnchor: "start" | "middle" | "end" }[] = [
-  // Top (House 1 — Ascendant)
-  { house: 1, points: "200,0 300,100 100,100", labelX: 200, labelY: 58, textAnchor: "middle" },
-  // Upper-right (House 2)
-  { house: 2, points: "300,100 400,0 400,200", labelX: 365, labelY: 100, textAnchor: "end" },
-  // Right-upper (House 3)
-  { house: 3, points: "300,100 400,200 300,300", labelX: 355, labelY: 200, textAnchor: "end" },
-  // Right (House 4)
-  { house: 4, points: "400,200 300,300 400,400", labelX: 365, labelY: 310, textAnchor: "end" },
-  // Lower-right (House 5)
-  { house: 5, points: "300,300 200,400 400,400", labelX: 310, labelY: 365, textAnchor: "end" },
-  // Bottom (House 6)
-  { house: 6, points: "200,400 300,300 100,300", labelX: 200, labelY: 358, textAnchor: "middle" },
-  // Lower-left (House 7 — Descendant)
-  { house: 7, points: "200,400 100,300 0,400", labelX: 100, labelY: 365, textAnchor: "start" },
-  // Left-lower (House 8)
-  { house: 8, points: "100,300 0,400 0,200", labelX: 50, labelY: 310, textAnchor: "start" },
-  // Left-upper (House 9)
-  { house: 9, points: "100,300 0,200 100,100", labelX: 50, labelY: 200, textAnchor: "start" },
-  // Left (House 10 — MC)
-  { house: 10, points: "0,200 100,100 0,0", labelX: 50, labelY: 100, textAnchor: "start" },
-  // Upper-left (House 11)
-  { house: 11, points: "100,100 0,0 200,0", labelX: 100, labelY: 58, textAnchor: "start" },
-  // Top-left (House 12)
-  { house: 12, points: "100,100 200,0 0,0", labelX: 55, labelY: 58, textAnchor: "start" },
+  // Top-centre diamond — 1st house (Ascendant)
+  { house: 1, points: "100,100 200,0 300,100 200,200", labelX: 200, labelY: 45, textAnchor: "middle" },
+  // Top-left triangle — 2nd
+  { house: 2, points: "0,0 200,0 100,100", labelX: 100, labelY: 33, textAnchor: "middle" },
+  // Left-upper triangle — 3rd
+  { house: 3, points: "0,0 0,200 100,100", labelX: 33, labelY: 105, textAnchor: "middle" },
+  // Left-centre diamond — 4th (IC)
+  { house: 4, points: "0,200 100,100 200,200 100,300", labelX: 100, labelY: 190, textAnchor: "middle" },
+  // Left-lower triangle — 5th
+  { house: 5, points: "0,200 0,400 100,300", labelX: 33, labelY: 300, textAnchor: "middle" },
+  // Bottom-left triangle — 6th
+  { house: 6, points: "0,400 200,400 100,300", labelX: 100, labelY: 368, textAnchor: "middle" },
+  // Bottom-centre diamond — 7th (Descendant)
+  { house: 7, points: "200,400 100,300 200,200 300,300", labelX: 200, labelY: 240, textAnchor: "middle" },
+  // Bottom-right triangle — 8th
+  { house: 8, points: "200,400 400,400 300,300", labelX: 300, labelY: 368, textAnchor: "middle" },
+  // Right-lower triangle — 9th
+  { house: 9, points: "400,400 400,200 300,300", labelX: 367, labelY: 300, textAnchor: "middle" },
+  // Right-centre diamond — 10th (MC)
+  { house: 10, points: "400,200 300,100 200,200 300,300", labelX: 300, labelY: 190, textAnchor: "middle" },
+  // Right-upper triangle — 11th
+  { house: 11, points: "400,200 400,0 300,100", labelX: 367, labelY: 105, textAnchor: "middle" },
+  // Top-right triangle — 12th
+  { house: 12, points: "400,0 200,0 300,100", labelX: 300, labelY: 33, textAnchor: "middle" },
 ];
 
 // Center diamond lines
 const DIAMOND = "200,0 400,200 200,400 0,200";
-// Center cross lines
+// Only the two corner-to-corner diagonals. A North Indian chart has no
+// vertical/horizontal cross - the diagonals alone split the diamond into 4.
 const CENTER_LINES = [
-  "200,0 200,400",   // vertical
-  "0,200 400,200",   // horizontal
-  "0,0 400,400",     // diagonal top-left to bottom-right
-  "400,0 0,400",     // diagonal top-right to bottom-left
+  "0,0 400,400",     // top-left to bottom-right
+  "400,0 0,400",     // top-right to bottom-left
 ];
 
-export default function KundliChart({ chart, ascSign, chartStyle = "north" }: KundliChartProps) {
+function detailBySign(planets: ChartPlanet[]): Map<number, ChartPlanet[]> {
+  const m = new Map<number, ChartPlanet[]>();
+  const order = (n: string) => (n === "Sun" ? 0 : n === "Moon" ? 1 : 2);
+  for (const p of planets) {
+    if (!CHART_GRAHAS.includes(p.planet)) continue;
+    if (!m.has(p.sign)) m.set(p.sign, []);
+    m.get(p.sign)!.push(p);
+  }
+  for (const list of m.values()) list.sort((a, b) => order(a.planet) - order(b.planet));
+  return m;
+}
+
+export default function KundliChart({ chart, ascSign, chartStyle = "north", planets = [] }: KundliChartProps) {
   const [mounted, setMounted] = useState(false);
   const reducedRaw = useReducedMotion();
   const reduced = reducedRaw ?? false;
@@ -64,8 +98,23 @@ export default function KundliChart({ chart, ascSign, chartStyle = "north" }: Ku
     return () => clearTimeout(t);
   }, []);
 
+  // Enrich the per-house planet-name list with degree + retrograde when the
+  // full planet payload is supplied. AstroSage shows both in the cell.
+  const detailByHouse = new Map<number, ChartPlanet[]>();
+  for (const p of planets) {
+    if (!CHART_GRAHAS.includes(p.planet)) continue;
+    const house = (p.sign - ascSign + 12) % 12 + 1;
+    if (!detailByHouse.has(house)) detailByHouse.set(house, []);
+    detailByHouse.get(house)!.push(p);
+  }
+  // Sun first, then Moon, then the rest by sign — AstroSage's cell order.
+  const order = (n: string) => (n === "Sun" ? 0 : n === "Moon" ? 1 : 2);
+  for (const list of detailByHouse.values()) {
+    list.sort((a, b) => order(a.planet) - order(b.planet));
+  }
+
   if (chartStyle === "south") {
-    return <SouthIndianChart chart={chart} ascSign={ascSign} mounted={mounted} reduced={reduced} />;
+    return <SouthIndianChart chart={chart} ascSign={ascSign} mounted={mounted} reduced={reduced} detailBySign={detailBySign(planets)} />;
   }
 
   const lineDur = reduced ? 0 : 0.8;
@@ -73,15 +122,21 @@ export default function KundliChart({ chart, ascSign, chartStyle = "north" }: Ku
 
   return (
     <div className="w-full max-w-[400px] mx-auto">
-      <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+      <svg id="kundli-chart-svg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
         {/* Background */}
         <rect x="0" y="0" width="400" height="400" fill="#0F0E1A" rx="4" />
 
-        {/* House triangles */}
+        {/* House cells */}
         {HOUSES.map((h) => {
           const signIdx = chart[String(h.house)]?.sign ?? 0;
-          const planets = chart[String(h.house)]?.planets ?? [];
-          const isAsc = signIdx === ascSign && h.house === 1;
+          const names = chart[String(h.house)]?.planets ?? [];
+          const details = detailByHouse.get(h.house) ?? [];
+          const detailFor = (n: string) => details.find((d) => d.planet === n);
+          // Fall back to names when no detail payload was passed.
+          const cell = details.length
+            ? details.map((d) => d.planet)
+            : names;
+          const isAsc = h.house === 1;
 
           return (
             <g key={h.house}>
@@ -95,55 +150,63 @@ export default function KundliChart({ chart, ascSign, chartStyle = "north" }: Ku
                 transition={{ duration: 0.4, delay: h.house * 0.03 }}
               />
 
-              {/* House number */}
+              {/* Sign number — AstroSage writes the sign number in each cell,
+                  since the houses are fixed and the signs are what move. */}
               <motion.text
                 x={h.labelX}
                 y={h.labelY}
                 textAnchor={h.textAnchor}
-                fontSize="8"
-                fill="rgba(166, 165, 184, 0.35)"
+                fontSize="11"
+                fill="rgba(230, 201, 160, 0.85)"
                 fontFamily="inherit"
+                fontWeight="700"
                 initial={reduced ? undefined : { opacity: 0 }}
                 animate={mounted ? { opacity: 1 } : undefined}
                 transition={{ duration: labelDur, delay: 0.6 + h.house * 0.04 }}
               >
-                {h.house}{isAsc ? " Asc" : ""}
+                {signIdx + 1}
               </motion.text>
 
-              {/* Sign abbreviation */}
+              {/* House number, marked on the Ascendant */}
               <motion.text
                 x={h.labelX}
-                y={h.labelY + 12}
+                y={h.labelY + 11}
                 textAnchor={h.textAnchor}
-                fontSize="9"
-                fill="rgba(166, 165, 184, 0.55)"
+                fontSize="7.5"
+                fill={isAsc ? "rgba(230, 201, 160, 0.9)" : "rgba(166, 165, 184, 0.35)"}
                 fontFamily="inherit"
-                fontWeight="500"
                 initial={reduced ? undefined : { opacity: 0 }}
                 animate={mounted ? { opacity: 1 } : undefined}
                 transition={{ duration: labelDur, delay: 0.7 + h.house * 0.04 }}
               >
-                {SIGN_SHORT[signIdx]}
+                {isAsc ? "As" : h.house}
               </motion.text>
 
-              {/* Planets */}
-              {planets.map((p, pi) => (
-                <motion.text
-                  key={p}
-                  x={h.labelX}
-                  y={h.labelY + 24 + pi * 11}
-                  textAnchor={h.textAnchor}
-                  fontSize="8.5"
-                  fill={planetColors[p] || "#A6A5B8"}
-                  fontFamily="inherit"
-                  fontWeight="600"
-                  initial={reduced ? undefined : { opacity: 0 }}
-                  animate={mounted ? { opacity: 1 } : undefined}
-                  transition={{ duration: labelDur, delay: 0.9 + h.house * 0.04 + pi * 0.05 }}
-                >
-                  {p.substring(0, 3)}
-                </motion.text>
-              ))}
+              {/* Grahas: 2-letter AstroSage code, degree, retrograde mark */}
+              {cell.map((p, pi) => {
+                const d = detailFor(p);
+                const code = GRAHA_CODE[p];
+                if (!code) return null;
+                return (
+                  <motion.text
+                    key={p}
+                    x={h.labelX}
+                    y={h.labelY + 24 + pi * 11}
+                    textAnchor={h.textAnchor}
+                    fontSize="8.5"
+                    fill={planetColors[p] || "#A6A5B8"}
+                    fontFamily="inherit"
+                    fontWeight="600"
+                    initial={reduced ? undefined : { opacity: 0 }}
+                    animate={mounted ? { opacity: 1 } : undefined}
+                    transition={{ duration: labelDur, delay: 0.9 + h.house * 0.04 + pi * 0.05 }}
+                  >
+                    {code}
+                    {d ? `${Math.floor(d.sign_degree)}°` : ""}
+                    {d?.retrograde ? " ℞" : ""}
+                  </motion.text>
+                );
+              })}
             </g>
           );
         })}
@@ -209,11 +272,13 @@ function SouthIndianChart({
   ascSign,
   mounted,
   reduced,
+  detailBySign,
 }: {
   chart: Record<string, { sign: number; planets: string[] }>;
   ascSign: number;
   mounted: boolean;
   reduced: boolean;
+  detailBySign: Map<number, ChartPlanet[]>;
 }) {
   const labelDur = reduced ? 0 : 0.3;
 
@@ -228,7 +293,7 @@ function SouthIndianChart({
 
   return (
     <div className="w-full max-w-[400px] mx-auto">
-      <svg viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+      <svg id="kundli-chart-svg-south" viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
         {/* Background */}
         <rect x="0" y="0" width="440" height="440" fill="#0F0E1A" rx="4" />
 
@@ -237,7 +302,9 @@ function SouthIndianChart({
             if (signIdx === null) return null;
             const x = SOUTH_PADDING + ci * SOUTH_CELL_SIZE;
             const y = SOUTH_PADDING + ri * SOUTH_CELL_SIZE;
-            const planets = signPlanets[signIdx] ?? [];
+            const names = signPlanets[signIdx] ?? [];
+            const details = detailBySign.get(signIdx) ?? [];
+            const cell = details.length ? details.map((d) => d.planet) : names;
             const isAsc = signIdx === ascSign;
 
             return (
@@ -255,38 +322,46 @@ function SouthIndianChart({
                   transition={{ duration: 0.4, delay: (ri * 4 + ci) * 0.02 }}
                 />
 
-                {/* Sign name label (top of cell) */}
+                {/* Sign name label (top of cell), marked when ascendant */}
                 <motion.text
                   x={x + 4}
                   y={y + 12}
                   fontSize="8"
-                  fill="rgba(166, 165, 184, 0.45)"
+                  fill={isAsc ? "rgba(230, 201, 160, 0.9)" : "rgba(166, 165, 184, 0.45)"}
                   fontFamily="inherit"
+                  fontWeight={isAsc ? "700" : "400"}
                   initial={reduced ? undefined : { opacity: 0 }}
                   animate={mounted ? { opacity: 1 } : undefined}
                   transition={{ duration: labelDur, delay: 0.4 + (ri * 4 + ci) * 0.03 }}
                 >
-                  {SIGN_NAMES[signIdx]}{isAsc ? " (Asc)" : ""}
+                  {SIGN_NAMES[signIdx]}{isAsc ? " (As)" : ""}
                 </motion.text>
 
-                {/* Planets */}
-                {planets.map((p, pi) => (
-                  <motion.text
-                    key={p}
-                    x={x + SOUTH_CELL_SIZE / 2}
-                    y={y + SOUTH_CELL_SIZE / 2 + 4 + pi * 12}
-                    textAnchor="middle"
-                    fontSize="9"
-                    fill={planetColors[p] || "#A6A5B8"}
-                    fontFamily="inherit"
-                    fontWeight="600"
-                    initial={reduced ? undefined : { opacity: 0 }}
-                    animate={mounted ? { opacity: 1 } : undefined}
-                    transition={{ duration: labelDur, delay: 0.6 + (ri * 4 + ci) * 0.03 + pi * 0.04 }}
-                  >
-                    {p.substring(0, 3)}
-                  </motion.text>
-                ))}
+                {/* Grahas: 2-letter AstroSage code, degree, retrograde mark */}
+                {cell.map((p, pi) => {
+                  const d = (detailBySign.get(signIdx) ?? []).find((x) => x.planet === p);
+                  const code = GRAHA_CODE[p];
+                  if (!code) return null;
+                  return (
+                    <motion.text
+                      key={p}
+                      x={x + SOUTH_CELL_SIZE / 2}
+                      y={y + SOUTH_CELL_SIZE / 2 + 4 + pi * 12}
+                      textAnchor="middle"
+                      fontSize="9"
+                      fill={planetColors[p] || "#A6A5B8"}
+                      fontFamily="inherit"
+                      fontWeight="600"
+                      initial={reduced ? undefined : { opacity: 0 }}
+                      animate={mounted ? { opacity: 1 } : undefined}
+                      transition={{ duration: labelDur, delay: 0.6 + (ri * 4 + ci) * 0.03 + pi * 0.04 }}
+                    >
+                      {code}
+                      {d ? `${Math.floor(d.sign_degree)}°` : ""}
+                      {d?.retrograde ? " ℞" : ""}
+                    </motion.text>
+                  );
+                })}
               </g>
             );
           })

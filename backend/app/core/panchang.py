@@ -106,6 +106,12 @@ def calculate_tithi(sun_longitude: float, moon_longitude: float) -> dict:
         tithi = tithi - 15
 
     tithi_name = TITHI_NAMES.get(tithi, {"en": "Unknown", "hi": "अज्ञात"})
+    # The 15th tithi is Purnima in the waxing fortnight but Amavasya in the
+    # waning one. TITHI_NAMES keys the waning half 16-30, so after the -15
+    # normalisation above both collapse onto key 15; without this the waning
+    # new moon would be reported as "Purnima".
+    if paksha == "Krishna" and tithi == 15:
+        tithi_name = TITHI_NAMES[30]
 
     return {
         "tithi_number": tithi,
@@ -184,6 +190,36 @@ def calculate_vara(date: datetime) -> dict:
         "vara_name": vara["en"],
         "vara_name_hi": vara["hi"],
         "vara_lord": vara["lord"],
+    }
+
+
+def calculate_sunrise_sunset(target_date, latitude: float, longitude: float, tz_offset: float = 5.5) -> dict:
+    """Sunrise/sunset (local hours) via NOAA solar approximation (zenith 90.833°).
+
+    Accurate to ~1-2 minutes for |lat| < 66°. Replaces the old fixed 6/18
+    assumption and latitude fudge in muhurat tables.
+    """
+    day_of_year = target_date.timetuple().tm_yday
+    lat_rad = math.radians(latitude)
+
+    # Solar declination (Cooper) + equation of time (NOAA approx, minutes)
+    decl = math.radians(23.45 * math.sin(math.radians(360 / 365 * (284 + day_of_year))))
+    b = math.radians(360 / 365 * (day_of_year - 81))
+    eot = 9.87 * math.sin(2 * b) - 7.53 * math.cos(b) - 1.5 * math.sin(b)
+
+    cos_ha = (math.cos(math.radians(90.833)) - math.sin(lat_rad) * math.sin(decl)) / (
+        math.cos(lat_rad) * math.cos(decl)
+    )
+    cos_ha = max(-1.0, min(1.0, cos_ha))
+    ha_deg = math.degrees(math.acos(cos_ha))
+
+    # Solar noon in local time, then +/- hour angle
+    solar_noon = 12.0 - (longitude - tz_offset * 15.0) / 15.0 - eot / 60.0
+    delta = ha_deg / 15.0
+    return {
+        "sunrise": round(solar_noon - delta, 4),
+        "sunset": round(solar_noon + delta, 4),
+        "solar_noon": round(solar_noon, 4),
     }
 
 

@@ -99,6 +99,56 @@ def _mean_lunar_node(t) -> float:
     return (125.04452 - 1934.136261 * T) % 360
 
 
+def get_sidereal_longitude(planet_name: str, year: int, month: int, day: int) -> float:
+    """Lean sidereal longitude (0-360, Lahiri) of a planet on a date."""
+    t = _TS.utc(year, month, day, 12, 0, 0)
+    if planet_name == "Rahu":
+        return (_mean_lunar_node(t) - _lahiri_ayanamsa(t)) % 360
+    if planet_name == "Ketu":
+        return (_mean_lunar_node(t) - _lahiri_ayanamsa(t) + 180) % 360
+    return (_tropical_longitude(planet_name, t) - _lahiri_ayanamsa(t)) % 360
+
+
+def get_sidereal_sign(planet_name: str, year: int, month: int, day: int) -> int:
+    """Lean sidereal sign index (0-11) of a planet on a date (Lahiri).
+
+    Single-body computation for transit scans — much cheaper than the full
+    chart path. Rahu/Ketu use the mean-node model.
+    """
+    return int(get_sidereal_longitude(planet_name, year, month, day) // 30) % 12
+
+
+def get_sun_moon_longitudes(
+    year: int, month: int, day: int, hour: float = 12.0, minute: float = 0,
+    timezone_offset: float = 5.5,
+) -> tuple[float, float]:
+    """Sidereal longitudes of Sun and Moon at a specific local instant.
+
+    Fast path for tithi/muhurat work, which needs only the Sun-Moon pair and
+    would otherwise pay for all eleven bodies per sample. Returns
+    (sun_longitude, moon_longitude) in degrees, Lahiri ayanamsa.
+    """
+    t = _to_utc_time(year, month, day, hour, minute, timezone_offset)
+    ayanamsa = _lahiri_ayanamsa(t)
+    # One observer for both bodies: building the observer is the dominant cost
+    # when scanning a whole year, so it is not done twice.
+    observer = _EARTH.at(t)
+    sun_apparent = observer.observe(_EPH[_BODIES["Sun"]]).apparent()
+    moon_apparent = observer.observe(_EPH[_BODIES["Moon"]]).apparent()
+    sun = (sun_apparent.ecliptic_latlon(epoch=t)[1].degrees - ayanamsa) % 360
+    moon = (moon_apparent.ecliptic_latlon(epoch=t)[1].degrees - ayanamsa) % 360
+    return sun, moon
+
+
+def get_sun_sidereal_longitude(
+    year: int, month: int, day: int, hour: float = 12.0, minute: float = 0,
+    timezone_offset: float = 5.5,
+) -> float:
+    """Sidereal longitude of the Sun only (Sankranti / solar ingress)."""
+    t = _to_utc_time(year, month, day, hour, minute, timezone_offset)
+    return (_tropical_longitude("Sun", t) - _lahiri_ayanamsa(t)) % 360
+
+
 def _mean_obliquity(t) -> float:
     """Mean obliquity of the ecliptic of date, degrees (Meeus, truncated)."""
     T = (t.tt - 2451545.0) / 36525.0

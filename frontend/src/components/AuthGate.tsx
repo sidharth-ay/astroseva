@@ -7,10 +7,13 @@ import { api, getToken, clearSession } from "@/lib/api";
 // Routes usable WITHOUT logging in. Everything else requires a session.
 const PUBLIC_PATHS = new Set(["/", "/login", "/terms", "/privacy", "/refund", "/grievance"]);
 
-// The exact token string last validated via /me. Comparing fingerprints
-// (instead of a boolean) keeps login/logout working with no extra wiring:
-// a fresh token after login always revalidates; a cleared token redirects.
-let validatedToken: string | null | undefined = undefined;
+// The token last validated via /me, plus when it was validated. The TTL is
+// essential, not an optimisation: a bare token fingerprint was trusted for the
+// whole life of the page, so a long-expired session kept rendering protected
+// pages without ever re-checking. 60s keeps the "don't re-hit /me on every
+// nav click" win while bounding how stale the decision can get.
+const VALIDATION_TTL_MS = 60_000;
+let validated: { token: string; at: number } | null = null;
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [allowed, setAllowed] = useState<boolean | null>(null);
@@ -25,12 +28,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     }
     const tok = getToken();
     if (!tok) {
-      validatedToken = null;
+      validated = null;
       setAllowed(false);
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
-    if (validatedToken === tok) {
+    if (validated && validated.token === tok && Date.now() - validated.at < VALIDATION_TTL_MS) {
       setAllowed(true);
       return;
     }
@@ -40,11 +43,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     api
       .getMe()
       .then(() => {
-        validatedToken = getToken();
+        validated = { token: getToken() ?? "", at: Date.now() };
         setAllowed(true);
       })
       .catch(() => {
-        validatedToken = null;
+        validated = null;
         clearSession();
         setAllowed(false);
         router.replace(`/login?next=${encodeURIComponent(pathname)}`);

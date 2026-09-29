@@ -201,6 +201,35 @@ def calculate_antardashas(mahadasha_start: datetime, mahadasha_end: datetime,
     return antardashas
 
 
+def calculate_sub_periods(parent_start: datetime, parent_end: datetime,
+                         parent_lord: str) -> list:
+    """Generic Vimshottari sub-levels (Sookshma within PD, Prana within Sookshma)."""
+    start_idx = 0
+    for i, (lord, _) in enumerate(DASHA_SEQUENCE):
+        if lord == parent_lord:
+            start_idx = i
+            break
+
+    parent_years = dict(DASHA_SEQUENCE)[parent_lord]
+    total_days = (parent_end - parent_start).total_seconds() / 86400.0
+
+    subs = []
+    current_date = parent_start
+    for i in range(9):
+        lord_idx = (start_idx + i) % len(DASHA_SEQUENCE)
+        lord, sub_years = DASHA_SEQUENCE[lord_idx]
+        duration_days = total_days * sub_years / parent_years
+        end_date = current_date + timedelta(days=duration_days)
+        subs.append({
+            "lord": lord,
+            "start": current_date,
+            "end": end_date,
+            "duration_days": round(duration_days, 2),
+        })
+        current_date = end_date
+    return subs
+
+
 def calculate_pratyantardashas(antardasha_start: datetime, antardasha_end: datetime,
                                antardasha_lord: str) -> list:
     """Calculate Pratyantardasha (sub-sub-periods) within an Antardasha."""
@@ -210,7 +239,8 @@ def calculate_pratyantardashas(antardasha_start: datetime, antardasha_end: datet
             start_idx = i
             break
 
-    ad_duration = dict(DASHA_SEQUENCE)[antardasha_lord]
+    # Scale sub-periods to the actual window (balance-shortened ADs too).
+    window_days = (antardasha_end - antardasha_start).total_seconds() / 86400.0
 
     pratyardashas = []
     current_date = antardasha_start
@@ -220,7 +250,7 @@ def calculate_pratyantardashas(antardasha_start: datetime, antardasha_end: datet
         lord = DASHA_SEQUENCE[lord_idx][0]
         sub_duration = DASHA_SEQUENCE[lord_idx][1]
 
-        duration_days = (ad_duration * sub_duration / TOTAL_DASHA_YEARS) * 365.25 / 12.0
+        duration_days = window_days * sub_duration / TOTAL_DASHA_YEARS
 
         end_date = current_date + timedelta(days=duration_days)
 
@@ -296,6 +326,26 @@ def get_current_dasha(mahadashas: list, current_date: datetime) -> Optional[dict
                         "pratyantardasha_end": prat["end"],
                     })
 
+                    # Sookshma (within Pratyantardasha) + Prana (within Sookshma)
+                    sookshmas = calculate_sub_periods(prat["start"], prat["end"], prat["lord"])
+                    for soo in sookshmas:
+                        if soo["start"] <= current_date <= soo["end"]:
+                            result.update({
+                                "sookshma": soo["lord"],
+                                "sookshma_start": soo["start"],
+                                "sookshma_end": soo["end"],
+                            })
+                            pranas = calculate_sub_periods(soo["start"], soo["end"], soo["lord"])
+                            for pr in pranas:
+                                if pr["start"] <= current_date <= pr["end"]:
+                                    result.update({
+                                        "prana": pr["lord"],
+                                        "prana_start": pr["start"],
+                                        "prana_end": pr["end"],
+                                    })
+                                    break
+                            break
+
             return result
 
     return None
@@ -325,3 +375,136 @@ def get_dasha_for_birth(moon_longitude: float, birth_dt: datetime,
         "all_mahadashas": mahadashas,
         "current_dasha": current,
     }
+
+
+# ---------------------------------------------------------------------------
+# Yogini Dasha (36-year cycle, 8 Yoginis, Moon-nakshatra seeded)
+# ---------------------------------------------------------------------------
+
+YOGINI_SEQUENCE = [
+    ("Mangala", 1, "Moon"),
+    ("Pingala", 2, "Sun"),
+    ("Dhanya", 3, "Jupiter"),
+    ("Bhramari", 4, "Mars"),
+    ("Bhadrika", 5, "Mercury"),
+    ("Ulka", 6, "Saturn"),
+    ("Siddha", 7, "Venus"),
+    ("Sankata", 8, "Rahu"),
+]
+TOTAL_YOGINI_YEARS = 36
+
+
+def calculate_yogini_dasha(birth_dt: datetime, moon_longitude: float) -> dict:
+    """Yogini Mahadasha periods from birth Moon nakshatra (36-year cycle)."""
+    nak = get_nakshatra_from_moon_longitude(moon_longitude)
+    start_idx = nak["index"] % len(YOGINI_SEQUENCE)
+
+    # Balance of first Yogini by remaining nakshatra arc
+    nakshatra_span = 360.0 / 27.0
+    traversed = moon_longitude % nakshatra_span
+    remaining_frac = 1.0 - traversed / nakshatra_span
+
+    periods = []
+    current = birth_dt
+    # First (balance) period
+    first_name, first_years, _ = YOGINI_SEQUENCE[start_idx]
+    first_days = remaining_frac * first_years * 365.25
+    periods.append({
+        "yogini": first_name,
+        "start": current,
+        "end": current + timedelta(days=first_days),
+        "duration_years": round(first_days / 365.25, 2),
+        "balance": True,
+    })
+    current = periods[0]["end"]
+
+    # Repeat full cycles for ~120 years of coverage
+    idx = (start_idx + 1) % len(YOGINI_SEQUENCE)
+    while (current - birth_dt).days < 120 * 365.25:
+        name, years, _ = YOGINI_SEQUENCE[idx]
+        end = current + timedelta(days=years * 365.25)
+        periods.append({
+            "yogini": name, "start": current, "end": end,
+            "duration_years": years, "balance": False,
+        })
+        current = end
+        idx = (idx + 1) % len(YOGINI_SEQUENCE)
+
+    return {
+        "birth_nakshatra": nak,
+        "periods": periods,
+    }
+
+
+def get_current_yogini(birth_dt: datetime, moon_longitude: float,
+                       current_date: datetime = None) -> dict | None:
+    """Current Yogini period for a date."""
+    if current_date is None:
+        current_date = datetime.now(timezone.utc)
+    data = calculate_yogini_dasha(birth_dt, moon_longitude)
+    for p in data["periods"]:
+        if p["start"] <= current_date <= p["end"]:
+            return {
+                "yogini": p["yogini"],
+                "start": p["start"],
+                "end": p["end"],
+            }
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Chara (Jaimini sign) Dasha
+# ---------------------------------------------------------------------------
+
+CHARA_SIGN_LORDS = {
+    0: "Mars", 1: "Venus", 2: "Mercury", 3: "Moon", 4: "Sun", 5: "Mercury",
+    6: "Venus", 7: "Mars", 8: "Jupiter", 9: "Saturn", 10: "Saturn", 11: "Jupiter",
+}
+
+
+def calculate_chara_dasha(lagna_sign: int) -> list:
+    """Jaimini Chara Dasha sequence from Lagna sign.
+
+    Odd-footed signs proceed forward (zodiacal), even-footed in reverse,
+    starting at Lagna. Each sign's duration = count from the sign to its
+    domicile lord's sign (12 if the lord owns that sign), forward for
+    odd-footed signs and backward for even-footed ones.
+    Classical Mars/Saturn lordship (no co-lords).
+    """
+    if lagna_sign % 2 == 0:  # 0-based even = odd signs (Aries, Gemini, ...)
+        order = [(lagna_sign + i) % 12 for i in range(12)]
+    else:
+        order = [(lagna_sign - i) % 12 for i in range(12)]
+
+    # Lord's primary domicile per sign.
+    SIGN_LORD_DOMICILE = {
+        0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5,
+        6: 6, 7: 0, 8: 8, 9: 9, 10: 9, 11: 8,
+    }
+
+    periods = []
+    for s in order:
+        dom = SIGN_LORD_DOMICILE[s]
+        if dom == s:
+            years = 12
+        elif s % 2 == 0:
+            years = (dom - s) % 12 or 12
+        else:
+            years = (s - dom) % 12 or 12
+        periods.append({"sign": s, "lord": CHARA_SIGN_LORDS[s], "duration_years": years})
+    return periods
+
+
+def get_current_chara(lagna_sign: int, birth_dt: datetime,
+                      current_date: datetime = None) -> dict | None:
+    """Current Chara sign period for a date."""
+    if current_date is None:
+        current_date = datetime.now(timezone.utc)
+    current = birth_dt
+    for p in calculate_chara_dasha(lagna_sign):
+        end = current + timedelta(days=p["duration_years"] * 365.25)
+        if current <= current_date <= end:
+            return {"sign": p["sign"], "lord": p["lord"],
+                    "start": current, "end": end}
+        current = end
+    return None

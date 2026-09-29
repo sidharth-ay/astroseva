@@ -1,6 +1,13 @@
 """Dosha (Affliction) detection in Vedic Astrology."""
 
+import calendar
+import datetime
+from bisect import bisect_right
+from functools import lru_cache
 from typing import Optional
+
+_SIGN_NAMES = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+               "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
 
 # Manglik Dosha detection rules
 MANGLIK_RULES = {
@@ -189,6 +196,85 @@ SIGN_LORDS = {
 }
 
 
+# Kaal Sarp type by Rahu's house from Lagna (AstroTalk mapping; Ketu +6).
+KAAL_SARP_TYPES = {
+    1: "Anant", 2: "Kulik", 3: "Vasuki", 4: "Shankhpal", 5: "Padma",
+    6: "Maha Padma", 7: "Takshak", 8: "Karkotak", 9: "Shankhnaad",
+    10: "Ghatak", 11: "Vishdhar", 12: "Sheshnaag",
+}
+
+CLASSICAL_SEVEN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+
+
+def detect_kaal_sarp(planets: list[dict]) -> dict:
+    """Detect Kaal Sarp Dosha (all 7 classical planets hemmed Rahu->Ketu).
+
+    Longitude-based axis test (not house buckets): a planet counts as
+    "between" when its longitude falls in the (Rahu, Ketu] 180-degree arc.
+    Same-sign degree rule (AstroSage): a planet sharing Rahu's/Ketu's sign
+    must have in-sign degree <= the node's, else it breaks the axis.
+    Outer planets (Uranus/Neptune/Pluto) never count.
+    """
+    by_name = {p.get("planet"): p for p in planets}
+    rahu = by_name.get("Rahu", {})
+    ketu = by_name.get("Ketu", {})
+    rahu_lon = rahu.get("longitude")
+    ketu_lon = ketu.get("longitude")
+
+    if rahu_lon is None or ketu_lon is None:
+        return {
+            "has_dosha": False,
+            "rahu_house": rahu.get("house"),
+            "ketu_house": ketu.get("house"),
+            "planets_between": [],
+            "planets_outside": [],
+            "kaal_sarp_type": None,
+            "severity": "None",
+            "description": "Rahu or Ketu position not found",
+        }
+
+    rahu_deg = rahu_lon % 30
+    ketu_deg = ketu_lon % 30
+    between, outside = [], []
+
+    for name in CLASSICAL_SEVEN:
+        p = by_name.get(name)
+        if not p or p.get("longitude") is None:
+            outside.append(name)
+            continue
+        lon = float(p["longitude"])
+        rel = (lon - float(rahu_lon)) % 360
+        in_arc = 0 <= rel <= 180
+        # Same-sign degree rule: must not exceed the node's in-sign degree.
+        if in_arc:
+            p_deg = lon % 30
+            p_sign = int(lon // 30) % 12
+            if (p_sign == int(float(rahu_lon) // 30) % 12 and p_deg > rahu_deg) or \
+               (p_sign == int(float(ketu_lon) // 30) % 12 and p_deg > ketu_deg):
+                in_arc = False
+        (between if in_arc else outside).append(name)
+
+    has_dosha = len(outside) == 0
+    rahu_house = rahu.get("house")
+    kaal_type = KAAL_SARP_TYPES.get(rahu_house) if isinstance(rahu_house, int) else None
+
+    return {
+        "has_dosha": has_dosha,
+        "rahu_house": rahu_house,
+        "ketu_house": ketu.get("house"),
+        "planets_between": between,
+        "planets_outside": outside,
+        "kaal_sarp_type": kaal_type if has_dosha else None,
+        "severity": "High" if has_dosha else "None",
+        "description": (
+            f"{kaal_type} Kaal Sarp Dosha — all planets hemmed between Rahu and Ketu"
+            if has_dosha and kaal_type else
+            "Kaal Sarp Dosha present" if has_dosha else
+            "Planets on both sides of Rahu-Ketu axis"
+        ),
+    }
+
+
 def detect_pitru_dosha(planets: list[dict], asc_sign: int | None = None) -> dict:
     """Detect Pitru Dosha (ancestral affliction).
 
@@ -276,6 +362,174 @@ def detect_pitru_dosha(planets: list[dict], asc_sign: int | None = None) -> dict
     }
 
 
+def _phase_name(moon_sign: int, sat):
+    if sat is None:
+        return None
+    relative = (sat - moon_sign) % 12
+    if relative == 11:
+        return "Rising"
+    if relative == 0:
+        return "Peak"
+    if relative == 1:
+        return "Setting"
+    return None
+
+
+def _sade_phase_for(moon_sign: int, y: int, m: int, d: int) -> tuple:
+    """Return (phase_or_None, saturn_sidereal_sign) for one calendar day."""
+    from .planets import get_sidereal_sign
+
+    sat = get_sidereal_sign("Saturn", y, m, d)
+    return _phase_name(moon_sign, sat), sat
+
+
+def _sat_sign_on(day: datetime.date) -> int:
+    from .planets import get_sidereal_sign
+
+    return get_sidereal_sign("Saturn", day.year, day.month, day.day)
+
+
+def _day_window(first: datetime.date, last: datetime.date) -> list:
+    """[(day, sign)] for each day in the range, or [] past the ephemeris."""
+    out, day = [], first
+    while day <= last:
+        try:
+            out.append((day, _sat_sign_on(day)))
+        except Exception:
+            break
+        day += datetime.timedelta(days=1)
+    return out
+
+
+@lru_cache(maxsize=8)
+def _settled_timeline(start_year: int, end_year: int) -> tuple:
+    """Monthly settled Saturn sign plus the exact day of each settled change.
+
+    Saturn genuinely retrogrades across sign boundaries — sidereal longitude
+    runs e.g. 64.8 -> 58.3 -> 65.5 deg in early 2003 — so a plain monthly scan
+    invents multi-week Sade Sati windows. Months are sampled monthly (cheap),
+    and only months whose sampled sign changed get a day-level scan, where
+    motion direction is unambiguous. A change counts as settled only if Saturn
+    is still in the new sign at the end of that window, so retrograde
+    excursions are discarded and boundaries land on the ingress Saturn really
+    settled in.
+
+    Depends only on the year range, so results are cached across requests.
+    """
+    raw = []
+    y, m = start_year, 1
+    while y < end_year or (y == end_year and m <= 1):
+        try:
+            raw.append((y, m, _sat_sign_on(datetime.date(y, m, 15))))
+        except Exception:
+            break
+        m += 1
+        if m > 12:
+            m, y = 1, y + 1
+
+    truncated = len(raw) < (end_year - start_year) * 12 + 1
+    series, switches = [], []
+    if not raw:
+        return tuple(series), tuple(switches), truncated
+
+    settled = raw[0][2]
+    series.append((raw[0][0], raw[0][1], settled))
+
+    for i in range(1, len(raw)):
+        y, m, sign = raw[i]
+        if sign == settled:
+            series.append((y, m, settled))
+            continue
+        # Saturn only ever moves forward one sign, so anything else is a
+        # retrograde excursion rather than a new transit.
+        if (sign - settled) % 12 != 1:
+            series.append((y, m, settled))
+            continue
+        prev_y, prev_m, _ = raw[i - 1]
+        window = _day_window(datetime.date(prev_y, prev_m, 8),
+                             datetime.date(y, m, 22))
+        entries = [d for d, s in window if s == sign]
+        if not window or not entries:
+            series.append((y, m, settled))
+            continue
+        # Settle only if the window starts in the old sign and ends in the new
+        # one; an excursion already under way at the window start is rejected.
+        if window[0][1] != settled or window[-1][1] != sign:
+            series.append((y, m, settled))
+            continue
+        settled = sign
+        switches.append((entries[0], sign))
+        series.append((y, m, settled))
+
+    return series, switches, truncated
+
+
+def get_sade_sati_periods(moon_sign: int, start_year: int = 1950, end_year: int = 2060) -> list:
+    """All Sade Sati windows (Rising/Peak/Setting) for a natal Moon sign.
+
+    Scans transit Saturn monthly with retrograde motion suppressed, then
+    narrows every boundary to the exact day Saturn settled in or out of the
+    sign. Scanning stops cleanly at the end of the available ephemeris
+    (Skyfield DE421s ends 2053-10-09) instead of raising.
+    """
+    if end_year > 2053:
+        # Skyfield's bundled DE421s ends 2053-10-09; asking beyond it raises
+        # EphemerisRangeError deep inside the observer, so clamp up front.
+        end_year = 2053
+    series, switches, truncated = _settled_timeline(start_year, end_year)
+    switch_days = [d for d, _ in switches]
+
+    def _month_end(y: int, m: int) -> datetime.date:
+        return datetime.date(y, m, calendar.monthrange(y, m)[1])
+
+    periods = []
+    idx = 0
+    while idx < len(series):
+        sy, sm, sat = series[idx]
+        phase = _phase_name(moon_sign, sat)
+        if not phase:
+            idx += 1
+            continue
+        end_idx = idx
+        while end_idx + 1 < len(series) and series[end_idx + 1][2] == sat:
+            end_idx += 1
+        ey, em = series[end_idx][0], series[end_idx][1]
+
+        # Ingress: the settled switch into this sign closest before the run.
+        pos = bisect_right(switch_days, _month_end(sy, sm)) - 1
+        if pos >= 0 and switches[pos][1] == sat:
+            start = switch_days[pos]
+            nxt = pos + 1
+            partial = False
+        else:
+            # Scan began mid-transit, so the true ingress predates the window.
+            start = datetime.date(sy, sm, 15)
+            nxt = bisect_right(switch_days, datetime.date(sy, sm, 1))
+            partial = True
+
+        # Egress: the settled switch right after the ingress, since the
+        # ingress itself can fall inside the run's final month.
+        if nxt < len(switch_days):
+            end = switch_days[nxt] - datetime.timedelta(days=1)
+        else:
+            # Scan ended mid-transit, so the true egress lies past the window.
+            end = _month_end(ey, em)
+            partial = True
+
+        periods.append({
+            "phase": phase,
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "saturn_sign": sat,
+            "saturn_sign_name": _SIGN_NAMES[sat] if sat < len(_SIGN_NAMES) else str(sat),
+            "precision": "day",
+            "partial": partial,
+            "range_truncated": truncated,
+        })
+        idx = end_idx + 1
+    return periods
+
+
 def detect_nadi_dosha(nadi1: str, nadi2: str) -> dict:
     """Detect Nadi Dosha (Nadi incompatibility in matching)."""
     has_dosha = nadi1 == nadi2
@@ -289,17 +543,20 @@ def detect_nadi_dosha(nadi1: str, nadi2: str) -> dict:
 
 
 def detect_all_doshas(planets: list[dict], asc_sign: int, moon_sign: int, transit_saturn_sign: int | None = None) -> dict:
-    """Detect all doshas in a birth chart (Manglik, Sade Sati, Pitru)."""
+    """Detect all doshas in a birth chart (Manglik, Kaal Sarp, Sade Sati, Pitru)."""
     manglik = detect_manglik(planets, asc_sign, moon_sign)
+    kaal_sarp = detect_kaal_sarp(planets)
     sade_sati = detect_sade_sati(planets, moon_sign, transit_saturn_sign)
     pitru = detect_pitru_dosha(planets, asc_sign)
 
     return {
         "manglik": manglik,
+        "kaal_sarp": kaal_sarp,
         "sade_sati": sade_sati,
         "pitru_dosha": pitru,
         "total_doshas": sum([
             1 if manglik["is_manglik"] else 0,
+            1 if kaal_sarp["has_dosha"] else 0,
             1 if sade_sati["is_active"] else 0,
             1 if pitru["has_dosha"] else 0,
         ]),
