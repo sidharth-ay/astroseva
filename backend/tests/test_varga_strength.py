@@ -325,6 +325,47 @@ def test_navatara_drekkana_follows_the_lord_friendship_tables():
             assert _drekkana_score(sign) == 45, sign
 
 
+def test_parivartana_detected_at_any_distance():
+    """Parivartana was only ever looked for between adjacent signs.
+
+    Worse, the loop skipped any sign that did not already hold two grahas --
+    the opposite of a parivartana, which is two grahas in two different signs.
+    A textbook Mars in Cancer against the Moon in Aries was not reported.
+    """
+    # Mars in Cancer (3, ruled by Moon) and Moon in Aries (0, ruled by Mars).
+    chart = [{"planet": "Mars", "sign": 3}, {"planet": "Moon", "sign": 0}]
+    ex = build_arudha(chart, 0)["parivartana"]
+    assert len(ex) == 1, ex
+    assert ex[0]["signs"] == [0, 3]
+    assert ex[0]["planets"] == ["Mars", "Moon"]
+
+
+def test_parivartana_across_several_signs():
+    # Venus in Scorpio (7, ruled by Mars) and Mars in Libra (6, ruled by Venus).
+    chart = [{"planet": "Venus", "sign": 7}, {"planet": "Mars", "sign": 6}]
+    ex = build_arudha(chart, 0)["parivartana"]
+    assert len(ex) == 1, ex
+    assert ex[0]["planets"] == ["Mars", "Venus"]
+
+
+def test_parivartana_not_reported_without_mutual_lordship():
+    # Mars in Cancer is ruled by the Moon, but the Moon is in Leo, which Mars
+    # does not rule. One-way lordship is not an exchange.
+    chart = [{"planet": "Mars", "sign": 3}, {"planet": "Moon", "sign": 4}]
+    assert build_arudha(chart, 0)["parivartana"] == []
+
+
+def test_parivartana_reported_once_not_once_per_direction():
+    chart = [{"planet": "Mars", "sign": 3}, {"planet": "Moon", "sign": 0}]
+    assert len(build_arudha(chart, 0)["parivartana"]) == 1
+
+
+def test_parivartana_ignores_nodes():
+    """Rahu rules no sign, so it cannot satisfy the mutual-lordship test."""
+    chart = [{"planet": "Rahu", "sign": 0}, {"planet": "Sun", "sign": 4}]
+    assert build_arudha(chart, 0)["parivartana"] == []
+
+
 def test_arudha_lagna_is_ninth_from_ascendant():
     r = build_arudha(_chart7(), 0)
     assert r["arudha_lagna"] == 8          # ninth from Aries

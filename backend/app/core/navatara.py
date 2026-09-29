@@ -239,22 +239,40 @@ def build_arudha(planets: list, asc_sign: int) -> dict:
             "house": (ar - asc_sign) % 12 + 1,
         })
 
-    # Parivartana: two grahas exchanging signs.
-    sign_owners: dict[int, list[str]] = {}
+    # Parivartana: two grahas occupying each other's signs.
+    #
+    # The previous loop required two grahas to share a sign before it would
+    # consider an exchange at all -- the opposite of a parivartana, which is
+    # two grahas in two *different* signs -- and then only ever compared a sign
+    # with its immediate neighbour. A textbook Mars in Cancer against the Moon
+    # in Aries was not reported, and no exchange could be found at any
+    # distance other than one sign.
+    #
+    # Rahu and Ketu rule no sign, so they cannot satisfy either side of the
+    # mutual-lordship test and are omitted here.
+    occupants: dict[int, list[str]] = {}
     for p in planets:
         if p.get("sign") is not None:
-            sign_owners.setdefault(p["sign"], []).append(p["planet"])
+            occupants.setdefault(p["sign"], []).append(p["planet"])
+
     exchanges = []
-    for s, names in sign_owners.items():
-        if len(names) < 2:
-            continue
-        for a in names:
-            for b in names:
-                if a >= b:
+    seen: set[tuple[int, int]] = set()
+    for sa, in_sa in occupants.items():
+        for a in in_sa:
+            for sb, in_sb in occupants.items():
+                if sb == sa:
                     continue
-                if _lord(s) == b and _lord((s + 1) % 12) == a:
-                    exchanges.append({"signs": [s, (s + 1) % 12],
-                                      "planets": [a, b]})
+                for b in in_sb:
+                    if _lord(sa) == b and _lord(sb) == a:
+                        key = (min(sa, sb), max(sa, sb))
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        exchanges.append({
+                            "signs": [key[0], key[1]],
+                            "planets": sorted([a, b]),
+                        })
+    exchanges.sort(key=lambda e: e["signs"])
 
     return {
         "asc_sign": asc_sign,
