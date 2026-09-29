@@ -207,7 +207,20 @@ def _arudha_sign(sign: int) -> int:
 
 
 def build_arudha(planets: list, asc_sign: int) -> dict:
-    """Arudha Lagna, the per-graha Arudhas, and parivartana exchanges."""
+    """Arudha Lagna, the per-graha Arudhas, and parivartana exchanges.
+
+    Rahu and Ketu are counted from the sign they occupy, like every other
+    body. They previously had a fixed Arudha -- always Pisces for Rahu, always
+    Scorpio for Ketu -- with a comment describing it as derived from the sign's
+    seventh lord, which it was not: nothing was computed, so a Rahu in Aries
+    and a Rahu in Scorpio both produced an Arudha Lagna of Pisces.
+
+    Two things are deliberately not implemented, as this module has no basis
+    for either: the Arudha exception, where a result falling in the third or
+    tenth from the sign is remapped to the tenth, and the node-specific
+    treatments for Rahu and Ketu. The plain ninth-from-sign rule is applied
+    uniformly instead of approximating them.
+    """
     a1 = _arudha_sign(asc_sign)
 
     per_graha = []
@@ -216,13 +229,7 @@ def build_arudha(planets: list, asc_sign: int) -> dict:
         sign = p.get("sign")
         if sign is None:
             continue
-        if graha == "Rahu":
-            base = 11  # Rahu's Arudha is taken from its sign's 7th lord
-        elif graha == "Ketu":
-            base = 7
-        else:
-            base = sign
-        ar = _arudha_sign(base)
+        ar = _arudha_sign(sign)
         per_graha.append({
             "planet": graha,
             "sign": sign,

@@ -325,6 +325,42 @@ def test_navatara_drekkana_follows_the_lord_friendship_tables():
             assert _drekkana_score(sign) == 45, sign
 
 
+def test_arudha_lagna_is_ninth_from_ascendant():
+    r = build_arudha(_chart7(), 0)
+    assert r["arudha_lagna"] == 8          # ninth from Aries
+    assert r["arudha_lagna"] == (0 + 8) % 12
+
+
+def test_arudha_of_each_graha_is_ninth_from_its_own_sign():
+    r = build_arudha(_chart7(), 0)
+    for a in r["arudhas"]:
+        assert a["arudha_sign"] == (a["sign"] + 8) % 12, a["planet"]
+
+
+def test_rahu_and_ketu_arudha_follow_their_own_sign():
+    """Rahu's Arudha was hardcoded to Pisces and Ketu's to Scorpio.
+
+    A comment claimed the value came from the sign's seventh lord, but nothing
+    was computed, so a Rahu in Aries and a Rahu in Scorpio both produced the
+    same Arudha Lagna. Both nodes are now counted from the sign they occupy,
+    like every other body.
+    """
+    aries_rahu = [{"planet": "Rahu", "sign": 0}]
+    scorpio_rahu = [{"planet": "Rahu", "sign": 7}]
+
+    assert build_arudha(aries_rahu, 0)["arudhas"][0]["arudha_sign"] == 8
+    assert build_arudha(scorpio_rahu, 0)["arudhas"][0]["arudha_sign"] == 3
+    assert (
+        build_arudha(aries_rahu, 0)["arudhas"][0]["arudha_sign"]
+        != build_arudha(scorpio_rahu, 0)["arudhas"][0]["arudha_sign"]
+    )
+
+    aries_ketu = [{"planet": "Ketu", "sign": 0}]
+    scorpio_ketu = [{"planet": "Ketu", "sign": 7}]
+    assert build_arudha(aries_ketu, 0)["arudhas"][0]["arudha_sign"] == 8
+    assert build_arudha(scorpio_ketu, 0)["arudhas"][0]["arudha_sign"] == 3
+
+
 def test_navatara_own_sign_beats_enemy_sign():
     own = build_navatara([_p("Sun", 4)])["grahas"][0]["total"]     # Leo, own
     enemy = build_navatara([_p("Sun", 7)])["grahas"][0]["total"]   # Libra, enemy
