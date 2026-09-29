@@ -354,16 +354,18 @@ export default function ShopPage() {
           </p>
         </motion.div>
 
-        {/* Cart Icon (placeholder) */}
-        <motion.div
-          className="fixed top-5 right-5 z-50 glass-card p-3 cursor-pointer"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+        {/* Cart icon. There is no cart, no checkout and no payment, so this is
+            a static badge rather than a control: it previously had a
+            cursor-pointer plus hover and press animations and no click
+            handler at all, which made an inert element look interactive. */}
+        <div
+          className="fixed top-5 right-5 z-50 glass-card p-3"
           style={{ borderRadius: "50%" }}
-          title="Cart (Coming Soon)"
+          title="Purchases are not available yet"
+          aria-hidden="true"
         >
-          <ShoppingCart size={20} style={{ color: "#C8956D" }} />
-        </motion.div>
+          <ShoppingCart size={20} style={{ color: "#C8956D", opacity: 0.5 }} />
+        </div>
 
         {/* Filters */}
         <motion.div

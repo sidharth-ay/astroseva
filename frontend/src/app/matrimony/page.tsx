@@ -6,9 +6,7 @@ import { motion } from "motion/react";
 import {
   Heart,
   Star,
-  Check,
   ChevronDown,
-  ChevronRight,
   Users,
   Sparkles,
   BookOpen,
@@ -91,24 +89,22 @@ const steps = [
   },
 ];
 
-const testimonials = [
+// These previously read as customer reviews, with invented names, cities and
+// five-star ratings from couples who do not exist. Presenting fabricated
+// endorsements as real is false advertising, so they are gone. What replaced
+// them describes the analysis itself, which is verifiable.
+const whatYouGet = [
   {
-    name: "Priya & Rahul",
-    location: "Mumbai",
-    text: "AstroSeva's Kundli matching gave us a detailed 34/36 score report. The compatibility analysis was spot-on and helped our families feel confident about the match.",
-    rating: 5,
+    title: "Ashtakoot Guna Milan",
+    text: "Eight weighted factors scored out of 36 — varna, vashya, yoni, graha maitri, gana, bhakoot, nadi and rasa — with each match and mismatch itemised rather than reduced to a single number.",
   },
   {
-    name: "Ananya & Vikram",
-    location: "Delhi",
-    text: "The Manglik check was very thorough. The remedies suggested were practical and the dasha analysis helped us pick the perfect wedding date.",
-    rating: 5,
+    title: "Manglik and dosha analysis",
+    text: "Kuja dosha is checked with cancellation conditions applied, so a Manglik match that classical texts consider cancellable is not reported the same way as one that is not.",
   },
   {
-    name: "Sneha & Arjun",
-    location: "Bangalore",
-    text: "We loved the Nakshatra matching report. It explained our emotional compatibility perfectly. The AI astrologer session was a bonus!",
-    rating: 5,
+    title: "Nakshatra and dasha reading",
+    text: "Moon-sign kuta padas are compared, and the mahadasha periods for both charts are laid over each other so overlapping and conflicting windows are visible.",
   },
 ];
 
@@ -401,7 +397,7 @@ export default function MatrimonyPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* What the report actually covers */}
       <section className="py-16 px-5">
         <div className="max-w-6xl mx-auto">
           <motion.div
@@ -415,7 +411,7 @@ export default function MatrimonyPage() {
               className="text-sm font-bold tracking-[0.2em] uppercase mb-3"
               style={{ color: "#C8956D" }}
             >
-              TRUSTED BY COUPLES
+              THE ANALYSIS
             </p>
             <h2
               className="font-bold mb-4"
@@ -424,8 +420,12 @@ export default function MatrimonyPage() {
                 color: "#E8B88A",
               }}
             >
-              What Our Users Say
+              What the report covers
             </h2>
+            <p className="text-sm max-w-2xl mx-auto" style={{ color: "#B8A090" }}>
+              Every factor is computed from the two birth charts using the classical rules.
+              Nothing here is a generic score.
+            </p>
           </motion.div>
 
           <motion.div
@@ -435,9 +435,9 @@ export default function MatrimonyPage() {
             whileInView="visible"
             viewport={{ once: true, margin: "-40px" }}
           >
-            {testimonials.map((t) => (
+            {whatYouGet.map((t) => (
               <motion.div
-                key={t.name}
+                key={t.title}
                 variants={staggerItem}
                 className="p-6 rounded-xl"
                 style={{
@@ -445,33 +445,12 @@ export default function MatrimonyPage() {
                   border: "1px solid #C8956D20",
                 }}
               >
-                <div className="flex gap-1 mb-3">
-                  {Array.from({ length: t.rating }).map((_, i) => (
-                    <Star
-                      key={i}
-                      size={14}
-                      fill="#C8956D"
-                      color="#C8956D"
-                    />
-                  ))}
-                </div>
-                <p
-                  className="text-sm leading-relaxed mb-4"
-                  style={{ color: "#B8A090" }}
-                >
-                  &ldquo;{t.text}&rdquo;
+                <h3 className="font-semibold mb-2" style={{ color: "#E8B88A" }}>
+                  {t.title}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: "#B8A090" }}>
+                  {t.text}
                 </p>
-                <div>
-                  <p
-                    className="text-sm font-semibold"
-                    style={{ color: "#E8B88A" }}
-                  >
-                    {t.name}
-                  </p>
-                  <p className="text-xs" style={{ color: "#8A7060" }}>
-                    {t.location}
-                  </p>
-                </div>
               </motion.div>
             ))}
           </motion.div>

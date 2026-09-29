@@ -8,10 +8,17 @@ import {
 } from "@/lib/motion";
 import { AnimatedNumber } from "@/components/motion-primitives/animated-number";
 
+// These are properties of the product, not traffic figures.
+//
+// "500+ charts" and "50K+ happy users" were previously shown here with a
+// count-up animation. They were invented, and a fabricated user count is a
+// false-advertising exposure, so anything the code cannot substantiate is gone.
+// A traffic counter on the homepage would only ever report the visitor's own
+// session, which is not a user count.
 const stats = [
-  { value: 500, suffix: "+", label: "Charts Generated" },
-  { value: 50, suffix: "K+", label: "Happy Users" },
   { value: 12, suffix: "", label: "Zodiac Signs" },
+  { value: 27, suffix: "", label: "Nakshatras" },
+  { value: 9, suffix: "", label: "Grahas" },
   { value: 100, suffix: "%", label: "Free Service" },
 ];
 
