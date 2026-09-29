@@ -102,7 +102,7 @@ async def analyze_marriage_matching(request: Request, matching_data: MatchingDat
 
 
 @router.get("/sample")
-async def get_sample_matching():
+async def get_sample_matching(request: Request):
     """Get a sample matching analysis for testing."""
     from ..models.birth_data import BirthData
 
@@ -126,7 +126,10 @@ async def get_sample_matching():
     )
 
     matching_data = MatchingData(boy=boy, girl=girl)
-    return await analyze_marriage_matching(matching_data)
+    # `analyze_marriage_matching` takes (request, matching_data) because the
+    # rate limiter needs the request. This endpoint called it with one
+    # positional argument, so every hit raised TypeError and surfaced as a 500.
+    return await analyze_marriage_matching(request, matching_data)
 
 
 @router.post("/export-pdf")

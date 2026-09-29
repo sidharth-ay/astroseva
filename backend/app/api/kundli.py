@@ -283,7 +283,10 @@ async def generate_kundli(request: Request, birth_data: BirthData, ayanamsa_type
 
 
 @router.get("/sample")
-async def get_sample_kundli():
+async def get_sample_kundli(
+    request: Request,
+    ayanamsa_type: str = Query("lahiri", alias="ayanamsa_type"),
+):
     """Get a sample kundli for testing."""
     sample_data = BirthData(
         name="Sample Person",
@@ -294,7 +297,10 @@ async def get_sample_kundli():
         longitude=77.2090,
         timezone_offset=5.5,
     )
-    return await generate_kundli(sample_data)
+    # `generate_kundli` takes (request, birth_data, ayanamsa_type) because the
+    # rate limiter needs the request. This endpoint called it with one
+    # positional argument, so every hit raised TypeError and surfaced as a 500.
+    return await generate_kundli(request, sample_data, ayanamsa_type=ayanamsa_type)
 
 
 @router.post("/export-pdf")
