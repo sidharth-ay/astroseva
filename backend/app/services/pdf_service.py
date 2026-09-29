@@ -99,11 +99,33 @@ def generate_kundli_pdf(kundli_data: dict) -> bytes:
     elements.append(Paragraph("House Placements (Bhava)", heading_style))
     elements.append(Spacer(1, 0.1*inch))
     
-    houses = kundli_data.get("houses", {})
+    # `get_kundli_chart` keys houses by INTEGER, but this looked them up by
+    # `str(house_num)`, so every lookup missed and all twelve houses rendered
+    # as "Empty" in every PDF.
+    #
+    # The value is a cell dict holding "planets", not a bare list, so the join
+    # needs the inner list. Integer, string and cell-with-a-planets-list are
+    # all accepted because this function has been handed each of those shapes.
+    houses = kundli_data.get("houses", {}) or {}
     house_data = []
     for house_num in range(1, 13):
-        planets_in_house = houses.get(str(house_num), [])
-        house_data.append([f"House {house_num}", ", ".join(planets_in_house) if planets_in_house else "Empty"])
+        cell = houses.get(house_num)
+        if cell is None:
+            cell = houses.get(str(house_num))
+        if isinstance(cell, dict):
+            planets_in_house = cell.get("planets") or []
+        elif isinstance(cell, list):
+            planets_in_house = cell
+        else:
+            planets_in_house = []
+        # An occupant may be a bare name or an object with a "planet" field,
+        # depending on which chart shape reached here.
+        names = [
+            item if isinstance(item, str) else item.get("planet", "")
+            for item in planets_in_house
+        ]
+        names = [n for n in names if n]
+        house_data.append([f"House {house_num}", ", ".join(names) if names else "Empty"])
     
     house_table = Table(house_data, colWidths=[1.5*inch, 4.5*inch])
     house_table.setStyle(TableStyle([
