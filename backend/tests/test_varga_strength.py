@@ -296,6 +296,35 @@ def test_navatara_exalted_beats_debilitated():
     assert ex > deb
 
 
+def test_navatara_drekkana_factor_actually_varies():
+    """The Drekkana factor returned 45 for every graha in every sign.
+
+    It computed `_lord_sign(...)`, which yields a sign index, and indexed
+    `_FRIEND` -- keyed by graha name, holding sign indices -- with that
+    integer. The lookup always missed and fell through to the neutral score,
+    so a factor worth 15 of 100 never varied for any chart.
+    """
+    from app.core.navatara import _drekkana_score
+
+    scores = {_drekkana_score(s) for s in range(12)}
+    assert len(scores) > 1, "Drekkana is still a constant"
+    assert 70 in scores, "no favourable drishti found"
+    assert 25 in scores, "no hostile drishti found"
+
+
+def test_navatara_drekkana_follows_the_lord_friendship_tables():
+    from app.core.navatara import _ENEMY, _FRIEND, _drekkana_score, _lord
+
+    for sign in range(12):
+        lord = _lord(sign)
+        if sign in _FRIEND[lord]:
+            assert _drekkana_score(sign) == 70, sign
+        elif sign in _ENEMY[lord]:
+            assert _drekkana_score(sign) == 25, sign
+        else:
+            assert _drekkana_score(sign) == 45, sign
+
+
 def test_navatara_own_sign_beats_enemy_sign():
     own = build_navatara([_p("Sun", 4)])["grahas"][0]["total"]     # Leo, own
     enemy = build_navatara([_p("Sun", 7)])["grahas"][0]["total"]   # Libra, enemy

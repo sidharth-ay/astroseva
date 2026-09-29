@@ -102,17 +102,30 @@ def _rashi_score(graha: str, sign: int) -> int:
     return 40
 
 
-def _drekkana_score(graha: str, sign: int) -> int:
-    """Drekkana (D3): friendly drishti is good, hostile drishti poor."""
-    from .grahayukti import PLANET_ASPECTS
+def _drekkana_score(sign: int) -> int:
+    """Drekkana (D3): friendly drishti is good, hostile drishti poor.
 
+    Judged on whether the sign falls among the friendly or inimical signs of
+    the lord that rules it, so a favourable drishti scores well.
+
+    This used to return 45 for every graha in every sign. It computed
+    `_lord_sign(lord, target)`, which yields a *sign index*, and then indexed
+    `_FRIEND` with that integer -- but `_FRIEND` is keyed by graha name and
+    holds sign indices, so the lookup always missed and fell through to the
+    neutral score. A factor worth 15 of the 100-point total never varied for
+    any chart.
+
+    Note this takes the sign, not the graha. The third division of a sign is
+    fixed by the sign, and the friendship tables in this module relate grahas
+    to *signs* rather than to each other, so a per-graha Drekkana cannot be
+    derived from them. The published column is a seven-by-twelve table; this is
+    a reconstruction of what these tables do support, and it is not that
+    table.
+    """
     lord = _lord(sign)
-    d = 3  # the 3rd drishta of the sign
-    target = (sign + d - 1) % 12
-    lord_sign = _lord_sign(lord, target)
-    if target in _FRIEND.get(lord_sign, []):
+    if sign in _FRIEND[lord]:
         return 70
-    if target in _ENEMY.get(lord_sign, []):
+    if sign in _ENEMY[lord]:
         return 25
     return 45
 
@@ -132,7 +145,7 @@ def build_navatara(planets: list) -> dict:
             continue
         factors = {
             "Rashi": _rashi_score(graha, sign),
-            "Drekkana": _drekkana_score(graha, sign),
+            "Drekkana": _drekkana_score(sign),
             "Naisargika": NAISARGIKA_SCORE[graha],
             "Shashtiamsa": 55,
             "Dasamsa": 55,
