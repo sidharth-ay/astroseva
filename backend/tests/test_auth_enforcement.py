@@ -8,6 +8,8 @@ no "*" escape hatch.
 
 import pytest
 
+from tests.conftest import _clear_overrides, _make_client
+
 
 # GET endpoints that take no body, one per router family.
 PROTECTED_GETS = [
@@ -135,8 +137,47 @@ def test_clear_cache_allows_admin_with_valid_namespace(admin_client, monkeypatch
     assert resp.json().get("pattern") == "doshas:*"
 
 
-def test_no_admin_configured_means_nobody_is_admin(admin_client, monkeypatch):
-    """Empty ADMIN_EMAILS -> the capability is closed by default."""
+def test_no_admin_configured_means_nobody_is_admin(client, monkeypatch):
+    """Fail closed: with ADMIN_EMAILS empty, a non-admin role is still refused.
+
+    Administrator rights now have two grant paths -- the `users.role` column and
+    the ADMIN_EMAILS allowlist -- and either is sufficient. This test pins the
+    half that must never regress: a user with neither is refused, and clearing
+    ADMIN_EMAILS does not by itself promote anyone.
+    """
     monkeypatch.setenv("ADMIN_EMAILS", "")
-    resp = admin_client.post("/api/v1/admin/clear-cache?pattern=doshas:*")
+    resp = client.post("/api/v1/admin/clear-cache?pattern=doshas:*")
     assert resp.status_code == 403
+
+
+def test_role_column_alone_confers_admin(monkeypatch, test_sessionmaker):
+    """The role column is a real grant path, independent of ADMIN_EMAILS.
+
+    Migration 0002 backfilled every existing user to `client`, so the column is
+    empty of admins until someone is promoted deliberately.
+    """
+    import uuid
+
+    from app.db.models import ROLE_ADMIN, User
+
+    monkeypatch.setenv("ADMIN_EMAILS", "")
+    email = f"role-admin-{uuid.uuid4().hex}@example.com"
+    session = test_sessionmaker()
+    try:
+        promoted = User(email=email, name="Promoted",
+                        hashed_password="x", role=ROLE_ADMIN, token_version=0)
+        session.add(promoted)
+        session.commit()
+
+        c = _make_client(promoted, test_sessionmaker)
+        try:
+            resp = c.post("/api/v1/admin/clear-cache?pattern=doshas:*")
+            assert resp.status_code == 200, resp.text
+        finally:
+            _clear_overrides()
+    finally:
+        # The test database is shared across the session, so committed rows must
+        # be removed explicitly: rollback() does not undo a commit.
+        session.query(User).filter(User.email == email).delete()
+        session.commit()
+        session.close()

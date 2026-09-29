@@ -387,28 +387,34 @@ export async function fetchAPI<T>(endpoint: string, options?: RequestInit): Prom
       ...options?.headers,
     },
   });
-  if (!res.ok) {
-    if (res.status === 401 && !NO_REDIRECT_ON_401.some((p) => endpoint.startsWith(p))) {
-      handleExpiredSession();
+    if (!res.ok) {
+      if (res.status === 401 && !NO_REDIRECT_ON_401.some((p) => endpoint.startsWith(p))) {
+        handleExpiredSession();
+      }
+      const error = await res.json().catch(() => ({ detail: res.statusText }));
+      let message: string;
+      if (Array.isArray(error.detail)) {
+        // FastAPI 422: an array of per-field problems.
+        message = error.detail
+          .map((d: { loc?: (string | number)[]; msg?: string }) => {
+            const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : "input";
+            return `${field}: ${d.msg || "invalid value"}`;
+          })
+          .join("; ");
+      } else {
+        // `detail` is FastAPI's convention, but the rate-limit handler and the
+        // global 500 handler use `error`. Reading only `detail` turned a rate
+        // limit into a bare "API request failed", which looks like a broken
+        // site rather than a temporary condition.
+        message = error.detail || error.error || res.statusText || "API request failed";
+      }
+      const err = new Error(message) as Error & { status?: number; retryAfter?: number };
+      err.status = res.status;
+      const retryAfter = res.headers.get("Retry-After");
+      if (retryAfter) err.retryAfter = Number(retryAfter);
+      throw err;
     }
-    const error = await res.json().catch(() => ({ detail: res.statusText }));
-    // FastAPI 422 details arrive as an array — humanize them.
-    let message: string;
-    if (Array.isArray(error.detail)) {
-      message = error.detail
-        .map((d: { loc?: (string | number)[]; msg?: string }) => {
-          const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : "input";
-          return `${field}: ${d.msg || "invalid value"}`;
-        })
-        .join("; ");
-    } else {
-      message = error.detail || "API request failed";
-    }
-    const err = new Error(message) as Error & { status?: number };
-    err.status = res.status;
-    throw err;
-  }
-  return res.json();
+    return res.json();
 }
 
 export interface Festival {
@@ -475,10 +481,209 @@ export interface BabyNamesResponse {
 const TOKEN_KEY = "astroseva_token";
 const USER_KEY = "astroseva_user";
 
+/** Mirrors the backend `users.role` column. Unknown/legacy values read as client. */
+export type UserRole = "client" | "astrologer" | "reviewer" | "admin";
+
 export interface AuthUser {
   id: number;
   email: string;
   name: string;
+  role?: UserRole;
+}
+
+// --- astrologer marketplace -------------------------------------------------
+
+/** Applicant lifecycle. Terminal outcomes are verified/probation/rejected. */
+export type OnboardingStatus =
+  | "draft"
+  | "applied"
+  | "under_review"
+  | "assessment_pending"
+  | "mock_pending"
+  | "verified"
+  | "probation"
+  | "rejected"
+  | "suspended";
+
+export interface AccuracySummary {
+  score: number;
+  scale: string;
+  assessment_pass_rate: number | null;
+  total_assessments: number;
+  mock_consultations: number;
+}
+
+export interface DirectoryEntry {
+  id: number;
+  slug: string;
+  name: string | null;
+  headline: string;
+  experience_years: number;
+  languages: string[];
+  specialties: string[];
+  location: string | null;
+  status: OnboardingStatus;
+  is_on_probation: boolean;
+  accuracy_score: number;
+}
+
+export interface AstrologerProfile extends DirectoryEntry {
+  bio: string | null;
+  probation_until: string | null;
+  accuracy: AccuracySummary;
+  availability: {
+    weekday: number;
+    start_minute: number;
+    end_minute: number;
+    timezone_offset: number;
+    slot_minutes: number;
+  }[];
+}
+
+export interface DirectoryResponse {
+  count: number;
+  total: number;
+  offset: number;
+  limit: number;
+  astrologers: DirectoryEntry[];
+}
+
+export interface SpecialtyOptions {
+  specialties: string[];
+  languages: string[];
+}
+
+export interface MyDocument {
+  id: number;
+  kind: string;
+  identity_status: string;
+  original_filename: string;
+  uploaded_at: string;
+  reviewer_note: string | null;
+  size_bytes?: number;
+  reviewed_at?: string | null;
+}
+
+export interface AvailabilityWindow {
+  id: number;
+  weekday: number;
+  start_minute: number;
+  end_minute: number;
+  timezone_offset: number;
+  slot_minutes: number;
+  is_active?: boolean;
+}
+
+export interface MyApplication {
+  id: number;
+  slug: string;
+  headline: string;
+  bio: string | null;
+  experience_years: number;
+  languages: string[];
+  specialties: string[];
+  location: string | null;
+  status: OnboardingStatus;
+  rejection_reason: string | null;
+  probation_until: string | null;
+  accuracy: AccuracySummary;
+  documents: MyDocument[];
+  availability: AvailabilityWindow[];
+  next_step: string | null;
+  is_practising: boolean;
+}
+
+export interface AssessmentQuestion {
+  id: number;
+  prompt: string;
+  options: string[];
+}
+
+export interface AssessmentView {
+  questions: AssessmentQuestion[];
+  pass_mark: number;
+  attempts: number;
+  latest: {
+    attempt_no: number;
+    score: number;
+    max_score: number;
+    passed: boolean;
+    submitted_at: string;
+  } | null;
+}
+
+export interface AssessmentResult {
+  attempt_no: number;
+  score: number;
+  max_score: number;
+  pass_mark: number;
+  passed: boolean;
+  details: { id: number; correct: boolean; explanation: string }[];
+}
+
+export interface OnboardingEvent {
+  id: number;
+  event_type: string;
+  from_status: string | null;
+  to_status: string | null;
+  created_at: string;
+  actor_user_id?: number | null;
+  payload?: Record<string, unknown>;
+}
+
+export interface TimelineResponse {
+  events: OnboardingEvent[];
+}
+
+export interface MockConsult {
+  id: number;
+  verdict: string;
+  scores: { accuracy: number; clarity: number; empathy: number; structure: number };
+  notes: string | null;
+  evaluated_at: string;
+}
+
+/** A graded assessment attempt. Answers and the key are never sent to a client. */
+export interface AdminAssessmentAttempt {
+  id: number;
+  attempt_no: number;
+  score: number;
+  max_score: number;
+  passed: boolean;
+  pass_mark: number;
+  overridden_by: number | null;
+  override_note: string | null;
+  submitted_at: string;
+}
+
+export interface AdminApplication {
+  id: number;
+  user_id: number;
+  slug: string;
+  headline: string;
+  bio: string | null;
+  experience_years: number;
+  languages: string[];
+  specialties: string[];
+  location: string | null;
+  status: OnboardingStatus;
+  rejection_reason: string | null;
+  probation_until: string | null;
+  accuracy: AccuracySummary;
+  documents: MyDocument[];
+  mock_consultations: MockConsult[];
+  assessments: AdminAssessmentAttempt[];
+  events: OnboardingEvent[];
+}
+
+export interface AdminQueueResponse {
+  count: number;
+  applications: AdminApplication[];
+}
+
+export interface QueueCounts {
+  counts: Record<string, number>;
+  total: number;
 }
 
 export function getToken(): string | null {
@@ -527,6 +732,29 @@ export async function fetchAuth<T>(endpoint: string, options?: RequestInit): Pro
       Authorization: `Bearer ${token}`,
     },
   });
+}
+
+/**
+ * Multipart upload. fetchAPI always sets Content-Type: application/json, which
+ * would strip the multipart boundary the backend needs, so the header is left
+ * for the browser to generate.
+ */
+async function fetchUpload<T>(endpoint: string, form: FormData): Promise<T> {
+  const token = getToken();
+  if (!token) throw new Error("Please log in to continue.");
+  const res = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    body: form,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    if (res.status === 401) handleExpiredSession();
+    const error = await res.json().catch(() => ({ detail: res.statusText }));
+    const err = new Error(error.detail || "Upload failed") as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
 }
 
 export const api = {
@@ -760,4 +988,167 @@ export const api = {
 
   deleteChart: (id: number) =>
     fetchAuth<{ message: string }>(`/api/v1/charts/${id}`, { method: "DELETE" }),
+
+  // --- astrologer marketplace ---------------------------------------------
+
+  /** Public directory. Requires a login, like every other feature. */
+  listAstrologers: (
+    opts: {
+      specialty?: string;
+      language?: string;
+      min_experience?: number;
+      search?: string;
+      on_probation?: boolean;
+      limit?: number;
+      offset?: number;
+    } = {},
+    signal?: AbortSignal
+  ) => {
+    const params = new URLSearchParams();
+    if (opts.specialty) params.set("specialty", opts.specialty);
+    if (opts.language) params.set("language", opts.language);
+    if (opts.min_experience != null) params.set("min_experience", String(opts.min_experience));
+    if (opts.search) params.set("search", opts.search);
+    if (opts.on_probation != null) params.set("on_probation", String(opts.on_probation));
+    if (opts.limit != null) params.set("limit", String(opts.limit));
+    if (opts.offset != null) params.set("offset", String(opts.offset));
+    const qs = params.toString();
+    return fetchAPI<DirectoryResponse>(
+      `/api/v1/astrologers${qs ? `?${qs}` : ""}`,
+      signal ? { signal } : undefined
+    );
+  },
+
+  getAstrologerFilters: () =>
+    fetchAPI<SpecialtyOptions>("/api/v1/astrologers/specialties"),
+
+  getAstrologer: (slug: string, signal?: AbortSignal) =>
+    fetchAPI<AstrologerProfile>(
+      `/api/v1/astrologers/${encodeURIComponent(slug)}`,
+      signal ? { signal } : undefined
+    ),
+
+  getMyApplication: () => fetchAuth<MyApplication>("/api/v1/astrologer/me"),
+
+  updateMyApplication: (payload: {
+    headline: string;
+    bio: string;
+    experience_years: number;
+    languages: string[];
+    specialties: string[];
+    location: string | null;
+  }) =>
+    fetchAuth<MyApplication>("/api/v1/astrologer/me", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  submitApplication: () =>
+    fetchAuth<MyApplication>("/api/v1/astrologer/apply", { method: "POST" }),
+
+  uploadDocument: (kind: string, file: File) => {
+    const form = new FormData();
+    form.append("kind", kind);
+    form.append("file", file);
+    return fetchUpload<{ id: number }>("/api/v1/astrologer/documents", form);
+  },
+
+  deleteDocument: (id: number) =>
+    fetchAuth<{ deleted: boolean }>(`/api/v1/astrologer/documents/${id}`, {
+      method: "DELETE",
+    }),
+
+  getAssessment: () => fetchAuth<AssessmentView>("/api/v1/astrologer/assessment"),
+
+  submitAssessment: (answers: Record<string, number>) =>
+    fetchAuth<AssessmentResult>("/api/v1/astrologer/assessment", {
+      method: "POST",
+      body: JSON.stringify(answers),
+    }),
+
+  getMyAvailability: () =>
+    fetchAuth<{ availability: AvailabilityWindow[] }>("/api/v1/astrologer/availability"),
+
+  addAvailability: (payload: {
+    weekday: number;
+    start_minute: number;
+    end_minute: number;
+    timezone_offset: number;
+    slot_minutes: number;
+  }) =>
+    fetchAuth<{ id: number }>("/api/v1/astrologer/availability", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  removeAvailability: (id: number) =>
+    fetchAuth<{ deleted: boolean }>(`/api/v1/astrologer/availability/${id}`, {
+      method: "DELETE",
+    }),
+
+  getMyTimeline: () => fetchAuth<TimelineResponse>("/api/v1/astrologer/timeline"),
+
+  // --- reviewer queue -------------------------------------------------------
+
+  getReviewQueue: (status?: string) =>
+    fetchAuth<AdminQueueResponse>(
+      `/api/v1/admin/astrologers${status ? `?status=${encodeURIComponent(status)}` : ""}`
+    ),
+
+  getQueueCounts: () => fetchAuth<QueueCounts>("/api/v1/admin/astrologers/counts"),
+
+  getApplication: (id: number) =>
+    fetchAuth<AdminApplication>(`/api/v1/admin/astrologers/${id}`),
+
+  setApplicationStatus: (id: number, to_status: string, reason?: string) =>
+    fetchAuth<{ id: number; status: string }>(`/api/v1/admin/astrologers/${id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ to_status, reason }),
+    }),
+
+  /**
+   * The backend names the field `identity_status` and uses "admin_verified"
+   * rather than "approved": a human confirmed a self-declared scan, which is
+   * deliberately not the same as government identity verification.
+   */
+  reviewDocument: (
+    documentId: number,
+    payload: { identity_status: "admin_verified" | "rejected"; reviewer_note?: string }
+  ) =>
+    fetchAuth<{ id: number; identity_status: string }>(
+      `/api/v1/admin/astrologers/documents/${documentId}/review`,
+      { method: "POST", body: JSON.stringify(payload) }
+    ),
+
+  /** Returns the raw file for a reviewer to inspect in the browser. */
+  getDocumentContentUrl: (documentId: number) =>
+    `${API_BASE}/api/v1/admin/astrologers/documents/${documentId}/content`,
+
+  recordMockConsult: (
+    id: number,
+    payload: {
+      scenario: string;
+      response: string;
+      score_accuracy: number;
+      score_clarity: number;
+      score_empathy: number;
+      score_structure: number;
+      verdict: string;
+      notes?: string;
+    }
+  ) =>
+    fetchAuth<{ id: number; verdict: string; accuracy_score: number }>(
+      `/api/v1/admin/astrologers/${id}/mock-consults`,
+      { method: "POST", body: JSON.stringify(payload) }
+    ),
+
+  overrideAssessment: (id: number, attemptId: number, passed: boolean, note?: string) =>
+    fetchAuth<{ id: number; passed: boolean }>(
+      `/api/v1/admin/astrologers/${id}/assessments/${attemptId}/override?passed=${passed}` +
+        (note ? `&note=${encodeURIComponent(note)}` : ""),
+      { method: "POST" }
+    ),
+
+  getAuditTrail: (id: number) =>
+    fetchAuth<{ events: OnboardingEvent[] }>(`/api/v1/admin/astrologers/${id}/audit`),
 };
