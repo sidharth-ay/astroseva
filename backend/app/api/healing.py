@@ -135,6 +135,47 @@ CRYSTALS = [
             "Encourages abundance and success",
         ],
     },
+        {
+            "name": "Aquamarine",
+            "properties": "Calm, courage, clear communication",
+            "zodiac_associations": ["pisces", "leo"],
+            "chakra_associations": ["throat", "third_eye"],
+            "benefits": [
+                "Calms anxiety and nervous tension",
+                "Supports clear expression of truth",
+                "Traditionally linked to protection while travelling",
+            ],
+        },
+        {
+            "name": "Clear Quartz",
+            "properties": "Clarity, amplification, focus",
+            "zodiac_associations": ["aries", "leo", "sagittarius", "capricorn"],
+            "chakra_associations": ["crown", "third_eye"],
+            "benefits": [
+                "Amplifies the intention of other stones",
+                "Traditionally used for clarity and focus",
+            ],
+        },
+        {
+            "name": "Orange Calcite",
+            "properties": "Creativity, confidence, joy",
+            "zodiac_associations": ["aries", "sagittarius", "leo"],
+            "chakra_associations": ["sacral", "solar_plexus"],
+            "benefits": [
+                "Encourages creative expression",
+                "Traditionally used for confidence and personal drive",
+            ],
+        },
+        {
+            "name": "Red Jasper",
+            "properties": "Grounding, vitality, steadiness",
+            "zodiac_associations": ["aries", "scorpio", "capricorn"],
+            "chakra_associations": ["root"],
+            "benefits": [
+                "Grounds scattered energy",
+                "Traditionally worn as a steady protective stone",
+            ],
+        },
 ]
 
 
@@ -188,7 +229,11 @@ CHAKRAS = [
             "Solar plexus meditation with golden light",
             "Yoga poses: Boat, Warrior III, Plank",
             "Essential oils: Lemon, Ginger, Juniper",
-            "Singing bowl therapy tuned to 396 Hz",
+            # 396 Hz belongs to the Root Chakra per SOUND_HEALING below, which
+            # names it "Liberating Guilt and Fear" and lists Saturn. The
+            # solar plexus entry quoted it, pointing a reader at the wrong bowl.
+            # 528 Hz is the one SOUND_HEALING associates with this chakra.
+            "Singing bowl therapy tuned to 528 Hz",
         ],
     },
     {
@@ -359,6 +404,98 @@ AROMATHERAPY = [
         ],
         "usage": "Diffuser, steam inhalation, topical (diluted)",
     },
+    {
+        "name": "Bergamot",
+        "planetary_association": "Mercury",
+        "zodiac_association": "virgo",
+        "benefits": [
+            "Traditionally used to lift mood",
+            "Astringent, used in skin preparations",
+        ],
+        "usage": "Diffuser, topical (diluted)",
+    },
+    {
+        "name": "Chamomile",
+        "planetary_association": "Moon",
+        "zodiac_association": "cancer",
+        "benefits": [
+            "Traditionally used to calm and ease tension",
+            "Widely drunk as a tea",
+        ],
+        "usage": "Diffuser, tea, topical (diluted)",
+    },
+    {
+        "name": "Ginger",
+        "planetary_association": "Mars / Sun",
+        "zodiac_association": "leo",
+        "benefits": [
+            "Traditionally used as a warming stimulant",
+            "Used in digestive preparations",
+        ],
+        "usage": "Diffuser, culinary, topical (diluted)",
+    },
+    {
+        "name": "Juniper",
+        "planetary_association": "Saturn / Mars",
+        "zodiac_association": "capricorn",
+        "benefits": [
+            "Traditionally used for purification",
+            "Sharp, resinous aroma",
+        ],
+        "usage": "Diffuser, topical (diluted)",
+    },
+    {
+        "name": "Lemon",
+        "planetary_association": "Mercury / Sun",
+        "zodiac_association": "gemini",
+        "benefits": [
+            "Traditionally used to lift mood and sharpen focus",
+            "Bright, clean scent",
+        ],
+        "usage": "Diffuser, culinary, topical (diluted)",
+    },
+    {
+        "name": "Myrrh",
+        "planetary_association": "Saturn",
+        "zodiac_association": "scorpio",
+        "benefits": [
+            "Traditionally used as a meditation resin",
+            "Deep, resinous aroma",
+        ],
+        "usage": "Resin incense, diffuser, topical (diluted)",
+    },
+    {
+        "name": "Rosemary",
+        "planetary_association": "Sun / Moon",
+        "zodiac_association": "aries",
+        "benefits": [
+            "Traditionally used to sharpen memory and focus",
+            "Stimulating herb, also culinary",
+        ],
+        "usage": "Diffuser, culinary, topical (diluted)",
+    },
+    {
+        # The sign map for Sagittarius named "Orange", which is a fruit rather
+        # than an oil. Named here as sweet orange, the essential oil of it.
+        "name": "Sweet Orange",
+        "planetary_association": "Sun / Jupiter",
+        "zodiac_association": "sagittarius",
+        "benefits": [
+            "Traditionally used to lift mood",
+            "Warm, bright citrus aroma",
+        ],
+        "usage": "Diffuser, culinary, topical (diluted)",
+    },
+    {
+        "name": "Ylang-Ylang",
+        "planetary_association": "Venus / Moon",
+        "zodiac_association": "libra",
+        "benefits": [
+            "Traditionally used to ease tension",
+            "Sweet, floral aroma",
+        ],
+        "usage": "Diffuser, topical (diluted)",
+    },
 ]
 
 
@@ -514,6 +651,13 @@ def _sun_sign_from_birth(data: BirthData) -> str:
 # Helper — build a personalised recommendation
 # ---------------------------------------------------------------------------
 
+# Body to chakra.
+#
+# Uranus and Neptune were already listed here. I had assumed they were wrong --
+# that the engine computed only the seven grahas and the nodes -- and removed
+# them. That was incorrect: `get_planetary_positions` returns twelve bodies,
+# including Uranus, Neptune and Pluto. Pluto was missing, so the map has been
+# completed rather than trimmed.
 _PLANET_CHAKRA_MAP = {
     "Saturn": "root",
     "Venus": "heart",
@@ -522,10 +666,11 @@ _PLANET_CHAKRA_MAP = {
     "Jupiter": "heart",
     "Mercury": "throat",
     "Moon": "third_eye",
-    "Neptune": "crown",
     "Rahu": "third_eye",
     "Ketu": "crown",
     "Uranus": "sacral",
+    "Neptune": "crown",
+    "Pluto": "root",
 }
 
 _SIGN_DOMINANT_CHAKRA = {
@@ -552,7 +697,7 @@ _SIGN_RECOMMENDED_OILS = {
     "virgo": ["Lavender", "Peppermint", "Eucalyptus"],
     "libra": ["Rose", "Lavender", "Ylang-Ylang"],
     "scorpio": ["Vetiver", "Frankincense", "Myrrh"],
-    "sagittarius": ["Peppermint", "Cedarwood", "Orange"],
+    "sagittarius": ["Peppermint", "Cedarwood", "Sweet Orange"],
     "capricorn": ["Vetiver", "Cedarwood", "Frankincense"],
     "aquarius": ["Eucalyptus", "Lavender", "Peppermint"],
     "pisces": ["Sandalwood", "Lavender", "Frankincense"],
