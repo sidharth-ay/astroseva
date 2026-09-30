@@ -131,36 +131,35 @@ def test_clear_cache_requires_explicit_pattern(admin_client, monkeypatch):
 
 
 def test_clear_cache_allows_admin_with_valid_namespace(admin_client, monkeypatch):
-    monkeypatch.setenv("ADMIN_EMAILS", "admin@example.com")
+    # An allowlist in the environment is no longer a grant path; the admin role
+    # on the user is what authorises this.
+    monkeypatch.setenv("ADMIN_EMAILS", "")
     resp = admin_client.post("/api/v1/admin/clear-cache?pattern=doshas:*")
     assert resp.status_code == 200, resp.text
     assert resp.json().get("pattern") == "doshas:*"
 
 
-def test_no_admin_configured_means_nobody_is_admin(client, monkeypatch):
-    """Fail closed: with ADMIN_EMAILS empty, a non-admin role is still refused.
+def test_a_user_without_the_admin_role_is_refused(client, monkeypatch):
+    """`users.role` is the only grant path; an environment allowlist confers nothing.
 
-    Administrator rights now have two grant paths -- the `users.role` column and
-    the ADMIN_EMAILS allowlist -- and either is sufficient. This test pins the
-    half that must never regress: a user with neither is refused, and clearing
-    ADMIN_EMAILS does not by itself promote anyone.
+    ADMIN_EMAILS used to sit alongside the role column as a second source of
+    truth. It no longer exists, so setting it must not promote anyone.
     """
-    monkeypatch.setenv("ADMIN_EMAILS", "")
+    monkeypatch.setenv("ADMIN_EMAILS", "tester@example.com")
     resp = client.post("/api/v1/admin/clear-cache?pattern=doshas:*")
     assert resp.status_code == 403
 
 
-def test_role_column_alone_confers_admin(monkeypatch, test_sessionmaker):
-    """The role column is a real grant path, independent of ADMIN_EMAILS.
+def test_role_column_confers_admin(test_sessionmaker):
+    """Migration 0002 backfilled every existing user to `client`.
 
-    Migration 0002 backfilled every existing user to `client`, so the column is
-    empty of admins until someone is promoted deliberately.
+    The column therefore holds no administrators until someone is promoted
+    deliberately, with `python -m app.cli set-admin`.
     """
     import uuid
 
     from app.db.models import ROLE_ADMIN, User
 
-    monkeypatch.setenv("ADMIN_EMAILS", "")
     email = f"role-admin-{uuid.uuid4().hex}@example.com"
     session = test_sessionmaker()
     try:

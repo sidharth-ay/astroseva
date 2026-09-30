@@ -6,7 +6,7 @@ pydantic==2.9.0
 pydantic[email]==2.9.0
 python-dotenv==1.0.1
 # Required by the marketplace document upload endpoint.
-python-multipart==0.0.9
+python-multipart==0.0.32
 
 # Rate Limiting
 slowapi==0.1.9
@@ -41,7 +41,7 @@ httpx==0.27.0
 skyfield==1.55
 
 # Utilities
-python-jose==3.3.0
+python-jose==3.5.0
 passlib==1.7.4
 bcrypt==4.2.0
 

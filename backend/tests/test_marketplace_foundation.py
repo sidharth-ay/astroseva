@@ -33,16 +33,27 @@ def test_every_account_defaults_to_client():
     )
 
 
-def test_is_admin_false_when_no_allowlist(monkeypatch):
-    """An empty ADMIN_EMAILS means nobody is an admin, whatever role is set."""
-    monkeypatch.delenv("ADMIN_EMAILS", raising=False)
-    assert is_admin(User(email="anyone@x.com", role=ROLE_ADMIN)) is False
-
-
-def test_is_admin_true_for_allowlisted_email(monkeypatch):
+def test_is_admin_reads_the_role_only(monkeypatch):
+    """The ADMIN_EMAILS allowlist is gone; `users.role` is the only authority."""
+    # An allowlist in the environment grants nothing.
     monkeypatch.setenv("ADMIN_EMAILS", "boss@x.com, other@x.com")
-    assert is_admin(User(email="BOSS@x.com", role=ROLE_CLIENT)) is True
-    assert is_admin(User(email="nope@x.com", role=ROLE_ADMIN)) is False
+    assert is_admin(User(email="boss@x.com", role=ROLE_CLIENT)) is False
+    assert is_admin(User(email="BOSS@x.com", role=ROLE_CLIENT)) is False
+    # The role grants it regardless of the environment.
+    assert is_admin(User(email="anyone@x.com", role=ROLE_ADMIN)) is True
+    assert is_admin(User(email="nope@x.com", role=ROLE_CLIENT)) is False
+
+
+def test_is_admin_is_true_for_a_role_mismatch_case_insensitively():
+    """`_role_of` lowercases and defaults, so an odd-cased role still counts."""
+    assert is_admin(User(email="a@x.com", role="ADMIN")) is True
+    assert is_admin(User(email="a@x.com", role="Admin")) is True
+    assert is_admin(User(email="a@x.com", role="admin ")) is True
+
+
+def test_a_user_with_no_role_is_not_an_admin():
+    assert is_admin(User(email="a@x.com")) is False
+    assert is_admin(User(email="a@x.com", role=None)) is False
 
 
 # --- storage ----------------------------------------------------------------

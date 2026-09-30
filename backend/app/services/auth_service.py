@@ -112,29 +112,32 @@ def _role_of(user: User) -> str:
 
 
 def is_admin(user: User) -> bool:
-    """Admin check via the ADMIN_EMAILS allowlist.
+    """Admin check via the user's role.
 
-    Kept as a separate mechanism from `users.role` so that a deployment with no
-    ADMIN_EMAILS configured still has no administrator, whatever the role
-    column happens to contain.
+    This previously consulted an `ADMIN_EMAILS` environment allowlist, which
+    sat alongside `users.role` and took precedence: an address in the
+    environment variable was an administrator whatever its role said, and
+    anyone holding the `admin` role was an administrator whatever the variable
+    said. Two sources of truth for one property, with the environment one
+    granting access implicitly.
+
+    `users.role` is now the only authority. A deployment with no admin at all
+    is a safe state, and the first administrator is set deliberately with
+    `python -m app.cli set-admin <email>`.
     """
-    raw = os.getenv("ADMIN_EMAILS", "")
-    allowed = {e.strip().lower() for e in raw.split(",") if e.strip()}
-    if not allowed:
-        return False
-    return (getattr(user, "email", "") or "").strip().lower() in allowed
+    return _role_of(user) == ROLE_ADMIN
 
 
 async def require_admin(user: User = Depends(get_current_user)) -> User:
     """Require administrator rights."""
-    if not is_admin(user) and _role_of(user) != ROLE_ADMIN:
+    if not is_admin(user):
         raise HTTPException(status_code=403, detail="Administrator privileges required")
     return user
 
 
 async def require_reviewer(user: User = Depends(get_current_user)) -> User:
     """Require reviewer or administrator rights (runs onboarding assessments)."""
-    if is_admin(user) or _role_of(user) in (ROLE_REVIEWER, ROLE_ADMIN):
+    if _role_of(user) in (ROLE_REVIEWER, ROLE_ADMIN):
         return user
     raise HTTPException(status_code=403, detail="Reviewer privileges required")
 
@@ -151,9 +154,7 @@ async def require_practising_astrologer(user: User = Depends(get_current_user),
     """Require an astrologer whose application is verified or on probation."""
     from ..db.models import PRACTISING_STATUSES, Astrologer
 
-    if is_admin(user) or _role_of(user) == ROLE_ADMIN:
-        return user
-    if _role_of(user) != ROLE_ASTROLOGER:
+    if _role_of(user) != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Astrologer account required")
     profile = db.query(Astrologer).filter(Astrologer.user_id == user.id).first()
     if profile is None or profile.status not in PRACTISING_STATUSES:
