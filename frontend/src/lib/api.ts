@@ -315,6 +315,41 @@ export interface HealingRecommendation {
  * astronomical. Those fields are gone rather than replaced, and
  * `limitations` says so on the page.
  */
+/**
+ * A stone is recommended only where the chart supports one.
+ *
+ * The endpoint used to return all seven gemstones for every chart regardless of
+ * any placement, while describing the list as coming "based on your birth
+ * chart". `considerations` reports all seven grahas so it is visible which were
+ * considered and left out, and why.
+ */
+export interface GemstoneResponse {
+  birth_data: Record<string, unknown>;
+  ascendant: string;
+  gemstones: {
+    planet: string;
+    gemstone: string;
+    weight: string;
+    metal: string;
+    finger: string;
+    day: string;
+    alternative: string;
+    reason: string;
+    condition: string;
+  }[];
+  considerations: {
+    planet: string;
+    sign: string;
+    house: number;
+    dignity: string;
+    combust: boolean;
+    condition: string;
+  }[];
+  basis: string;
+  recommendations: string;
+  disclaimer: string;
+}
+
 export interface VarshphalResponse {
   birth_data: Record<string, unknown>;
   year: number;
@@ -915,7 +950,7 @@ export const api = {
     fetchAPI<{ date: string; transits: { planet: string; current_sign: string; current_sign_index: number; retrograde: boolean; speed: number }[]; current_signs: Record<string, string> }>(`/api/v1/transit/today`, { signal }),
 
   getGemstones: (data: BirthData) =>
-    fetchAPI<{ birth_data: Record<string, unknown>; gemstones: { planet: string; gemstone: string; weight: string; metal: string; finger: string; day: string; alternative: string }[]; recommendations: string }>("/api/v1/gemstones/recommend", {
+    fetchAPI<GemstoneResponse>("/api/v1/gemstones/recommend", {
       method: "POST",
       body: JSON.stringify(data),
     }),

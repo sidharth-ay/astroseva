@@ -5,7 +5,12 @@ import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, ChevronRight, Gem, RotateCcw } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 
-import { api, type BirthData, type CityEntry } from "@/lib/api";
+import {
+  api,
+  type BirthData,
+  type CityEntry,
+  type GemstoneResponse,
+} from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
@@ -14,22 +19,7 @@ import {
   fadeIn,
 } from "@/lib/motion";
 
-interface GemstoneItem {
-  planet: string;
-  gemstone: string;
-  weight: string;
-  metal: string;
-  finger: string;
-  day: string;
-  alternative: string;
-}
-
-interface GemstoneResponse {
-  birth_data: Record<string, unknown>;
-  gemstones: GemstoneItem[];
-  recommendations: string;
-}
-
+/** One graha's standing in the chart, whether or not a stone is suggested. */
 export default function GemstonesPage() {
   const [form, setForm] = useState<BirthData>({
     name: "",
@@ -294,6 +284,12 @@ export default function GemstonesPage() {
                     <Gem size={13} className="inline mr-1.5 -mt-0.5" />
                     {g.gemstone}
                   </div>
+                  <p
+                    className="text-[11px] leading-relaxed mb-3"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    {g.reason}
+                  </p>
                   <div className="space-y-2">
                     {[
                       ["Weight", g.weight],
@@ -322,6 +318,74 @@ export default function GemstonesPage() {
                 </motion.div>
               ))}
             </div>
+            {result.gemstones.length === 0 && (
+              <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                No stone is indicated for this chart on the criteria below. That
+                is a normal result, not an error &mdash; many charts warrant no
+                gemstone at all.
+              </p>
+            )}
+          </motion.div>
+
+          {/* What the advice is based on, and every graha considered */}
+          <motion.div className="glass-card p-4" variants={staggerItem}>
+            <h3
+              className="text-xs font-semibold mb-2 uppercase tracking-wider"
+              style={{ color: "#C8956D" }}
+            >
+              How this was worked out
+            </h3>
+            <p
+              className="text-xs leading-relaxed mb-3"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {result.basis} Your ascendant is{" "}
+              <strong style={{ color: "var(--text-primary)" }}>
+                {result.ascendant}
+              </strong>
+              .
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                    {["Graha", "Sign", "House", "Standing"].map((h) => (
+                      <th
+                        key={h}
+                        className="text-left py-2 px-2 font-medium"
+                        style={{ color: "var(--text-tertiary)" }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.considerations.map((c) => (
+                    <tr
+                      key={c.planet}
+                      style={{ borderBottom: "1px solid var(--border-subtle)" }}
+                    >
+                      <td
+                        className="py-2 px-2 font-medium"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {c.planet}
+                      </td>
+                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>
+                        {c.sign}
+                      </td>
+                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>
+                        {c.house}
+                      </td>
+                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>
+                        {c.combust ? `${c.dignity}, combust` : c.dignity}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </motion.div>
 
           {/* General Recommendations */}
@@ -334,10 +398,21 @@ export default function GemstonesPage() {
                 General Recommendations
               </h3>
               <p
-                className="text-sm leading-relaxed"
+                className="text-sm leading-relaxed whitespace-pre-line"
                 style={{ color: "var(--text-secondary)" }}
               >
                 {result.recommendations}
+              </p>
+            </motion.div>
+          )}
+
+          {result.disclaimer && (
+            <motion.div className="glass-card p-4" variants={staggerItem}>
+              <p
+                className="text-xs leading-relaxed"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {result.disclaimer}
               </p>
             </motion.div>
           )}
