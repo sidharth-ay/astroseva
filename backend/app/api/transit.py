@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Request
 from ..core.rate_limit import limiter
-from datetime import date
+from datetime import date, timedelta
 import logging
 
 from ..core.planets import get_planetary_positions
@@ -15,6 +15,42 @@ PLANET_SIGNS = {
     "Sun": 0, "Moon": 1, "Mars": 3, "Mercury": 5,
     "Jupiter": 7, "Venus": 9, "Saturn": 11,
 }
+
+def _positions_on(d: date, user_offset: float = 5.5) -> dict[int, float]:
+    """Sidereal longitude of each graha on a given date."""
+    pos = get_planetary_positions(
+        year=d.year, month=d.month, day=d.day,
+        hour=12, minute=0, timezone_offset=user_offset,
+        latitude=28.6139, longitude=77.2090,
+    )
+    return {p["planet"]: p["longitude"] for p in pos["planets"]}
+
+
+def _daily_motion(planet: str, d: date) -> float:
+    """Degrees of sidereal longitude the graha covers per day.
+
+    A central difference across one day either side, unwrapped so that a graha
+    crossing 360 or 0 does not report a near-zero or huge jump. Sign is carried:
+    a retrograde graha comes out negative.
+    """
+    yesterday = _positions_on(d - timedelta(days=1))
+    tomorrow = _positions_on(d + timedelta(days=1))
+    if planet not in yesterday or planet not in tomorrow:
+        return 0.0
+    forward = tomorrow[planet] - yesterday[planet]
+    if forward > 180:
+        forward -= 360
+    elif forward < -180:
+        forward += 360
+    return forward / 2.0
+
+
+def _motion_label(degrees_per_day: float) -> str:
+    """Direct, retrograde or stationary, at the classical thresholds."""
+    if abs(degrees_per_day) < 0.05:
+        return "stationary"
+    return "direct" if degrees_per_day > 0 else "retrograde"
+
 
 @router.get("/today")
 @limiter.limit("60/minute")
@@ -52,8 +88,15 @@ async def get_today_transit(request: Request):
                 "planet": name,
                 "current_sign": sign_name,
                 "current_sign_index": p["sign"],
+                "sign_degree": round(p["sign_degree"], 2),
                 "retrograde": p["retrograde"],
-                "speed": round(abs(p.get("speed", 1.0)), 2),
+                # Degrees of sidereal longitude covered per day, computed from
+                # the position on the day before and the day after. The engine
+                # emits no speed field, so this used to read
+                # `p.get("speed", 1.0)` and report 1.0 for every graha every
+                # day -- a number that looked measured and was a fallback.
+                "daily_motion": round(_daily_motion(name, today), 4),
+                "motion": _motion_label(_daily_motion(name, today)),
             })
             current_signs[name] = sign_name
 

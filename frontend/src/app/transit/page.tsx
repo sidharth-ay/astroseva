@@ -17,8 +17,11 @@ interface TransitEntry {
   planet: string;
   current_sign: string;
   current_sign_index: number;
+  sign_degree: number;
   retrograde: boolean;
-  speed: number;
+  /** Sidereal degrees covered per day; negative when retrograde. */
+  daily_motion: number;
+  motion: "direct" | "retrograde" | "stationary";
 }
 
 interface TransitData {
@@ -56,11 +59,45 @@ const signNameToKey: Record<string, string> = {
   Pisces: "pisces",
 };
 
-const speedLabel = (speed: number): { label: string; color: string } => {
-  if (speed === 0) return { label: "Stationary", color: "var(--text-tertiary)" };
-  if (speed > 1.5) return { label: "Fast", color: "#5DC88F" };
-  if (speed > 0.8) return { label: "Normal", color: GOLD };
-  return { label: "Slow", color: "#E85D5D" };
+/**
+ * Describe a graha's daily motion.
+ *
+ * The previous version read a `speed` field that the backend never sent. The
+ * endpoint reported `p.get("speed", 1.0)`, so every graha arrived at exactly
+ * 1.0 and every card read "Normal". The threshold was also absolute-speed
+ * based, so even a computed value would have called a retrograde graha fast.
+ *
+ * `daily_motion` is degrees of sidereal longitude per day and carries its sign,
+ * so each graha is compared against its own typical rate.
+ */
+const MOTION_TYPICAL: Record<string, number> = {
+  Sun: 1.0,
+  Moon: 13.2,
+  Mars: 0.5,
+  Mercury: 1.2,
+  Jupiter: 0.2,
+  Venus: 1.2,
+  Saturn: 0.1,
+};
+
+const motionLabel = (
+  planet: string,
+  motion: number
+): { label: string; color: string } => {
+  if (motion === 0) return { label: "Stationary", color: "var(--text-tertiary)" };
+  const typical = MOTION_TYPICAL[planet];
+  if (!typical) {
+    return { label: `${motion > 0 ? "+" : ""}${motion.toFixed(2)}°/day`, color: GOLD };
+  }
+  if (motion < 0) {
+    // Retrograde is its own state, not "slow": the graha is moving against
+    // its direction, which is what the tradition reads it as.
+    return { label: "Retrograde", color: "#E85D5D" };
+  }
+  const ratio = motion / typical;
+  if (ratio > 1.15) return { label: "Fast", color: "#5DC88F" };
+  if (ratio < 0.85) return { label: "Slow", color: "#E85D5D" };
+  return { label: "Normal", color: GOLD };
 };
 
 export default function TransitPage() {
@@ -212,7 +249,7 @@ export default function TransitPage() {
                 const isSelected = selectedPlanet === t.planet;
                 const signKey = signNameToKey[t.current_sign];
                 const signIcon = signKey ? zodiacIcons[signKey] : null;
-                const speedInfo = speedLabel(t.speed);
+                const speedInfo = motionLabel(t.planet, t.daily_motion);
 
                 return (
                   <motion.button

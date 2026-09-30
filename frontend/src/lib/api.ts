@@ -951,7 +951,16 @@ export const api = {
     fetchAPI<{ suggestions: string[] }>("/api/v1/chat/suggestions"),
 
   getTransit: (signal?: AbortSignal) =>
-    fetchAPI<{ date: string; transits: { planet: string; current_sign: string; current_sign_index: number; retrograde: boolean; speed: number }[]; current_signs: Record<string, string> }>(`/api/v1/transit/today`, { signal }),
+    fetchAPI<{ date: string; transits: {
+      planet: string;
+      current_sign: string;
+      current_sign_index: number;
+      sign_degree: number;
+      retrograde: boolean;
+      /** Sidereal degrees covered per day; negative when retrograde. */
+      daily_motion: number;
+      motion: "direct" | "retrograde" | "stationary";
+    }[]; current_signs: Record<string, string> }>(`/api/v1/transit/today`, { signal }),
 
   getGemstones: (data: BirthData) =>
     fetchAPI<GemstoneResponse>("/api/v1/gemstones/recommend", {
