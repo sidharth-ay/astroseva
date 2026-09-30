@@ -50,6 +50,15 @@ CORS_ORIGINS = [
     o.strip() for o in os.getenv("CORS_ORIGINS", DEFAULT_CORS_ORIGINS).split(",") if o.strip()
 ]
 
+# Origins allowed to read responses without credentials.
+#
+# The API authenticates with a bearer token in the Authorization header, not a
+# cookie, so `allow_credentials=True` buys nothing and costs something: with it
+# set, a wildcard is no longer permitted, and every origin must be enumerated
+# correctly. Since the token is sent explicitly by the client, credentials are
+# not needed for cross-origin API calls at all.
+CORS_ALLOW_CREDENTIALS = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true"
+
 # Docs visibility
 ENABLE_DOCS = os.getenv("ENABLE_DOCS", "false").lower() == "true"
 
@@ -139,9 +148,17 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Content-Type", "Authorization"],
+    # False by default; see the note where it is defined.
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
+    # Exposed so a browser can read them. Without this the client cannot see the
+    # rate-limit headers, which is part of why a 429 used to arrive as an
+    # unexplained failure with nothing to act on.
+    expose_headers=["Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining",
+                    "X-RateLimit-Reset"],
+    # Ten minutes, so a browser is not re-preflighting on every navigation.
+    max_age=600,
 )
 
 
