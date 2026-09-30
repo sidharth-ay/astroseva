@@ -5,29 +5,21 @@ import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, ChevronRight, RefreshCw } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 
-import { api, type BirthData, type CityEntry } from "@/lib/api";
+import {
+  api,
+  type BirthData,
+  type CityEntry,
+  type VarshphalResponse,
+} from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
   staggerItem,
 } from "@/lib/motion";
 
-interface VarshphalResult {
-  birth_data: Record<string, unknown>;
-  year: number;
-  varshphal_chart: Record<string, unknown>;
-  predictions: Record<string, string>;
-  auspicious_months: string[];
-  challenging_months: string[];
-}
-
-const CATEGORY_META: Record<string, { icon: string; label: string }> = {
-  career: { icon: "💼", label: "Career" },
-  finance: { icon: "💰", label: "Finance" },
-  health: { icon: "🏥", label: "Health" },
-  marriage: { icon: "💍", label: "Marriage" },
-  education: { icon: "📚", label: "Education" },
-  travel: { icon: "✈️", label: "Travel" },
+const PLANET_META: Record<string, string> = {
+  Sun: "☉", Moon: "☽", Mars: "♂", Mercury: "☿",
+  Jupiter: "♃", Venus: "♀", Saturn: "♄",
 };
 
 const currentYear = new Date().getFullYear();
@@ -43,7 +35,7 @@ export default function VarshphalPage() {
     timezone_offset: 5.5,
   });
   const [year, setYear] = useState(currentYear);
-  const [result, setResult] = useState<VarshphalResult | null>(null);
+  const [result, setResult] = useState<VarshphalResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const reduced = useReducedMotion();
@@ -188,69 +180,96 @@ export default function VarshphalPage() {
             </div>
           </motion.div>
 
-          {/* Auspicious Months */}
-          {result.auspicious_months.length > 0 && (
-            <motion.div className="glass-card p-4" variants={staggerItem}>
-              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>
-                Auspicious Months
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {result.auspicious_months.map((month) => (
-                  <span
-                    key={month}
-                    className="px-3 py-1 rounded-full text-xs font-medium"
-                    style={{ background: "rgba(34, 197, 94, 0.1)", color: "#22c55e", border: "1px solid rgba(34, 197, 94, 0.2)" }}
-                  >
-                    {month}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Challenging Months */}
-          {result.challenging_months.length > 0 && (
-            <motion.div className="glass-card p-4" variants={staggerItem}>
-              <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>
-                Challenging Months
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {result.challenging_months.map((month) => (
-                  <span
-                    key={month}
-                    className="px-3 py-1 rounded-full text-xs font-medium"
-                    style={{ background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid rgba(239, 68, 68, 0.2)" }}
-                  >
-                    {month}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Predictions Grid */}
-          <motion.div variants={staggerItem}>
+          {/* Dasha running through the year */}
+          <motion.div className="glass-card p-4" variants={staggerItem}>
             <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>
-              Annual Predictions
+              Dasha running through {result.year}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(result.predictions).map(([key, text]) => {
-                const meta = CATEGORY_META[key] || { icon: "🔮", label: key.charAt(0).toUpperCase() + key.slice(1) };
-                return (
-                  <motion.div
-                    key={key}
-                    className="glass-card p-4"
-                    variants={staggerItem}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-base">{meta.icon}</span>
-                      <h4 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{meta.label}</h4>
-                    </div>
-                    <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{text}</p>
-                  </motion.div>
-                );
-              })}
+            <dl className="space-y-2 text-xs">
+              {result.annual_chart.dasha_lord && (
+                <div className="flex justify-between gap-4">
+                  <dt style={{ color: "var(--text-tertiary)" }}>Mahadasha</dt>
+                  <dd style={{ color: "var(--text-primary)" }}>
+                    {result.annual_chart.dasha_lord}
+                    {result.annual_chart.dasha_period && (
+                      <span style={{ color: "var(--text-tertiary)" }}>
+                        {" "}({result.annual_chart.dasha_period})
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              )}
+              {result.annual_chart.antardasha_lord && (
+                <div className="flex justify-between gap-4">
+                  <dt style={{ color: "var(--text-tertiary)" }}>Antardasha</dt>
+                  <dd style={{ color: "var(--text-primary)" }}>
+                    {result.annual_chart.antardasha_lord}
+                    {result.annual_chart.antardasha_period && (
+                      <span style={{ color: "var(--text-tertiary)" }}>
+                        {" "}({result.annual_chart.antardasha_period})
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              )}
+            </dl>
+          </motion.div>
+
+          {/* Solar transits at the midpoint of the year */}
+          <motion.div className="glass-card p-4" variants={staggerItem}>
+            <h3 className="text-xs font-semibold mb-1 uppercase tracking-wider" style={{ color: "#C8956D" }}>
+              Planetary positions in {result.year}
+            </h3>
+            <p className="text-[11px] mb-3" style={{ color: "var(--text-tertiary)" }}>
+              Sampled at the midpoint of the year. A graha that changes sign
+              during the year is shown only where it stood in July.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                    {["Graha", "Sign", "Longitude", "Retrograde"].map((h) => (
+                      <th key={h} className="text-left py-2 px-2 font-medium" style={{ color: "var(--text-tertiary)" }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(result.annual_chart.solar_transits).map(([name, t]) => (
+                    <tr key={name} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td className="py-2 px-2 font-medium" style={{ color: "var(--text-primary)" }}>
+                        <span style={{ color: "#C8956D" }}>{PLANET_META[name] ?? ""}</span> {name}
+                      </td>
+                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>{t.sign}</td>
+                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>
+                        {t.longitude.toFixed(2)}°
+                      </td>
+                      <td className="py-2 px-2" style={{ color: "var(--text-secondary)" }}>
+                        {t.retrograde ? "Yes" : "No"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </motion.div>
+
+          {/* What this endpoint does and does not do */}
+          <motion.div className="glass-card p-4" variants={staggerItem}>
+            <h3 className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: "#C8956D" }}>
+              About this result
+            </h3>
+            <p className="text-xs leading-relaxed mb-2" style={{ color: "var(--text-secondary)" }}>
+              {result.method}
+            </p>
+            <ul className="space-y-1.5 list-disc pl-4">
+              {result.limitations.map((l) => (
+                <li key={l} className="text-xs leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
+                  {l}
+                </li>
+              ))}
+            </ul>
           </motion.div>
         </motion.div>
       )}

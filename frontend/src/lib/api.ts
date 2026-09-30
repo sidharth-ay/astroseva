@@ -303,6 +303,40 @@ export interface HealingRecommendation {
 }
 
 /** Mirrors the backend remedy list: a list, not a dict keyed by planet. */
+/**
+ * What the varshphal endpoint actually computes.
+ *
+ * It returns the ephemeris for the requested year -- each graha's sidereal
+ * position at the year's midpoint, and the Vimshottari dasha running through
+ * it -- and no narrative. `predictions` is present but empty: the endpoint
+ * previously returned one fixed sentence per topic that was the same for every
+ * chart and every year, along with "auspicious" and "challenging" months
+ * derived from `(asc_sign * 2 + m) % 12` rather than from anything
+ * astronomical. Those fields are gone rather than replaced, and
+ * `limitations` says so on the page.
+ */
+export interface VarshphalResponse {
+  birth_data: Record<string, unknown>;
+  year: number;
+  varshphal_chart: { asc_sign: string; planets: Record<string, string> };
+  annual_chart: {
+    solar_transits: Record<string, {
+      sign: string;
+      sign_index: number;
+      longitude: number;
+      retrograde: boolean;
+    }>;
+    dasha_lord: string | null;
+    dasha_period: string | null;
+    antardasha_lord: string | null;
+    antardasha_period: string | null;
+    sun_sign_at_year_midpoint: string;
+  };
+  predictions: Record<string, string>;
+  method: string;
+  limitations: string[];
+}
+
 export interface LalKitabRemedy {
   planet: string;
   house: number;
@@ -887,7 +921,7 @@ export const api = {
     }),
 
   getVarshphal: (data: BirthData, year: number) =>
-    fetchAPI<{ birth_data: Record<string, unknown>; year: number; varshphal_chart: Record<string, unknown>; predictions: Record<string, string>; auspicious_months: string[]; challenging_months: string[] }>("/api/v1/varshphal/calculate", {
+    fetchAPI<VarshphalResponse>("/api/v1/varshphal/calculate", {
       method: "POST",
       body: JSON.stringify({ ...data, year }),
     }),
