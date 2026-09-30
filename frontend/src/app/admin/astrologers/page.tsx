@@ -39,16 +39,25 @@ const STATUS_LABEL: Record<string, string> = {
 
 const QUEUE_TABS = ["applied", "under_review", "assessment_pending", "mock_pending", "verified", "rejected"];
 
+// The transitions offered from each status. These mirror LEGAL_TRANSITIONS in
+// backend/app/services/astrologer_service.py, which is the authority and
+// rejects anything not listed there.
+//
+// Three were previously offered that the backend refuses:
+//   verified -> verified      (no self-transition)
+//   rejected -> applied       (must return to draft first)
+//   suspended -> verified     (suspension is lifted through under_review)
+// Each one produced a 409 on a control the reviewer could see and press.
 const NEXT_ACTIONS: Record<string, string[]> = {
-  draft: ["applied"],
-  applied: ["under_review", "rejected"],
-  under_review: ["assessment_pending", "rejected"],
+  draft: ["applied", "rejected"],
+  applied: ["under_review", "rejected", "draft"],
+  under_review: ["assessment_pending", "rejected", "applied"],
   assessment_pending: ["mock_pending", "rejected"],
   mock_pending: ["verified", "probation", "rejected"],
-  verified: ["suspended"],
+  verified: ["suspended", "probation"],
   probation: ["verified", "suspended"],
-  rejected: [],
-  suspended: ["verified"],
+  rejected: ["draft"],
+  suspended: ["under_review", "rejected"],
 };
 
 export default function AdminAstrologersPage() {

@@ -346,14 +346,18 @@ function ApplyWizard() {
   const uploadedKinds = new Set(app.documents.map((d) => d.kind));
   // The backend requires at least one CREDENTIAL_DOC_KINDS entry, not one
   // specific kind, so the gate is "any credential" rather than a required list.
-  const CREDENTIALS = ["degree_certificate", "professional_cert", "experience_letter", "other"];
+  // Derived from DOC_KINDS, which is the single list kept in step with the
+  // backend's DOC_KINDS, instead of a second literal that could drift from it.
+  const CREDENTIALS = DOC_KINDS.filter((d) => d.credential).map((d) => d.value);
   const hasCredential = CREDENTIALS.some((k) => uploadedKinds.has(k));
-  const missingDocs = hasCredential
-    ? []
-    : [{ value: "credential", label: "A qualification or experience document" }];
   const profileComplete =
     headline.trim().length > 0 && bio.trim().length > 0 && specialties.length > 0 && languages.length > 0;
   const canSubmit = profileComplete && hasCredential;
+  // Named after what it lists, so the review step reads correctly. It was
+  // `missingDocs` but only ever held the single missing-credential entry.
+  const missingCredentials = DOC_KINDS.filter(
+    (d) => d.credential && !uploadedKinds.has(d.value)
+  );
   const assessmentOpen = app.status === "assessment_pending";
 
   if (locked) {
@@ -401,9 +405,11 @@ function ApplyWizard() {
         <h1 className="font-display text-3xl mb-2" style={{ color: "var(--text-primary)" }}>
           Become an AstroSeva astrologer
         </h1>
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          Three short steps. You can save and come back at any time before submitting.
-        </p>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            Four short steps. You can save and come back at any time before
+            submitting, and nothing is sent to a reviewer until you press
+            &ldquo;Save and submit&rdquo;.
+          </p>
       </header>
 
       {error && (
@@ -643,13 +649,16 @@ function ApplyWizard() {
             <h2 className="text-sm font-medium mb-3" style={{ color: "var(--text-primary)" }}>
               Documents ({app.documents.length})
             </h2>
-            {missingDocs.length > 0 ? (
+            {missingCredentials.length > 0 ? (
               <ul className="space-y-1.5">
-                {missingDocs.map((d) => (
+                {missingCredentials.map((d) => (
                   <li key={d.value} className="text-xs flex items-center gap-2" style={{ color: "var(--danger)" }}>
                     <XCircle className="w-3.5 h-3.5" /> {d.label} still missing
                   </li>
                 ))}
+                <li className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                  Any one of these will do. Identity documents are optional.
+                </li>
               </ul>
             ) : (
               <p className="text-xs flex items-center gap-2" style={{ color: ACCENT }}>
@@ -682,10 +691,29 @@ function ApplyWizard() {
               )}
               <button className="btn-primary text-sm" disabled={!canSubmit || busy}
                 onClick={async () => {
+                  // Save the profile AND submit it. This previously only saved,
+                  // then navigated to the dashboard, which showed a draft the
+                  // applicant had to submit a second time from there -- with
+                  // the button reading "Save and submit".
                   const ok = await saveProfile();
-                  if (ok) router.push("/astrologer/dashboard");
+                  if (!ok) return;
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    const submitted = await api.submitApplication();
+                    setApp(submitted);
+                    router.push("/astrologer/dashboard");
+                  } catch (e) {
+                    setError(
+                      e instanceof Error
+                        ? e.message
+                        : "Could not submit your application."
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
                 }}>
-                Save and submit
+                {busy ? "Submitting…" : "Save and submit"}
               </button>
             </div>
           </div>

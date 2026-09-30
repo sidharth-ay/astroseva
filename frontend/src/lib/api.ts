@@ -1131,10 +1131,16 @@ export const api = {
   getApplication: (id: number) =>
     fetchAuth<AdminApplication>(`/api/v1/admin/astrologers/${id}`),
 
+  /**
+   * The backend names the field `rejection_reason`, not `reason`. Sending
+   * `reason` left it unset, so a rejection was recorded with the fallback
+   * "Not stated by reviewer" and the applicant saw that instead of what the
+   * reviewer had written.
+   */
   setApplicationStatus: (id: number, to_status: string, reason?: string) =>
     fetchAuth<{ id: number; status: string }>(`/api/v1/admin/astrologers/${id}/status`, {
       method: "POST",
-      body: JSON.stringify({ to_status, reason }),
+      body: JSON.stringify({ to_status, rejection_reason: reason }),
     }),
 
   /**
