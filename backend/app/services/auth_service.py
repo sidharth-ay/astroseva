@@ -2,6 +2,7 @@
 
 import os
 import uuid
+from functools import lru_cache
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
@@ -41,6 +42,44 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against hash."""
     return pwd_context.verify(plain_password, hashed_password)
+
+
+# bcrypt silently truncates its input at 72 bytes. A password longer than that
+# would therefore authenticate against any password sharing its first 72 bytes,
+# so the length is rejected outright instead. `hash_password` and every caller
+# that compares an existing password go through here.
+MAX_PASSWORD_BYTES = 72
+
+def password_is_oversized(password: str) -> bool:
+    return len((password or "").encode("utf-8")) > MAX_PASSWORD_BYTES
+
+
+def burn_password_verification(password: str) -> None:
+    """Perform a verification that will fail, to equalise response time.
+
+    A login for an address with no account has no hash to compare against, so
+    without this it returns in a database round trip while a login for a real
+    address takes a full bcrypt comparison. Both raise the same 401, but the
+    timings differ enough to enumerate registered accounts.
+
+    The dummy hash is generated once at import from a value derived from the
+    process, rather than being a literal. A hardcoded string is a liability
+    here: if it is not a well-formed hash for the configured backend,
+    `verify_password` returns almost immediately having done no work, which
+    silently restores the oracle this is meant to close.
+    """
+    try:
+        pwd_context.verify(password or "", _dummy_hash())
+    except Exception:
+        pass
+
+
+@lru_cache(maxsize=1)
+def _dummy_hash() -> str:
+    """A bcrypt hash no one can present a matching password for."""
+    import uuid
+
+    return pwd_context.hash(uuid.uuid4().hex + uuid.uuid4().hex)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
