@@ -105,9 +105,13 @@ async def generate_report(request: Request, payload: ReportRequest):
             }
         else:
             # Single-type report — cache 24h (same pattern as predictions)
+            # The report is built from the chart, which depends on the exact
+            # birth instant. The key omitted the UTC offset, so the same local
+            # clock time in two zones collided and shared one cached report.
             cache_key = (
                 f"report:{bd.birth_date}:{bd.birth_time}:{bd.latitude}:"
-                f"{bd.longitude}:{payload.report_type}"
+                f"{bd.longitude}:{bd.timezone_offset}:"
+                f"{payload.report_type}"
             )
             cached = await cache_service.get(cache_key)
             if cached:

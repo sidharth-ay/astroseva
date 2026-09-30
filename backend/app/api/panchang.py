@@ -200,8 +200,14 @@ async def get_daily_panchang(
     if date_str is None:
         date_str = date.today().isoformat()
 
-    # Check cache
-    cache_key = f"panchang:{date_str}:{latitude}:{longitude}"
+    # Check cache. The UTC offset and the two sun-time overrides are inputs to
+    # the result -- the tithi is sampled at noon in that zone and the kaals are
+    # built from those hours -- so all three belong in the key. Without them a
+    # London panchang was served from a Delhi one.
+    cache_key = (
+        f"panchang:{date_str}:{latitude}:{longitude}:{timezone_offset}:"
+        f"{sunrise_hour}:{sunset_hour}"
+    )
     cached = await cache_service.get(cache_key)
     if cached:
         return PanchangResponse(**cached)
@@ -451,23 +457,29 @@ async def get_hora(
 async def get_gowri(
     date_str: str = None,
     latitude: float = Query(28.6139, ge=-90, le=90),
+    longitude: float = Query(77.2090, ge=-180, le=180),
 ):
-    """Get Gowri Panchangam periods (South Indian auspicious timing)."""
+    """Get Gowri Panchangam periods (South Indian auspicious timing).
+
+    Gowri periods are counted from sunrise, so longitude belongs in both the
+    calculation and the cache key. It previously took no longitude at all:
+    sunrise was pinned to Delhi's, and two places at the same latitude shared
+    one cached entry.
+    """
     if date_str is None:
         date_str = date.today().isoformat()
 
-    cache_key = f"gowri:{date_str}:{latitude}"
+    cache_key = f"gowri:{date_str}:{latitude}:{longitude}"
     cached = await cache_service.get(cache_key)
     if cached:
         return cached
 
     try:
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        day_of_week = target_date.weekday()
-        vedic_day = (day_of_week + 1) % 7
+        vedic_day = (target_date.weekday() + 1) % 7
 
         sun_times = calculate_sunrise_sunset(
-            target_date, latitude, 77.2090, tz_offset=5.5,
+            target_date, latitude, longitude, tz_offset=5.5,
         )
         if sun_times["sunrise"] is None:
             raise HTTPException(

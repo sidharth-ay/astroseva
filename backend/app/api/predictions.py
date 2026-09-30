@@ -23,7 +23,18 @@ router = APIRouter(prefix="/api/v1/predictions", tags=["predictions"])
 async def generate_ai_prediction(request: Request, payload: PredictionRequest):
     """Generate AI prediction using Google Gemini."""
     # Check cache
-    cache_key = f"prediction:{payload.birth_data.birth_date}:{payload.birth_data.birth_time}:{payload.birth_data.latitude}:{payload.prediction_type}:{payload.language}"
+    # The prediction is built from the whole chart, which depends on the exact
+    # birth instant and place. The key omitted longitude and the UTC offset, so
+    # two people with the same latitude, local clock time and prediction type
+    # collided -- as did one person asking in a different language's sibling
+    # chart. Both are served from the first entry stored.
+    cache_key = (
+        f"prediction:{payload.birth_data.birth_date}:"
+        f"{payload.birth_data.birth_time}:"
+        f"{payload.birth_data.latitude}:{payload.birth_data.longitude}:"
+        f"{payload.birth_data.timezone_offset}:"
+        f"{payload.prediction_type}:{payload.language}"
+    )
     cached = await cache_service.get(cache_key)
     if cached:
         return PredictionResponse(**cached)

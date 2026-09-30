@@ -176,7 +176,17 @@ async def get_remedies(
 async def get_sade_periods(request: Request, birth_data: BirthData):
     """Past/present/future Sade Sati windows for the natal Moon sign."""
     _validate_location(birth_data)
-    cache_key = f"sade-periods:{birth_data.birth_date}:{birth_data.birth_time}"
+    # The Sade Sati windows are derived from the natal Moon sign, which depends
+    # on the exact instant of birth. The key covered only the date and the
+    # clock time, so two people born at the same clock time in different
+    # longitudes -- or with different UTC offsets -- collided on one entry and
+    # were served each other's Moon sign. The timezone offset matters because
+    # the same local clock time is a different instant in each zone.
+    cache_key = (
+        f"sade-periods:{birth_data.birth_date}:{birth_data.birth_time}:"
+        f"{birth_data.latitude}:{birth_data.longitude}:"
+        f"{birth_data.timezone_offset}"
+    )
     cached = await cache_service.get(cache_key)
     if cached:
         return cached
