@@ -134,8 +134,12 @@ export interface DashaInfo {
       planets: {
         planet: string; sign: number; house: number; retrograde: boolean;
         sthana: number; dig: number; kala: number; cheshta: number;
-        naisargika: number; drik: number; total_rupa: number;
-        rupor_virupada: number;
+        naisargika: number; drik: number;
+        /** The six components summed, on the classical 0-360 Rupor scale. */
+        total_rupor: number;
+        max_rupor: number;
+        /** The same total in Rupa (60 Rupor), out of 6. */
+        total_rupa: number;
         bhasa_rupa: boolean; bhava_rupa: boolean; dhruva_rupa: boolean;
       }[];
     };

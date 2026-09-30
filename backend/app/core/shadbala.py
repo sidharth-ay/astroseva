@@ -2,8 +2,9 @@
 
 The six components and their maxima are fixed by the classical scheme:
 Sthana 60, Dig 60, Kala 60, Cheshta 60, Naisargika 60, Drik 60, totalling
-360 Rupor for a graha. Rupor is the total expressed in virupadas (1/60 of a
-rupa), and the derived Bhasa/Bhava/Dhruva grades are the standard thresholds.
+360 Rupor for a graha, and a Rupa is 60 Rupor. The Rupor total is what a
+classical Shadbala table quotes; the derived Bhasa/Bhava/Dhruva grades are
+evaluated against Rupa, being the standard thresholds expressed in Rupa.
 
 Cheshta is only defined for the Sun, Moon and Mercury; the slower grahas
 score 0. Drik deducts for aspects received from other grahas, counting a
@@ -180,8 +181,10 @@ def build_shadbala(planets: list, asc_sign: int) -> dict:
             drik = _drik(name, planets, asc_sign)
         naisargika = NAISARGIKA[name]
 
+        # The six components are each out of 60 Rupor, so their sum is the
+        # Rupor total (max 360) and one Rupa is 60 Rupor.
         total = sthana + dig + kala + cheshta + naisargika + drik
-        rupor = total / 6.0  # in virupadas: 1 rupa = 60 virupadas
+        rupor = total
 
         rows.append({
             "planet": name,
@@ -195,7 +198,16 @@ def build_shadbala(planets: list, asc_sign: int) -> dict:
             "naisargika": round(naisargika, 2),
             "drik": round(drik, 2),
             "total_rupa": round(total / 60.0, 4),
-            "rupor_virupada": round(rupor, 2),
+            # `total_rupor` is the sum of the six components, each already out
+            # of 60 Rupor, so this is on the 0-360 scale a classical Shadbala
+            # table quotes.
+            #
+            # The field was named `rupor_virupada` and held `total / 6.0`,
+            # which is neither: not the Rupor total (330.0 for the Sun) and not
+            # a virupada. A virupada and a Rupor are the same unit, so the name
+            # stated one quantity under two labels while the value was neither.
+            "total_rupor": round(rupor, 2),
+            "max_rupor": 360.0,
             "bhasa_rupa": round(total / 60.0, 4) >= BHASA_RUPA,
             "bhava_rupa": round(total / 60.0, 4) >= BHAVA_RUPA,
             "dhruva_rupa": round(total / 60.0, 4) >= DHRUVA_RUPA,
