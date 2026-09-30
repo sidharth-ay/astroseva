@@ -207,9 +207,9 @@ export default function AstrologerProfilePage({
             <div className="flex justify-between">
               <dt style={{ color: "var(--text-tertiary)" }}>Assessment pass rate</dt>
               <dd style={{ color: "var(--text-primary)" }}>
-                {a.assessment_pass_rate == null
-                  ? "—"
-                  : `${(a.assessment_pass_rate * 100).toFixed(0)}%`}
+                      {a.assessment_pass_rate == null
+                        ? "-"
+                        : `${a.assessment_pass_rate.toFixed(0)}%`}
               </dd>
             </div>
             <div className="flex justify-between">

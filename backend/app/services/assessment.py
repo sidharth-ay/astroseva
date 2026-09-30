@@ -15,6 +15,12 @@ from typing import Optional
 
 PASS_MARK = 8  # out of 10
 
+# The pass mark as a percentage, for display. Kept as the single source of
+# truth and derived from PASS_MARK so the two cannot disagree when the number of
+# questions changes.
+def pass_percent() -> int:
+    return round(PASS_MARK * 100 / len(QUESTION_BANK)) if QUESTION_BANK else 0
+
 
 @dataclass(frozen=True)
 class Question:
@@ -140,9 +146,6 @@ QUESTION_BANK: tuple[Question, ...] = (
     ),
 )
 
-PASS_PERCENT = 70
-
-
 def get_questions() -> list[dict]:
     """The question set as sent to the applicant, with no answer key."""
     return [q.public() for q in QUESTION_BANK]
@@ -157,27 +160,58 @@ def snapshot() -> list[dict]:
     return [asdict(q) for q in QUESTION_BANK]
 
 
+def _chosen_index(value) -> int | None:
+    """The option index an answer names, or None if it names nothing.
+
+    The body is untyped JSON, so an applicant can submit `{"q1": "first"}`,
+    `{"q1": null}` or `{"q1": 99}`. `int(value)` raised ValueError or TypeError
+    on the first two and compared out of range on the third, so a malformed
+    submission produced a 500 for the whole attempt instead of being scored as
+    unanswered.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value) if value.is_integer() else None
+    if isinstance(value, str):
+        text = value.strip()
+        if text.lstrip("-").isdigit():
+            return int(text)
+        # Tolerate the option TEXT as well as its index, since a client may
+        # legitimately send the chosen option rather than its position.
+        return None
+    return None
+
+
 def grade(answers: dict[str, int], question_set: Optional[list[dict]] = None) -> dict:
     """Score answers against a question set. Returns score and per-question detail.
 
-    `answers` maps question id to the index the applicant chose. Unanswered or
-    unknown questions score zero rather than raising, so a partially completed
-    attempt still produces a usable mark.
+    `answers` maps question id to the index the applicant chose. Unanswered,
+    malformed or unknown answers score zero rather than raising, so a partially
+    completed or sloppy attempt still produces a usable mark.
+
+    The result deliberately omits `correct_index`. It was included in every
+    detail, which handed the applicant the full answer key for any later
+    attempt -- and the reviewer queue reads the same field.
     """
     questions = question_set if question_set is not None else snapshot()
-    by_id = {q["id"]: q for q in questions}
     details = []
     score = 0
     for q in questions:
-        chosen = answers.get(q["id"])
-        correct = chosen is not None and int(chosen) == int(q["correct_index"])
+        options = q.get("options") or []
+        chosen = _chosen_index(answers.get(q["id"]))
+        in_range = chosen is not None and 0 <= chosen < len(options)
+        correct = in_range and chosen == int(q["correct_index"])
         if correct:
             score += 1
         details.append({
             "id": q["id"],
             "correct": correct,
-            "chosen": chosen,
-            "correct_index": q["correct_index"],
+            # Report the option chosen only when it names a real option, so a
+            # garbage value is not echoed back as though it were a choice.
+            "chosen": chosen if in_range else None,
             "explanation": q.get("explanation", ""),
         })
     total = len(questions)

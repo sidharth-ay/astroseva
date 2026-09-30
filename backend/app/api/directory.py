@@ -57,11 +57,15 @@ async def list_astrologers(
     if min_experience is not None:
         q = q.filter(Astrologer.experience_years >= min_experience)
     if on_probation is not None:
-        target = STATUS_PROBATION if on_probation else None
-        if target:
-            q = q.filter(Astrologer.status == target)
+        # `on_probation=false` means "everyone except those on probation".
+        # The old code set `target = None` for that case and then filtered
+        # `status != None`, which in SQL compares against NULL and matches no
+        # rows at all: the request returned an empty directory instead of the
+        # verified-and-not-probationary practitioners.
+        if on_probation:
+            q = q.filter(Astrologer.status == STATUS_PROBATION)
         else:
-            q = q.filter(Astrologer.status != target)
+            q = q.filter(Astrologer.status != STATUS_PROBATION)
     if search:
         like = f"%{search}%"
         q = q.filter(
