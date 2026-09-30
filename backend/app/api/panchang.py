@@ -33,6 +33,9 @@ GOWRI_NATURES = ["good", "bad", "bad", "good", "bad", "good", "neutral", "neutra
 # Starting gowri index for each weekday (0=Sunday)
 _GOWRI_START_IDX = [7, 0, 1, 3, 5, 4, 2]
 
+# A Do Ghati muhurat is two ghati, and a ghati is 24 minutes.
+MUHURAT_HOURS = 48 / 60.0
+
 
 def _hours_to_time_str(hours: float) -> str:
     """Convert decimal hours to HH:MM string."""
@@ -158,33 +161,49 @@ def _calculate_gowri(sunrise_hour: float, day_of_week: int) -> list:
 
 
 def _calculate_ghati_muhurat(sunrise_hour: float, sunset_hour: float) -> list:
-    """Calculate Do Ghati Muhurat windows.
+    """Do Ghati muhurat windows between sunrise and sunset.
 
-    A ghati = 24 minutes. A Do Ghati muhurat = 2 ghati = ~48 minutes.
-    We calculate ~8 muhurats across the day (simplified approximate model).
+    A ghati is 24 minutes and a Do Ghati muhurat is two ghati, so each window is
+    48 minutes and a 12-hour day holds fifteen of them laid end to end from
+    sunrise.
+
+    This is the simplified form: it fills the daylight hours with back-to-back
+    windows of fixed length, which is not the classical construction. The
+    classical rule picks the fourth muhurat of each of the sixteen divisions of
+    the day and night, which is a table this engine does not carry. The windows
+    below are therefore useful as a coarse division of the day and should not be
+    read as the classical muhurtas, which is stated in the response as well.
     """
-    day_duration = sunset_hour - sunrise_hour
-    total_minutes = day_duration * 60
-    muhurat_minutes = 48  # 2 ghati
-    # Number of muhurats that fit in the day
-    count = max(1, int(total_minutes // muhurat_minutes))
-
+    # Left to the caller to interpret; kept explicit so the length is not a
+    # magic number buried in the loop below.
+    muhurat_hours = MUHURAT_HOURS
+    # Walk the day placing back-to-back windows. The old code computed how many
+    # 48-minute windows fit in the day and then spaced their STARTS evenly
+    # across it, which produced 15 windows on a 12-hour day spaced 45 minutes
+    # apart while each was 48 minutes long. Every window after the first
+    # overlapped the one before it, and the last was clamped to sunset, so it
+    # was truncated.
+    #
+    # Only COMPLETE windows are emitted. A leftover few minutes at sunset is
+    # reported as `unused_minutes` rather than presented as a short muhurat,
+    # which would not be one.
     results = []
-    # Space muhurats evenly across the day with slight offsets for variety
-    gap = day_duration / (count + 1)
-
-    for i in range(count):
-        start = sunrise_hour + (i + 0.5) * gap
-        end = start + (muhurat_minutes / 60.0)
-        if end > sunset_hour:
-            end = sunset_hour
+    cursor = sunrise_hour
+    while cursor + MUHURAT_HOURS <= sunset_hour + 1e-9:
         results.append({
-            "start": _hours_to_time_str(start),
-            "end": _hours_to_time_str(end),
-            "name": f"Do Ghati Muhurat {i + 1}",
+            "start": _hours_to_time_str(cursor),
+            "end": _hours_to_time_str(cursor + MUHURAT_HOURS),
+            "name": f"Do Ghati Muhurat {len(results) + 1}",
         })
+        cursor += MUHURAT_HOURS
 
     return results
+
+
+def _ghati_unused_minutes(sunrise_hour: float, sunset_hour: float) -> float:
+    """Daylight left over after the last complete window."""
+    span = (sunset_hour - sunrise_hour) * 60
+    return round(span - int(span // 48) * 48, 2)
 
 
 @router.get("/daily", response_model=PanchangResponse)
@@ -544,6 +563,26 @@ async def get_ghati_muhurat(
         result = {
             "date": date_str,
             "muhurats": periods,
+            # Daylight that does not divide into a whole number of 48-minute
+            # windows. Reported rather than absorbed into a short final window.
+            "unused_minutes": _ghati_unused_minutes(
+                sun_times["sunrise"], sun_times["sunset"]
+            ),
+            "method": (
+                "Back-to-back 48-minute windows from sunrise to sunset, each "
+                "window being two ghati."
+            ),
+            "limitations": [
+                "This is a coarse division of the daylight hours, not the "
+                "classical Do Ghati muhurat. The classical rule selects the "
+                "fourth muhurat of each of the sixteen divisions of the day and "
+                "night, from a table this engine does not carry.",
+                "The windows therefore show when the day can be evenly split "
+                "into muhurat-length units, and should not be read as "
+                "authoritatively auspicious times.",
+                "Only daylight is covered. The classical scheme also gives "
+                "night muhurtas, which are not computed here.",
+            ],
         }
 
         await cache_service.set(cache_key, result, expiry=86400)
