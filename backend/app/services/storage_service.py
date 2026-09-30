@@ -76,10 +76,35 @@ def new_key(namespace: str, content_type: str) -> str:
     return f"{namespace}/{uuid.uuid4().hex}{ext}"
 
 
+def read_upload(stream, max_bytes: int | None = None) -> bytes:
+    """Read an upload, refusing anything over the limit without buffering it.
+
+    `stream.read()` with no argument returns the whole body. The endpoint did
+    that, so the size check in `store_file` ran only after the entire file was
+    already in memory: a client could post an arbitrarily large body and the
+    server would allocate all of it before rejecting it. The limit is enforced
+    here, during the read, by asking for one byte more than is permitted and
+    discarding the rest without accumulating it.
+
+    `max_bytes` defaults to `MAX_UPLOAD_BYTES`; the test suite uses it to check
+    the boundary without writing a 10 MB file.
+    """
+    limit = MAX_UPLOAD_BYTES if max_bytes is None else max_bytes
+    # One byte over the limit is enough to know it is over.
+    data = stream.read(limit + 1)
+    if len(data) > limit:
+        raise StorageError(
+            f"File is over the {limit} byte limit"
+        )
+    return data
+
+
 def store_file(namespace: str, content_type: str, filename: str, data: bytes) -> StoredFile:
     """Persist `data`, returning its key and metadata."""
     if not data:
         raise StorageError("Refusing to store an empty file")
+    # The endpoint now enforces this during the read via `read_upload`; this
+    # check remains for any caller that assembles bytes some other way.
     if len(data) > MAX_UPLOAD_BYTES:
         raise StorageError(
             f"File is {len(data)} bytes, over the {MAX_UPLOAD_BYTES} byte limit"

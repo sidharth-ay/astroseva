@@ -33,6 +33,7 @@ from ..services.storage_service import (
     ALLOWED_CONTENT_TYPES,
     StorageError,
     delete_file,
+    read_upload,
     store_file,
 )
 
@@ -235,9 +236,14 @@ async def upload_document(
             status_code=400,
             detail=f"Allowed types: {', '.join(sorted(ALLOWED_CONTENT_TYPES))}",
         )
-    data = file.file.read()
+    # Read with the limit applied DURING the read. An unbounded read returned
+    # the whole body, so the size check in `store_file` only ran once the
+    # entire upload was already in memory.
     try:
-        stored = store_file(f"astrologers/{profile.id}", content_type, file.filename or "", data)
+        data = read_upload(file.file)
+        stored = store_file(
+            f"astrologers/{profile.id}", content_type, file.filename or "", data
+        )
     except StorageError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
