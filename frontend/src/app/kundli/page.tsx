@@ -68,39 +68,68 @@ export default function KundliPage() {
     }
   };
 
-  const shareImage = () => {
+  const shareImage = async () => {
+    const svg = document.querySelector("#kundli-chart-svg, #kundli-chart-svg-south");
+    if (!(svg instanceof SVGSVGElement)) {
+      setError("Chart image not ready yet.");
+      return;
+    }
+    setError("");
+    setSavedMsg("");
+    let svgUrl: string | null = null;
     try {
-      const svg = document.querySelector("#kundli-chart-svg, #kundli-chart-svg-south");
-      if (!(svg instanceof SVGSVGElement)) {
-        setError("Chart image not ready yet.");
+      const xml = new XMLSerializer().serializeToString(svg);
+      svgUrl = URL.createObjectURL(
+        new Blob([xml], { type: "image/svg+xml;charset=utf-8" }),
+      );
+      // The message is set only once a file actually exists: it used to be set
+      // before the image had loaded, so a failure still claimed a download.
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error("The chart could not be rendered."));
+        el.src = svgUrl as string;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 800;
+      canvas.height = 800;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("This browser cannot render the chart as an image.");
+      ctx.fillStyle = "#060610";
+      ctx.fillRect(0, 0, 800, 800);
+      ctx.drawImage(img, 0, 0, 800, 800);
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/png"),
+      );
+      if (!blob) throw new Error("The chart image could not be encoded.");
+
+      const filename = `kundli-${(form.name || "chart").replace(/\s+/g, "-").toLowerCase()}.png`;
+      const file = new File([blob], filename, { type: "image/png" });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `${form.name || "Birth"} chart` });
+        setSavedMsg("Chart shared.");
         return;
       }
-      const xml = new XMLSerializer().serializeToString(svg);
-      const img = new Image();
-      const svgBlob = new Blob([xml], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(svgBlob);
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 800;
-        canvas.height = 800;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        ctx.fillStyle = "#060610";
-        ctx.fillRect(0, 0, 800, 800);
-        ctx.drawImage(img, 0, 0, 800, 800);
-        URL.revokeObjectURL(url);
-        canvas.toBlob((blob) => {
-          if (!blob) return;
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = `kundli-${form.name || "chart"}.png`;
-          a.click();
-        }, "image/png");
-      };
-      img.src = url;
+
+      const pngUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = pngUrl;
+      a.download = filename;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(pngUrl), 1000);
       setSavedMsg("Chart image downloaded. Share it anywhere.");
-    } catch {
-      setError("Could not render chart image.");
+    } catch (e) {
+      // Closing the share sheet is how a user declines; it is not an error.
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setError(e instanceof Error ? e.message : "Could not render chart image.");
+    } finally {
+      if (svgUrl) URL.revokeObjectURL(svgUrl);
     }
   };
 
