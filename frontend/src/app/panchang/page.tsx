@@ -58,6 +58,12 @@ function gowriColor(nature: string) {
 export default function PanchangPage() {
   const [lat, setLat] = useState(28.6139);
   const [lng, setLng] = useState(77.209);
+  /**
+   * UTC offset for the chosen city. Kept because sunrise is a local
+   * wall-clock hour: without it, choosing London still rendered Delhi's
+   * sunrise, sunset, Rahu Kaal and every period derived from them.
+   */
+  const [tz, setTz] = useState(5.5);
   const [city, setCity] = useState("Delhi");
   const [activeTab, setActiveTab] = useState<TabId>("daily");
   const [loading, setLoading] = useState(false);
@@ -85,6 +91,16 @@ export default function PanchangPage() {
     setCity(c.name);
     setLat(c.lat);
     setLng(c.lng);
+    setTz(c.tz);
+    // Results already on screen were computed for the previous city. Leaving
+    // them up under the new city's label meant picking London showed Delhi's
+    // Rahu Kaal while the header named London.
+    setDailyData(null);
+    setChogData(null);
+    setHoraData(null);
+    setGowriData(null);
+    setGhatiData(null);
+    setError("");
   };
 
   const fetchTab = async (tab: TabId) => {
@@ -94,19 +110,19 @@ export default function PanchangPage() {
     try {
       switch (tab) {
         case "daily":
-          setDailyData(await api.getPanchang(lat, lng));
+          setDailyData(await api.getPanchang(lat, lng, tz));
           break;
         case "choghadiya":
-          setChogData(await api.getChoghadiya(lat, lng));
+          setChogData(await api.getChoghadiya(lat, lng, tz));
           break;
         case "hora":
-          setHoraData(await api.getHora(lat, lng));
+          setHoraData(await api.getHora(lat, lng, tz));
           break;
         case "gowri":
-          setGowriData(await api.getGowri(lat));
+          setGowriData(await api.getGowri(lat, lng, tz));
           break;
         case "ghati":
-          setGhatiData(await api.getGhatiMuhurat(lat, lng));
+          setGhatiData(await api.getGhatiMuhurat(lat, lng, tz));
           break;
       }
     } catch (e: unknown) {
@@ -165,7 +181,8 @@ export default function PanchangPage() {
             </button>
           </div>
           <p className="text-xs self-end" style={{ color: "var(--text-tertiary)" }}>
-            {city} &bull; {lat.toFixed(2)}°N, {lng.toFixed(2)}°E
+            {city} &bull; {Math.abs(lat).toFixed(2)}°{lat >= 0 ? "N" : "S"},{" "}
+            {Math.abs(lng).toFixed(2)}°{lng >= 0 ? "E" : "W"}
           </p>
         </div>
         {error && <p className="text-xs mt-3" style={{ color: "var(--danger)" }}>{error}</p>}
@@ -228,6 +245,20 @@ export default function PanchangPage() {
           {activeTab === "hora" && horaData && <HoraTab data={horaData as any} />}
           {activeTab === "gowri" && gowriData && <GowriTab data={gowriData as any} />}
           {activeTab === "ghati" && ghatiData && <GhatiTab data={ghatiData as any} />}
+          {!error && !tabDataLoaded(activeTab) && (
+            <div className="glass-card p-10 text-center">
+              <p className="text-sm mb-1" style={{ color: "var(--text-secondary)" }}>
+                Nothing loaded for {city} yet.
+              </p>
+              <p className="text-xs mb-4" style={{ color: "var(--text-tertiary)" }}>
+                This tab is computed from {city}&apos;s sunrise, so it needs to be
+                fetched for the location you selected.
+              </p>
+              <button onClick={() => fetchTab(activeTab)} className="btn-primary text-xs px-4 py-2">
+                Get data
+              </button>
+            </div>
+          )}
         </motion.div>
       )}
     </div>

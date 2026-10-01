@@ -326,6 +326,10 @@ def get_panchang(sun_longitude: float, moon_longitude: float,
         "vara": vara,
         "rahu_kaal": rahu_kaal,
         "gulika_kaal": gulika_kaal,
-        "sunrise": f"{int(sunrise_hour):02d}:{int((sunrise_hour % 1) * 60):02d}",
-        "sunset": f"{int(sunset_hour):02d}:{int((sunset_hour % 1) * 60):02d}",
+        # `_format_clock` rather than a local `int()`: the kaals below are
+        # formatted by it (rounding to the nearest minute) while these two were
+        # truncated, so the reported sunset could be a minute before a kaal
+        # that is inside the daylight it came from.
+        "sunrise": _format_clock(sunrise_hour),
+        "sunset": _format_clock(sunset_hour),
     }

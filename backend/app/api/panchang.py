@@ -212,12 +212,44 @@ async def get_daily_panchang(
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
     timezone_offset: float = 5.5,
-    sunrise_hour: float = 6.0,
-    sunset_hour: float = 18.0,
+    sunrise_hour: float = None,
+    sunset_hour: float = None,
 ):
-    """Get daily Panchang for a location."""
+    """Get daily Panchang for a location.
+
+    Sunrise and sunset default to the real NOAA calculation for these
+    coordinates rather than a fixed 06:00/18:00. The old defaults made every
+    location in the app report an identical sunrise, and Rahu Kaal and Gulika
+    Kaal are scaled off sunrise and sunset, so both were wrong everywhere --
+    Delhi happened to be close enough to look plausible, which is why it went
+    unnoticed. The explicit parameters remain as an escape hatch for callers
+    that need to pin them (and for tests).
+    """
     if date_str is None:
         date_str = date.today().isoformat()
+
+    try:
+        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid date format. Use YYYY-MM-DD.",
+        )
+
+    if sunrise_hour is None or sunset_hour is None:
+        sun_times = calculate_sunrise_sunset(
+            target_date, latitude, longitude, tz_offset=timezone_offset
+        )
+        if sun_times["sunrise"] is None:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "The sun does not rise or set at this latitude on this "
+                    "date, so the panchang for it cannot be computed."
+                ),
+            )
+        sunrise_hour = sun_times["sunrise"]
+        sunset_hour = sun_times["sunset"]
 
     # Check cache. The UTC offset and the two sun-time overrides are inputs to
     # the result -- the tithi is sampled at noon in that zone and the kaals are
@@ -232,9 +264,6 @@ async def get_daily_panchang(
         return PanchangResponse(**cached)
 
     try:
-        # Parse date
-        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-
         # Calculate Sun and Moon positions (approximate)
         # For simplicity, using noon position
         positions = get_planetary_positions(
@@ -355,7 +384,9 @@ async def get_choghadiya(
     if date_str is None:
         date_str = date.today().isoformat()
 
-    cache_key = f"choghadiya:{date_str}:{latitude}:{longitude}"
+    cache_key = (
+        f"choghadiya:{date_str}:{latitude}:{longitude}:{timezone_offset}"
+    )
     cached = await cache_service.get(cache_key)
     if cached:
         return cached
@@ -366,7 +397,7 @@ async def get_choghadiya(
 
         # Real sun times, as in /hora, instead of the latitude-only guess.
         sun_times = calculate_sunrise_sunset(
-            target_date, latitude, longitude, tz_offset=5.5,
+            target_date, latitude, longitude, tz_offset=timezone_offset,
         )
         if sun_times["sunrise"] is None:
             raise HTTPException(
@@ -410,12 +441,13 @@ async def get_hora(
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
+    timezone_offset: float = 5.5,
 ):
     """Get Hora periods (hourly planetary rulers) for the day."""
     if date_str is None:
         date_str = date.today().isoformat()
 
-    cache_key = f"hora:{date_str}:{latitude}:{longitude}"
+    cache_key = f"hora:{date_str}:{latitude}:{longitude}:{timezone_offset}"
     cached = await cache_service.get(cache_key)
     if cached:
         return cached
@@ -431,7 +463,7 @@ async def get_hora(
         # India and drifted the hora boundaries with it.
         sun_times = calculate_sunrise_sunset(
             target_date, latitude, longitude,
-            tz_offset=5.5,
+            tz_offset=timezone_offset,
         )
         if sun_times["sunrise"] is None:
             raise HTTPException(
@@ -477,6 +509,7 @@ async def get_gowri(
     date_str: str = None,
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
+    timezone_offset: float = 5.5,
 ):
     """Get Gowri Panchangam periods (South Indian auspicious timing).
 
@@ -488,7 +521,7 @@ async def get_gowri(
     if date_str is None:
         date_str = date.today().isoformat()
 
-    cache_key = f"gowri:{date_str}:{latitude}:{longitude}"
+    cache_key = f"gowri:{date_str}:{latitude}:{longitude}:{timezone_offset}"
     cached = await cache_service.get(cache_key)
     if cached:
         return cached
@@ -498,7 +531,7 @@ async def get_gowri(
         vedic_day = (target_date.weekday() + 1) % 7
 
         sun_times = calculate_sunrise_sunset(
-            target_date, latitude, longitude, tz_offset=5.5,
+            target_date, latitude, longitude, tz_offset=timezone_offset,
         )
         if sun_times["sunrise"] is None:
             raise HTTPException(
@@ -534,11 +567,12 @@ async def get_ghati_muhurat(
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
+    timezone_offset: float = 5.5,
 ):
     if date_str is None:
         date_str = date.today().isoformat()
 
-    cache_key = f"ghati:{date_str}:{latitude}:{longitude}"
+    cache_key = f"ghati:{date_str}:{latitude}:{longitude}:{timezone_offset}"
     cached = await cache_service.get(cache_key)
     if cached:
         return cached
@@ -547,7 +581,7 @@ async def get_ghati_muhurat(
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
 
         sun_times = calculate_sunrise_sunset(
-            target_date, latitude, longitude, tz_offset=5.5,
+            target_date, latitude, longitude, tz_offset=timezone_offset,
         )
         if sun_times["sunrise"] is None:
             raise HTTPException(
@@ -607,6 +641,7 @@ async def get_monthly_panchang(
     # cover the case that previously surfaced as a 500.
     month: int | None = Query(None, ge=1, le=12),
     year: int | None = Query(None, ge=2000, le=2100),
+    timezone_offset: float = 5.5,
 ):
     """Get monthly Panchang â€” daily summaries for every day in the given month."""
     today = date.today()
@@ -615,7 +650,9 @@ async def get_monthly_panchang(
     if year is None:
         year = today.year
 
-    cache_key = f"panchang:monthly:{year}:{month}:{latitude}:{longitude}"
+    cache_key = (
+        f"panchang:monthly:{year}:{month}:{latitude}:{longitude}:{timezone_offset}"
+    )
     cached = await cache_service.get(cache_key)
     if cached:
         return cached
@@ -638,7 +675,7 @@ async def get_monthly_panchang(
 
             # Real sun times, as in /hora, instead of the latitude-only guess.
             sun_times = calculate_sunrise_sunset(
-                target_date, latitude, longitude, tz_offset=5.5,
+                target_date, latitude, longitude, tz_offset=timezone_offset,
             )
             if sun_times["sunrise"] is None:
                 # No sunrise on this date at this latitude; skip rather than
@@ -650,7 +687,7 @@ async def get_monthly_panchang(
             # Get positions for this day
             positions = get_planetary_positions(
                 year=year, month=month, day=day,
-                hour=12, minute=0, timezone_offset=5.5,
+                hour=12, minute=0, timezone_offset=timezone_offset,
             )
 
             sun_longitude = None
