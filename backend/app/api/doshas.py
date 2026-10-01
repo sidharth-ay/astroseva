@@ -11,7 +11,7 @@ from ..models.response import DoshaResponse
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
 from ..core.doshas import detect_all_doshas, detect_manglik, detect_sade_sati, detect_pitru_dosha, get_transit_saturn_sign, get_sade_sati_periods
-from ..services.ai_service import generate_remedies
+from ..services.remedy_service import build_remedies
 from ..services.cache_service import cache_service
 
 logger = logging.getLogger(__name__)
@@ -152,8 +152,9 @@ async def get_remedies(
         )
         doshas["sade_sati"] = {**doshas["sade_sati"], "as_of_date": as_of}
 
-        # Generate remedies using AI
-        remedies = await generate_remedies(doshas, language)
+        # Structured answer; see `remedy_service` for why this is not the
+        # model output passed straight through.
+        remedies = await build_remedies(doshas, language)
 
         response = {
             "doshas": doshas,

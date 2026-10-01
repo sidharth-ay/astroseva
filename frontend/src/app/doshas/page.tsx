@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { AlertTriangle, CheckCircle, User, Calendar, Clock, MapPin } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
-import { api, type BirthData, type CityEntry, type DoshaResponse } from "@/lib/api";
+import { api, type BirthData, type CityEntry, type DoshaResponse, type RemedyReport } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainerCustom,
@@ -31,7 +31,7 @@ export default function DoshasPage() {
     timezone_offset: 5.5,
   });
   const [result, setResult] = useState<DoshaResponse | null>(null);
-  const [remedies, setRemedies] = useState<string>("");
+  const [remedies, setRemedies] = useState<RemedyReport | null>(null);
   const [remedyError, setRemedyError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -70,7 +70,7 @@ export default function DoshasPage() {
     setLoading(true);
     setError("");
     setRemedyError("");
-    setRemedies("");
+    setRemedies(null);
     setResult(null);
     try {
       const res = await api.detectDoshas(form, controller.signal);
@@ -82,16 +82,11 @@ export default function DoshasPage() {
         try {
           const rem = await api.getDoshaRemedies(form, "en", controller.signal);
           if (seq !== seqRef.current) return;
-          const r = rem.remedies;
-          setRemedies(
-            typeof r === "string" ? r : typeof r === "object" && r !== null && "content" in (r as object)
-              ? String((r as { content: unknown }).content)
-              : JSON.stringify(r, null, 2)
-          );
+          setRemedies(rem.remedies);
         } catch (e) {
           if (seq !== seqRef.current) return;
           if (e instanceof DOMException && e.name === "AbortError") return;
-          setRemedies("");
+          setRemedies(null);
           setRemedyError(e instanceof Error ? e.message : "Failed to load remedies.");
         }
       }
@@ -109,7 +104,7 @@ export default function DoshasPage() {
     abortRef.current?.abort();
     seqRef.current += 1;
     setResult(null);
-    setRemedies("");
+    setRemedies(null);
     setRemedyError("");
     setError("");
   };
@@ -371,13 +366,43 @@ export default function DoshasPage() {
             </div>
           )}
 
-          {remedies && (
+          {remedies && (remedies.sections.length > 0 || remedies.note) && (
             <div className="glass-card p-5">
-              <h3 className="text-base font-semibold mb-3" style={{ color: "var(--text-primary)" }}>
-                Recommended Remedies
-              </h3>
-              <div className="text-sm whitespace-pre-line" style={{ color: "var(--text-secondary)", lineHeight: 1.8 }}>
-                {remedies}
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+                  Recommended Remedies
+                </h3>
+                <span className="text-[10px] font-bold tracking-[0.15em] uppercase" style={{ color: "#C8956D" }}>
+                  {remedies.source === "ai" ? "AI" : "Vedic corpus"}
+                </span>
+              </div>
+
+              {remedies.note && (
+                <p className="text-sm mb-2" style={{ color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                  {remedies.note}
+                </p>
+              )}
+
+              <div className="space-y-4">
+                {remedies.sections.map((section) => (
+                  <div key={section.title}>
+                    <p className="text-sm font-semibold mb-1.5" style={{ color: "var(--champagne)" }}>
+                      {section.title}
+                    </p>
+                    <ul className="space-y-1.5">
+                      {section.actions.map((action) => (
+                        <li
+                          key={action}
+                          className="text-sm flex gap-2"
+                          style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}
+                        >
+                          <span style={{ color: "#C8956D" }}>&#8226;</span>
+                          <span>{action}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
             </div>
           )}

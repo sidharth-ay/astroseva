@@ -582,6 +582,22 @@ export interface DoshaResponse {
   total_doshas: number;
 }
 
+/**
+ * The remedy answer is a list of sections, never the model's raw text. When
+ * the AI answer will not parse into this shape the backend serves its own
+ * corpus under `source: "corpus"` instead.
+ */
+export interface RemedySection {
+  title: string;
+  actions: string[];
+}
+
+export interface RemedyReport {
+  source: "ai" | "corpus";
+  sections: RemedySection[];
+  note?: string;
+}
+
 // Endpoints where a 401 is a normal, expected response rather than an expired
 // session: bad credentials on login, or a register attempt. Redirecting there
 // would bounce the user off the form instead of showing the error.
@@ -1093,7 +1109,7 @@ export const api = {
     }),
 
   getDoshaRemedies: (data: BirthData, language: string = "en", signal?: AbortSignal) =>
-    fetchAPI<{ doshas: DoshaResponse; remedies: unknown; language: string }>(`/api/v1/doshas/remedies?language=${language}`, {
+    fetchAPI<{ doshas: DoshaResponse; remedies: RemedyReport; language: string }>(`/api/v1/doshas/remedies?language=${language}`, {
       method: "POST",
       body: JSON.stringify(data),
       signal,

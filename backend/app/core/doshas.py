@@ -561,3 +561,19 @@ def detect_all_doshas(planets: list[dict], asc_sign: int, moon_sign: int, transi
             1 if pitru["has_dosha"] else 0,
         ]),
     }
+
+
+def active_doshas(doshas: dict) -> list[str]:
+    """Names of the detected doshas that call for a remedy, in report order.
+
+    The AI path and the remedy corpus each carried their own copy of this
+    list; one definition keeps them from drifting apart.
+    """
+    names = []
+    if doshas.get("manglik", {}).get("is_manglik"):
+        names.append("Manglik Dosha")
+    if doshas.get("sade_sati", {}).get("is_active"):
+        names.append("Sade Sati")
+    if doshas.get("pitru_dosha", {}).get("has_dosha"):
+        names.append("Pitru Dosha")
+    return names

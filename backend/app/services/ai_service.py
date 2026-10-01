@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 import time as _time
 
+from ..core.doshas import active_doshas
+
 # Quota exhaustion tracking — skip Gemini calls when we know they'll fail
 _gemini_quota_exhausted = False
 _quota_retry_after = 0.0
@@ -500,13 +502,7 @@ async def generate_remedies(doshas: dict, language: str = "en") -> str:
     """Generate remedies for detected doshas."""
     global _gemini_quota_exhausted, _quota_retry_after
 
-    dosha_list = []
-    if doshas.get("manglik", {}).get("is_manglik"):
-        dosha_list.append("Manglik Dosha")
-    if doshas.get("sade_sati", {}).get("is_active"):
-        dosha_list.append("Sade Sati")
-    if doshas.get("pitru_dosha", {}).get("has_dosha"):
-        dosha_list.append("Pitru Dosha")
+    dosha_list = active_doshas(doshas)
 
     if not dosha_list:
         return "No significant doshas detected. Continue with regular spiritual practices."
