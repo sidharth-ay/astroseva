@@ -148,6 +148,30 @@ export default function DoshasPage() {
             : "",
         },
         {
+          title: "Kaal Sarp Dosha",
+          active: result.kaal_sarp?.has_dosha,
+          badge: result.kaal_sarp?.has_dosha
+            ? (result.kaal_sarp?.kaal_sarp_type || "Present")
+            : "Absent",
+          description:
+            result.kaal_sarp?.description ||
+            "All seven classical planets hemmed between the Rahu-Ketu axis.",
+          conditions: [
+            result.kaal_sarp?.rahu_house
+              ? `Rahu in the ${ordinalSuffix(result.kaal_sarp.rahu_house)} house`
+              : "",
+            result.kaal_sarp?.ketu_house
+              ? `Ketu in the ${ordinalSuffix(result.kaal_sarp.ketu_house)} house`
+              : "",
+            (result.kaal_sarp?.planets_between || []).length
+              ? `Inside the axis: ${(result.kaal_sarp?.planets_between || []).join(", ")}`
+              : "",
+            (result.kaal_sarp?.planets_outside || []).length
+              ? `Outside the axis: ${(result.kaal_sarp?.planets_outside || []).join(", ")}`
+              : "",
+          ].filter(Boolean),
+        },
+        {
           title: "Sade Sati",
           active: result.sade_sati?.is_active,
           badge: result.sade_sati?.is_active
@@ -185,7 +209,7 @@ export default function DoshasPage() {
           CHECK YOUR <span className="text-gradient-gold">DOSHAS</span>
         </h1>
         <p className="max-w-lg mx-auto" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
-          Detect Manglik, Sade Sati, and Pitru Dosha from your birth chart with remedies.
+          Detect Manglik, Kaal Sarp, Sade Sati, and Pitru Dosha from your birth chart with remedies.
         </p>
       </motion.div>
 
