@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useReducedMotion, staggerContainer, staggerItem, slideUp } from "@/lib/motion";
 import { Brain, ChevronRight, User, Calendar, Clock, MapPin } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
-import { api, type BirthData, type CityEntry } from "@/lib/api";
+import { api, pickLocationFields, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 
 const categories = [
   { key: "all", label: "All Areas", icon: "✦", color: "var(--champagne)" },
@@ -35,7 +35,14 @@ export default function PredictionsPage() {
   }, []);
 
   const handleCityChange = (city: CityEntry) => {
-    setForm((prev) => ({ ...prev, city: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz }));
+    setForm((prev) => ({
+      ...prev,
+      // This form's field is named `city`, not `birth_place`, so the shared
+      // helper's `birth_place` is dropped rather than shipped to a model that
+      // has no such field.
+      ...pickLocationFields(locationFromCity(city)),
+      city: city.name,
+    }));
   };
 
   const handleGenerate = async () => {

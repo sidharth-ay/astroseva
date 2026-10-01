@@ -252,6 +252,10 @@ async def generate_kundli(request: Request, birth_data: BirthData, ayanamsa_type
             birth_place=birth_data.birth_place,
             latitude=birth_data.latitude,
             longitude=birth_data.longitude,
+            # The offset the chart was actually built with, which may have been
+            # resolved from `timezone_iana` for the birth date.
+            timezone_offset=birth_data.timezone_offset,
+            timezone_iana=birth_data.timezone_iana,
             ayanamsa=round(data["positions"]["ayanamsa"], 4),
             ascendant=round(data["positions"]["ascendant"], 4),
             asc_sign=data["asc_sign"],

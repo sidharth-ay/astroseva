@@ -8,7 +8,7 @@ import CitySearch from "@/components/CitySearch";
 import {
   api,
   type BirthData,
-  type CityEntry,
+  type CityEntry, locationFromCity,
   type GemstoneResponse,
 } from "@/lib/api";
 import {
@@ -41,13 +41,7 @@ export default function GemstonesPage() {
   }, []);
 
   const handleCity = (city: CityEntry) => {
-    setForm({
-      ...form,
-      birth_place: city.name,
-      latitude: city.lat,
-      longitude: city.lng,
-      timezone_offset: city.tz,
-    });
+    setForm({ ...form, ...locationFromCity(city) });
   };
 
   const getRecommendations = async () => {

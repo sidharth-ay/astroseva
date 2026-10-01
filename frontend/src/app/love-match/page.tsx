@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, Heart } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 
-import { api, type BirthData, type CityEntry } from "@/lib/api";
+import { api, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainerCustom,
@@ -97,12 +97,7 @@ function FormFields({
         <CitySearch
           value={data.birth_place}
           onChange={(c: CityEntry) =>
-            update({
-              birth_place: c.name,
-              latitude: c.lat,
-              longitude: c.lng,
-              timezone_offset: c.tz,
-            })
+            update(locationFromCity(c))
           }
         />
       </div>

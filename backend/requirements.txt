@@ -47,3 +47,15 @@ bcrypt==4.2.0
 
 # Logging
 python-json-logger==3.1.0
+
+# Historical UTC offsets.
+#
+# The location dataset stores the offset that applies now, which is wrong for a
+# historical birth by up to an hour (India was +6:30 through the 1941-42
+# wartime daylight saving). Each record also carries an IANA zone, and
+# app/services/timezone_service.py resolves the offset for the birth date.
+# Linux containers have a system zoneinfo database; Windows and slim images do
+# not, so this package is what makes historical resolution work everywhere.
+# Without it the resolver falls back to the supplied offset, which is the
+# previous behaviour rather than a failure.
+tzdata==2026.4

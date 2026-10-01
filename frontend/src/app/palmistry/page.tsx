@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, ChevronRight, Send } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
-import { api, type BirthData, type CityEntry } from "@/lib/api";
+import { api, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
@@ -30,7 +30,7 @@ export default function PalmistryPage() {
   }, []);
 
   const handleCity = (city: CityEntry) => {
-    setForm({ ...form, birth_place: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
+    setForm({ ...form, ...locationFromCity(city) });
   };
 
   const getReading = async () => {

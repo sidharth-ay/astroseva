@@ -9,5 +9,8 @@ __pycache__/
 venv/
 test_*.py
 tests/
-data/
+# NOT `data/`: that excluded backend/data/cities.json, the location dataset the
+# search endpoint reads. The container shipped without it, so /api/v1/cities
+# returned an empty list and every location dropdown in the deployment was blank.
+data/build_cities.py
 *.sqlite3

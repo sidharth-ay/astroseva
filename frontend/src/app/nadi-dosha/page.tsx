@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, AlertTriangle, CheckCircle, Heart, Shield } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 
-import { api, type MatchingResponse, type BirthData, type CityEntry } from "@/lib/api";
+import { api, type MatchingResponse, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
@@ -37,7 +37,7 @@ function FormFields({ data, update, prefix }: { data: BirthData; update: (p: Par
       </div>
       <div>
         <label className="input-label" htmlFor={`${prefix}-city`}><MapPin size={12} className="inline mr-1" />City</label>
-        <CitySearch value={data.birth_place} onChange={(c: CityEntry) => update({ birth_place: c.name, latitude: c.lat, longitude: c.lng, timezone_offset: c.tz })} />
+        <CitySearch value={data.birth_place} onChange={(c: CityEntry) => update(locationFromCity(c))} />
       </div>
     </div>
   );

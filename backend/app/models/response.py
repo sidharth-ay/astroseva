@@ -26,6 +26,15 @@ class KundliResponse(BaseModel):
     birth_place: str
     latitude: float
     longitude: float
+    # Echoed so a client that re-sends these details for a follow-up call -- the
+    # dosha panel inside the Kundli page does exactly that -- uses the offset the
+    # chart was actually computed with. It used to hardcode 5.5, which quietly
+    # charted every non-Indian birth at the wrong offset.
+    timezone_offset: float
+    # The IANA zone the offset was resolved from, when one was supplied. Passed
+    # back so a re-sent request resolves the same historical offset rather than
+    # trusting whatever offset the client happens to have stored.
+    timezone_iana: Optional[str] = None
     ayanamsa: float
     ascendant: float
     asc_sign: int

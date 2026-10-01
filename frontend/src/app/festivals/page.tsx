@@ -27,20 +27,21 @@ const CATEGORIES = [
   { id: "vrat", label: "Vrat" },
 ];
 
+/** Initial location before the dataset has been consulted (New Delhi). */
 const DEFAULT_LOCATION = {
   latitude: 28.6139, longitude: 77.2090, timezone_offset: 5.5, label: "New Delhi, India",
 };
 
-/** Cities offered as quick picks; the search box covers the rest. */
-const PRESETS: (typeof DEFAULT_LOCATION & { name: string })[] = [
-  { name: "New Delhi", ...DEFAULT_LOCATION },
-  { name: "Mumbai", latitude: 19.076, longitude: 72.8777, timezone_offset: 5.5, label: "Mumbai" },
-  { name: "Kolkata", latitude: 22.5726, longitude: 88.3639, timezone_offset: 5.5, label: "Kolkata" },
-  { name: "Chennai", latitude: 13.0827, longitude: 80.2707, timezone_offset: 5.5, label: "Chennai" },
-  { name: "Bengaluru", latitude: 12.9716, longitude: 77.5946, timezone_offset: 5.5, label: "Bengaluru" },
-  { name: "London", latitude: 51.5074, longitude: -0.1278, timezone_offset: 0, label: "London" },
-  { name: "New York", latitude: 40.7128, longitude: -74.006, timezone_offset: -5, label: "New York" },
-  { name: "Singapore", latitude: 1.3521, longitude: 103.8198, timezone_offset: 8, label: "Singapore" },
+/**
+ * Quick picks. Names only — coordinates and offsets come from the shared
+ * dataset when one is chosen, because this list previously carried its own
+ * copies of both and they disagreed with it: London was stored at UTC+0 for the
+ * whole year and New York at UTC-5, so between March and October the festivals
+ * shown were shifted by an hour versus every other page.
+ */
+const PRESETS = [
+  "New Delhi", "Mumbai", "Kolkata", "Chennai", "Bengaluru",
+  "London", "New York", "Singapore",
 ];
 
 function prettyDate(iso: string) {
@@ -71,6 +72,8 @@ export default function FestivalsPage() {
   const [result, setResult] = useState<FestivalsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [presetBusy, setPresetBusy] = useState<string | null>(null);
+  const [presetError, setPresetError] = useState("");
   const reduced = useReducedMotion();
 
   const load = useCallback(async () => {
@@ -108,6 +111,33 @@ export default function FestivalsPage() {
       timezone_offset: city.tz ?? Math.round(city.lng / 15),
       label: city.name,
     });
+  };
+
+  /**
+   * Resolve a quick-pick name through the shared dataset rather than using a
+   * hardcoded coordinate pair, so this page cannot disagree with every other
+   * location field in the app about where a city is or which offset it uses.
+   * An exact name match wins over a prefix match, so "New Delhi" does not come
+   * back as "Delhi Cantonment".
+   */
+  const onPickPreset = async (name: string) => {
+    setPresetBusy(name);
+    setPresetError("");
+    try {
+      const results = await api.searchCities(name);
+      const match =
+        results.find((c) => c.name.toLowerCase() === name.toLowerCase()) ??
+        results[0];
+      if (!match) throw new Error(`No location found for "${name}".`);
+      onPickCity(match);
+    } catch (e) {
+      // Kept separate from `error`: that one drives the full-page retry card,
+      // which would tell the reader to reload festivals when only a city lookup
+      // failed.
+      setPresetError(e instanceof Error ? e.message : "Could not look up that city.");
+    } finally {
+      setPresetBusy(null);
+    }
   };
 
   return (
@@ -178,23 +208,27 @@ export default function FestivalsPage() {
             <label className="input-label" htmlFor="fest-city">Location</label>
             <CitySearch id="fest-city" value={cityText} onChange={onPickCity} />
             <div className="flex flex-wrap gap-2 mt-3">
-              {PRESETS.map((p) => (
+              {PRESETS.map((name) => (
                 <button
-                  key={p.name}
-                  onClick={() => {
-                    setCityText(p.name);
-                    setLocation({ latitude: p.latitude, longitude: p.longitude, timezone_offset: p.timezone_offset, label: p.name });
-                  }}
-                  className="text-xs px-3 py-1 rounded-full"
+                  key={name}
+                  onClick={() => void onPickPreset(name)}
+                  disabled={presetBusy !== null}
+                  aria-busy={presetBusy === name}
+                  className="text-xs px-3 py-1 rounded-full disabled:opacity-60"
                   style={{
-                    background: location.label === p.name ? "var(--gold)" : "rgba(200,149,109,0.12)",
-                    color: location.label === p.name ? "#0a0a0f" : "var(--text-secondary)",
+                    background: location.label === name ? "var(--gold)" : "rgba(200,149,109,0.12)",
+                    color: location.label === name ? "#0a0a0f" : "var(--text-secondary)",
                   }}
                 >
-                  {p.name}
+                  {presetBusy === name ? "…" : name}
                 </button>
               ))}
             </div>
+            {presetError && (
+              <p className="text-xs mt-2" role="alert" style={{ color: "var(--danger)" }}>
+                {presetError}
+              </p>
+            )}
           </div>
       </div>
 

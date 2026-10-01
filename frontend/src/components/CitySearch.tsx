@@ -2,9 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Search, MapPin, X } from "lucide-react";
-import type { CityEntry } from "@/lib/api";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { api, type CityEntry } from "@/lib/api";
 
 interface CitySearchProps {
   id?: string;
@@ -18,11 +16,15 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
   const [results, setResults] = useState<CityEntry[]>([]);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [error, setError] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Distinguishes "the server found nothing" from "the request failed", which
+  // used to be the same empty list and so read as a missing town.
+  const [noMatches, setNoMatches] = useState(false);
 
   useEffect(() => { setQuery(value); }, [value]);
 
@@ -37,10 +39,12 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
   const search = useCallback((q: string) => {
     setQuery(q);
     setHighlightedIndex(-1);
+    setError("");
     if (q.length < 2) {
       setResults([]);
       setOpen(false);
       setSearching(false);
+      setNoMatches(false);
       return;
     }
 
@@ -52,16 +56,17 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const res = await fetch(
-          `${API_BASE}/api/v1/cities?q=${encodeURIComponent(q)}`,
-          { signal: controller.signal }
-        );
-        const data = await res.json();
-        setResults(data.cities || []);
+        const cities = await api.searchCities(q, controller.signal);
+        setResults(cities);
+        setNoMatches(cities.length === 0);
         setOpen(true);
-      } catch {
+      } catch (e) {
+        // A cancelled request is not a failure: the next keystroke supersedes it.
+        if ((e as Error)?.name === "AbortError") return;
         setResults([]);
-        setOpen(false);
+        setNoMatches(false);
+        setError("Could not search locations. Please try again.");
+        setOpen(true);
       } finally {
         setSearching(false);
       }
@@ -78,6 +83,8 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
   const clear = () => {
     setQuery("");
     setResults([]);
+    setNoMatches(false);
+    setError("");
     setOpen(false);
     inputRef.current?.focus();
   };
@@ -146,12 +153,29 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
               Searching...
             </div>
           )}
-          {!searching && results.length === 0 && (
-            <div className="px-4 py-3 text-xs text-center" style={{ color: "var(--text-tertiary)" }}>
-              No cities found
+          {error && (
+            <div
+              className="px-4 py-3 text-xs text-center"
+              style={{ color: "var(--danger)" }}
+              role="alert"
+            >
+              {error}
             </div>
           )}
-          {!searching && results.map((c, i) => (
+          {!searching && !error && noMatches && (
+            <div className="px-4 py-3 text-xs text-center" style={{ color: "var(--text-tertiary)" }}>
+              No matching location. Try a different spelling, or a nearby town.
+            </div>
+          )}
+          {!searching && !error && results.length > 0 && (
+            <div
+              className="px-3 py-2 text-[11px]"
+              style={{ color: "var(--text-tertiary)", borderBottom: "1px solid var(--border-subtle)" }}
+            >
+              {results.length} match{results.length === 1 ? "" : "es"} — pick one to set the coordinates.
+            </div>
+          )}
+          {!searching && !error && results.map((c, i) => (
             <button
               key={`${c.name}-${c.lat}-${i}`}
               className="w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2"

@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, AlertTriangle, CheckCircle } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 
-import { api, type DoshaResponse, type BirthData, type CityEntry } from "@/lib/api";
+import { api, type DoshaResponse, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
@@ -27,7 +27,7 @@ export default function PitruDoshaPage() {
   }, []);
 
   const handleCity = (city: CityEntry) => {
-    setForm({ ...form, birth_place: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
+    setForm({ ...form, ...locationFromCity(city) });
   };
 
   const detect = async () => {

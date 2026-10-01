@@ -24,7 +24,7 @@ import {
   Shield,
 } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
-import { api, type BirthData, type CityEntry } from "@/lib/api";
+import { api, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 import {
   playHealingTone,
   stopHealingTone,
@@ -417,13 +417,7 @@ export default function HealingPage() {
   };
 
   const handleCity = (city: CityEntry) => {
-    setForm({
-      ...form,
-      birth_place: city.name,
-      latitude: city.lat,
-      longitude: city.lng,
-      timezone_offset: city.tz,
-    });
+    setForm({ ...form, ...locationFromCity(city) });
   };
 
   const getRecommendations = async () => {

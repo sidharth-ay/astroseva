@@ -961,7 +961,12 @@ function KarmaTab({ result }: { result: KundliResponse }) {
       <DoshaPanel birthData={{
         name: result.name, birth_date: result.birth_date, birth_time: result.birth_time,
         birth_place: result.birth_place, latitude: result.latitude,
-        longitude: result.longitude, timezone_offset: 5.5,
+        longitude: result.longitude,
+        // The chart's own offset, so the doshas are computed from the same
+        // chart as the tabs above. This was hardcoded to 5.5, which silently
+        // charted every non-Indian birth at the wrong offset.
+        timezone_offset: result.timezone_offset,
+        ...(result.timezone_iana ? { timezone_iana: result.timezone_iana } : {}),
       }} />
     </div>
   );

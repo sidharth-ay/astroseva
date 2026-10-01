@@ -93,16 +93,62 @@ export function downloadBlob(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/**
+ * A location as returned by `GET /api/v1/cities`.
+ *
+ * `tz` is the offset that applies *now*. For a birth chart that can be wrong by
+ * up to 90 minutes, so the record also carries `tz_iana`, and the backend
+ * resolves the offset for the actual birth date via `zoneinfo`.
+ */
 export interface CityEntry {
   name: string;
   lat: number;
   lng: number;
   tz: number;
+  tz_iana?: string;
   state?: string;
 }
 
-import citiesJson from "./cities.json";
-export const cities: CityEntry[] = citiesJson as CityEntry[];
+/**
+ * The birth-location fields for a city chosen from `CitySearch`.
+ *
+ * Every page that takes a birthplace was repeating the same four assignments by
+ * hand, which is how two of them came to disagree (one dropped the timezone, one
+ * dropped the zone). Spread this into the form instead:
+ *
+ *     setForm((prev) => ({ ...prev, ...locationFromCity(city) }))
+ *
+ * `timezone_iana` travels with the coordinates so the backend can resolve the
+ * offset that was in force on the birth date.
+ */
+export function locationFromCity(city: CityEntry) {
+  return {
+    birth_place: city.name,
+    latitude: city.lat,
+    longitude: city.lng,
+    // `tz` is always populated by the dataset; the longitude fallback is only
+    // reached if a record ever arrives without one.
+    timezone_offset: typeof city.tz === "number" ? city.tz : Math.round(city.lng / 15),
+    ...(city.tz_iana ? { timezone_iana: city.tz_iana } : {}),
+  };
+}
+
+/**
+ * `locationFromCity` without the `birth_place` field.
+ *
+ * A few forms (predictions, panchang, festivals) name their location field
+ * differently. This lets them reuse the same coordinates-and-timezone logic
+ * without sending a field their model does not declare.
+ */
+export function pickLocationFields(loc: ReturnType<typeof locationFromCity>) {
+  const out: Omit<ReturnType<typeof locationFromCity>, "birth_place"> = {
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+    timezone_offset: loc.timezone_offset,
+    ...(loc.timezone_iana ? { timezone_iana: loc.timezone_iana } : {}),
+  };
+  return out;
+}
 
 export interface BirthData {
   name: string;
@@ -112,6 +158,15 @@ export interface BirthData {
   latitude: number;
   longitude: number;
   timezone_offset: number;
+  /**
+   * IANA zone for the birthplace, when the location came from CitySearch.
+   *
+   * The backend resolves the historical offset from this for the actual birth
+   * date, so a 1942 Indian birth uses the +6:30 then in force rather than
+   * today's +5:30. Optional: `timezone_offset` alone still works, so a saved
+   * chart from before this field existed is still accepted.
+   */
+  timezone_iana?: string;
   gender?: string;
 }
 
@@ -257,6 +312,9 @@ export interface KundliResponse {
   birth_place: string;
   latitude: number;
   longitude: number;
+  /** The offset the chart was computed with -- do not assume 5.5. */
+  timezone_offset: number;
+  timezone_iana?: string | null;
   ayanamsa: number;
   ascendant: number;
   asc_sign: number;
@@ -907,6 +965,24 @@ async function fetchUpload<T>(endpoint: string, form: FormData): Promise<T> {
 }
 
 export const api = {
+  /**
+   * Search the shared city/town dataset.
+   *
+   * This goes through `fetchAPI` because `/api/v1/cities` sits behind the same
+   * auth gate as everything else. The component previously called bare `fetch`
+   * with no `Authorization` header, so it received a 401 and an empty list --
+   * indistinguishable from "no matches", which is why a broken search looks like
+   * a dataset that does not contain the town.
+   *
+   * `dedupe` stops the second keystroke replacing the first result set with a
+   * stale response.
+   */
+  searchCities: (q: string, signal?: AbortSignal) =>
+    fetchAPI<{ cities: CityEntry[]; total: number }>(
+      `/api/v1/cities?q=${encodeURIComponent(q)}`,
+      signal ? { signal } : undefined,
+    ).then((r) => r.cities ?? []),
+
   generateKundli: (data: BirthData) =>
     fetchAPI<KundliResponse>("/api/v1/kundli/generate", {
       method: "POST",
@@ -958,7 +1034,7 @@ export const api = {
       body: JSON.stringify({ name, birth_date }),
     }),
 
-  getPanchang: (lat = 28.6139, lng = 77.209) =>
+    getPanchang: (lat = 28.6139, lng = 77.209) =>
     fetchAPI<PanchangResponse>(`/api/v1/panchang/daily?latitude=${lat}&longitude=${lng}`),
 
   getChoghadiya: (lat = 28.6139, lng = 77.209) =>

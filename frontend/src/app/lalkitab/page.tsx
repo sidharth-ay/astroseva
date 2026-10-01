@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, ChevronRight, RotateCcw } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
-import { api, type BirthData, type CityEntry, type LalKitabResponse } from "@/lib/api";
+import { api, type BirthData, type CityEntry, locationFromCity, type LalKitabResponse } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
@@ -34,7 +34,7 @@ export default function LalKitabPage() {
   }, []);
 
   const handleCity = (city: CityEntry) => {
-    setForm({ ...form, birth_place: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
+    setForm({ ...form, ...locationFromCity(city) });
   };
 
   const generate = async () => {

@@ -1,12 +1,25 @@
 """Birth data models for Vedic Astrology calculations."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 from datetime import date, time
 
+from ..services.timezone_service import resolve_offset
+
 
 class BirthData(BaseModel):
-    """Birth details required for Kundli generation."""
+    """Birth details required for Kundli generation.
+
+    `timezone_offset` is the offset that applies *now* at the birth place, which
+    is what the client has always sent. `timezone_iana` is the zone identifier
+    from the location dataset, and when it is present it wins: the offset is
+    resolved for the actual birth date, so a 1942 Indian birth uses the +6:30
+    that was in force then rather than today's +5:30.
+
+    Resolving here rather than in each endpoint means the whole application gets
+    historical offsets from one change, and a caller that sends only the old
+    field is unaffected.
+    """
     name: str = Field(..., min_length=1, max_length=100, description="Person's name")
     birth_date: date = Field(..., description="Birth date (YYYY-MM-DD)")
     birth_time: time = Field(..., description="Birth time (HH:MM)")
@@ -17,9 +30,29 @@ class BirthData(BaseModel):
         default=5.5,
         ge=-12,
         le=14,
-        description="Timezone offset from UTC (e.g., 5.5 for IST)"
+        description="UTC offset in force now at the birth place (e.g., 5.5 for IST)"
+    )
+    timezone_iana: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description=(
+            "IANA zone for the birth place (e.g., 'Asia/Kolkata'), from the "
+            "location dataset. When set, the historical offset is derived from "
+            "it and `timezone_offset` is only the fallback."
+        ),
     )
     gender: Optional[str] = Field(default=None, description="Gender (male/female)")
+
+    @model_validator(mode="after")
+    def _resolve_timezone(self) -> "BirthData":
+        if self.timezone_iana:
+            self.timezone_offset = resolve_offset(
+                self.timezone_iana,
+                self.birth_date,
+                self.birth_time,
+                fallback=self.timezone_offset,
+            )
+        return self
 
 
 class MatchingData(BaseModel):

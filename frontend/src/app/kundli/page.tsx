@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import CitySearch from "@/components/CitySearch";
 import KundliTabsPanel from "@/components/kundli/KundliTabsPanel";
 
-import { api, downloadBlob, getToken, clearSession, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
+import { api, downloadBlob, getToken, clearSession, type KundliResponse, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 
 export default function KundliPage() {
   const [form, setForm] = useState<BirthData>({
@@ -25,7 +25,7 @@ export default function KundliPage() {
   }, []);
 
   const handleCity = (city: CityEntry) => {
-    setForm({ ...form, birth_place: city.name, latitude: city.lat, longitude: city.lng, timezone_offset: city.tz });
+    setForm({ ...form, ...locationFromCity(city) });
   };
 
   const generate = async () => {
@@ -44,11 +44,16 @@ export default function KundliPage() {
   };
 
   const exportPdf = async () => {
+    // Guard on the generated data, not just the button being visible: the
+    // endpoint recomputes from `form`, so exporting while `result` is stale
+    // would produce a PDF that disagrees with the chart on screen.
     if (!result) return;
     setExporting(true);
     setError("");
     try {
       const blob = await api.exportKundliPdf(form);
+      // A zero-length body means the server produced nothing usable. Treating it
+      // as success downloads an empty file, which opens as a blank PDF.
       if (blob.size === 0) throw new Error("The generated PDF was empty.");
       downloadBlob(blob, `kundli-${(form.name || "chart").replace(/\s+/g, "-").toLowerCase()}.pdf`);
       setSavedMsg("Kundli PDF downloaded.");
