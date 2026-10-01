@@ -190,10 +190,17 @@ async def require_astrologer_account(user: User = Depends(get_current_user)) -> 
 
 async def require_practising_astrologer(user: User = Depends(get_current_user),
                                         db: Session = Depends(get_db)) -> User:
-    """Require an astrologer whose application is verified or on probation."""
+    """Require an astrologer whose application is verified or on probation.
+
+    The role check was inverted: it read `if _role_of(user) != ROLE_ADMIN: raise`,
+    so the guard admitted administrators and rejected every astrologer -- the
+    opposite of its name, and of `require_astrologer_account` above. Nothing
+    imported it yet, so no endpoint was affected, but it would have failed closed
+    on the exact callers it was written for.
+    """
     from ..db.models import PRACTISING_STATUSES, Astrologer
 
-    if _role_of(user) != ROLE_ADMIN:
+    if not (is_admin(user) or _role_of(user) == ROLE_ASTROLOGER):
         raise HTTPException(status_code=403, detail="Astrologer account required")
     profile = db.query(Astrologer).filter(Astrologer.user_id == user.id).first()
     if profile is None or profile.status not in PRACTISING_STATUSES:
