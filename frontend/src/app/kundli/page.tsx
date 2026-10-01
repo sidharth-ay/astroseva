@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import CitySearch from "@/components/CitySearch";
 import KundliTabsPanel from "@/components/kundli/KundliTabsPanel";
 
-import { api, getToken, clearSession, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
+import { api, downloadBlob, getToken, clearSession, type KundliResponse, type BirthData, type CityEntry } from "@/lib/api";
 
 export default function KundliPage() {
   const [form, setForm] = useState<BirthData>({
@@ -17,6 +17,7 @@ export default function KundliPage() {
   const [result, setResult] = useState<KundliResponse | null>(null);
   const [chartStyle, setChartStyle] = useState<"north" | "south">("north");
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -43,12 +44,23 @@ export default function KundliPage() {
   };
 
   const exportPdf = async () => {
+    if (!result) return;
+    setExporting(true);
+    setError("");
     try {
       const blob = await api.exportKundliPdf(form);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url; a.download = `kundli-${form.name || "chart"}.pdf`; a.click();
-      URL.revokeObjectURL(url);
-    } catch { /* ignore */ }
+      if (blob.size === 0) throw new Error("The generated PDF was empty.");
+      downloadBlob(blob, `kundli-${(form.name || "chart").replace(/\s+/g, "-").toLowerCase()}.pdf`);
+      setSavedMsg("Kundli PDF downloaded.");
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? `PDF export failed: ${e.message}`
+          : "PDF export failed. Please try again.",
+      );
+    } finally {
+      setExporting(false);
+    }
   };
 
   const shareImage = () => {
@@ -157,8 +169,8 @@ export default function KundliPage() {
             Load Sample
           </button>
           {result && (
-            <button className="btn-ghost" onClick={exportPdf}>
-              <Download size={13} /> Export PDF
+            <button className="btn-ghost" onClick={exportPdf} disabled={exporting}>
+              <Download size={13} /> {exporting ? "Preparing PDF..." : "Export PDF"}
             </button>
           )}
           {result && (

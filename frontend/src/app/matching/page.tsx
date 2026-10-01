@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, Heart, Shield } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 
-import { api, type MatchingResponse, type BirthData, type CityEntry } from "@/lib/api";
+import { api, downloadBlob, type MatchingResponse, type BirthData, type CityEntry } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
@@ -54,6 +54,7 @@ export default function MatchingPage() {
     girl: { is_manglik: boolean; severity: string };
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const reduced = useReducedMotion();
   const [displayScore, setDisplayScore] = useState(0);
@@ -97,16 +98,19 @@ export default function MatchingPage() {
   };
 
   const exportPdf = async () => {
+    setExporting(true);
+    setError("");
     try {
       const blob = await api.exportMatchingPdf(boy, girl);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `matching-${boy.name || "boy"}-${girl.name || "girl"}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (blob.size === 0) throw new Error("The generated PDF was empty.");
+      downloadBlob(
+        blob,
+        `matching-${(boy.name || "boy").replace(/\s+/g, "-").toLowerCase()}-${(girl.name || "girl").replace(/\s+/g, "-").toLowerCase()}.pdf`,
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "PDF export failed.");
+      setError(e instanceof Error ? `PDF export failed: ${e.message}` : "PDF export failed.");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -153,8 +157,8 @@ export default function MatchingPage() {
         {loading ? "Analyzing..." : "Check Compatibility"}
       </button>
       {result && (
-        <button className="btn-ghost mb-8 ml-2" onClick={exportPdf}>
-          Export PDF
+        <button className="btn-ghost mb-8 ml-2" onClick={exportPdf} disabled={exporting}>
+          {exporting ? "Preparing PDF..." : "Export PDF"}
         </button>
       )}
 

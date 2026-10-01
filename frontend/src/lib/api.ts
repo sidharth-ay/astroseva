@@ -38,6 +38,61 @@ async function fetchWithTimeout(url: string, init?: RequestInit, timeout = REQUE
   }
 }
 
+/**
+ * `fetchAPI` for endpoints that answer with a file rather than JSON.
+ *
+ * The PDF export endpoints are behind the same auth gate as everything else, so
+ * they need the bearer token. Both used to call bare `fetch`, which sent no
+ * `Authorization` header, got a 401, and threw "PDF export failed" -- which the
+ * caller swallowed, so the button silently did nothing.
+ *
+ * The body is read as JSON for the error message on failure and as a Blob on
+ * success, so a 500 from reportlab surfaces its `detail` rather than a generic
+ * failure, and the 401 handling is identical to `fetchAPI`.
+ */
+export async function fetchBlob(endpoint: string, options?: RequestInit): Promise<Blob> {
+  const token = getToken();
+  const res = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
+  });
+  if (!res.ok) {
+    if (res.status === 401 && !NO_REDIRECT_ON_401.some((p) => endpoint.startsWith(p))) {
+      handleExpiredSession();
+    }
+    const error = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = error.detail || error.error || res.statusText || "Request failed";
+    const err = new Error(message) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  return res.blob();
+}
+
+/**
+ * Hand a Blob to the browser as a download and release the object URL.
+ *
+ * The URL is revoked on the next tick rather than synchronously after
+ * `click()`: revoking it in the same turn can cancel the download before the
+ * browser has read it, which is how a generated PDF or image arrives as an
+ * empty or missing file.
+ */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export interface CityEntry {
   name: string;
   lat: number;
@@ -861,15 +916,11 @@ export const api = {
   getSampleKundli: () =>
     fetchAPI<KundliResponse>("/api/v1/kundli/sample"),
 
-  exportKundliPdf: async (data: BirthData) => {
-    const res = await fetch(`${API_BASE}/api/v1/kundli/export-pdf`, {
+  exportKundliPdf: (data: BirthData) =>
+    fetchBlob("/api/v1/kundli/export-pdf", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("PDF export failed");
-    return res.blob();
-  },
+    }),
 
   analyzeMatching: (boy: BirthData, girl: BirthData) =>
     fetchAPI<MatchingResponse>("/api/v1/matching/analyze", {
@@ -877,15 +928,11 @@ export const api = {
       body: JSON.stringify({ boy, girl }),
     }),
 
-  exportMatchingPdf: async (boy: BirthData, girl: BirthData) => {
-    const res = await fetch(`${API_BASE}/api/v1/matching/export-pdf`, {
+  exportMatchingPdf: (boy: BirthData, girl: BirthData) =>
+    fetchBlob("/api/v1/matching/export-pdf", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ boy, girl }),
-    });
-    if (!res.ok) throw new Error("PDF export failed");
-    return res.blob();
-  },
+    }),
 
   getDailyHoroscope: (sign: string, signal?: AbortSignal) =>
     fetchAPI<HoroscopeResponse>(`/api/v1/horoscope/daily/${sign}?t=${Date.now()}`, { signal }),
