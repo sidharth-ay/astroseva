@@ -49,7 +49,7 @@ const CRYSTALS = [
     color: "#9B59B6",
     properties: ["Calming", "Intuition", "Spiritual Growth"],
     zodiac: ["Pisces", "Aquarius", "Capricorn"],
-    chakras: ["Third Eye", "Crown"],
+    chakras: ["third_eye", "crown"],
     benefits: "Enhances intuition, promotes calm, aids meditation, supports sobriety and sleep.",
   },
   {
@@ -57,7 +57,7 @@ const CRYSTALS = [
     color: "#ECF0F1",
     properties: ["Amplification", "Clarity", "Healing"],
     zodiac: ["Aries", "Leo", "Gemini"],
-    chakras: ["Crown", "All Chakras"],
+    chakras: ["crown", "all_chakras"],
     benefits: "Master healer, amplifies energy, thought, and the effects of other crystals.",
   },
   {
@@ -65,7 +65,7 @@ const CRYSTALS = [
     color: "#F8B4C8",
     properties: ["Love", "Compassion", "Self-Care"],
     zodiac: ["Libra", "Taurus", "Cancer"],
-    chakras: ["Heart"],
+    chakras: ["heart"],
     benefits: "Opens the heart chakra, attracts love, deepens self-love and emotional healing.",
   },
   {
@@ -73,7 +73,7 @@ const CRYSTALS = [
     color: "#F1C40F",
     properties: ["Abundance", "Joy", "Creativity"],
     zodiac: ["Gemini", "Leo", "Virgo"],
-    chakras: ["Solar Plexus", "Sacral"],
+    chakras: ["solar_plexus", "sacral"],
     benefits: "Manifests prosperity, boosts confidence, stimulates creativity and optimism.",
   },
   {
@@ -81,7 +81,7 @@ const CRYSTALS = [
     color: "#1C1C1C",
     properties: ["Protection", "Grounding", "EMF Shield"],
     zodiac: ["Capricorn", "Libra"],
-    chakras: ["Root"],
+    chakras: ["root"],
     benefits: "Powerful protection stone, grounds energy, absorbs negativity and EMF radiation.",
   },
   {
@@ -89,7 +89,7 @@ const CRYSTALS = [
     color: "#2E4A9E",
     properties: ["Truth", "Communication", "Wisdom"],
     zodiac: ["Sagittarius", "Libra"],
-    chakras: ["Throat", "Third Eye"],
+    chakras: ["throat", "third_eye"],
     benefits: "Activates throat and third eye chakras, enhances communication and inner truth.",
   },
   {
@@ -97,7 +97,7 @@ const CRYSTALS = [
     color: "#B8860B",
     properties: ["Courage", "Willpower", "Confidence"],
     zodiac: ["Leo", "Capricorn", "Gemini"],
-    chakras: ["Solar Plexus", "Sacral"],
+    chakras: ["solar_plexus", "sacral"],
     benefits: "Combines earth and sun energy, boosts willpower, attracts wealth and protection.",
   },
   {
@@ -105,7 +105,7 @@ const CRYSTALS = [
     color: "#D6E6F2",
     properties: ["Intuition", "New Beginnings", "Feminine Energy"],
     zodiac: ["Cancer", "Scorpio", "Libra"],
-    chakras: ["Crown", "Third Eye"],
+    chakras: ["crown", "third_eye"],
     benefits: "Stabilizes emotions, enhances intuition, supports new beginnings and cycles.",
   },
   {
@@ -113,13 +113,19 @@ const CRYSTALS = [
     color: "#2C3E6B",
     properties: ["Logic", "Communication", "Truth"],
     zodiac: ["Sagittarius"],
-    chakras: ["Throat", "Third Eye"],
+    chakras: ["throat", "third_eye"],
     benefits: "Bridges logic and intuition, promotes rational thinking and clear communication.",
   },
 ];
 
 const CHAKRAS = [
   {
+    // `id` is what crystals and the backend refer to. It used to be absent, so
+    // the filter dropdown used `name` ("Heart Chakra") while CRYSTALS[].chakras
+    // holds the short form ("Heart") -- so `includes()` never matched and
+    // selecting any chakra always showed "No crystals match the selected
+    // filters". Both vocabularies are now the same seven slugs.
+    id: "root",
     name: "Root Chakra",
     sanskrit: "Muladhara",
     color: "#FF0000",
@@ -130,6 +136,7 @@ const CHAKRAS = [
     methods: ["Grounding meditation", "Walking barefoot", "Root vegetables diet", "Red gemstone therapy"],
   },
   {
+    id: "sacral",
     name: "Sacral Chakra",
     sanskrit: "Svadhisthana",
     color: "#FF7F00",
@@ -140,6 +147,7 @@ const CHAKRAS = [
     methods: ["Hip-opening yoga", "Water therapy", "Creative expression", "Orange gemstone healing"],
   },
   {
+    id: "solar_plexus",
     name: "Solar Plexus Chakra",
     sanskrit: "Manipura",
     color: "#FFFF00",
@@ -150,6 +158,7 @@ const CHAKRAS = [
     methods: ["Core strengthening", "Sunlight exposure", "Breathing exercises", "Yellow gemstone therapy"],
   },
   {
+    id: "heart",
     name: "Heart Chakra",
     sanskrit: "Anahata",
     color: "#00FF00",
@@ -160,6 +169,7 @@ const CHAKRAS = [
     methods: ["Heart-opening meditation", "Gratitude practice", "Nature walks", "Green/pink gemstone healing"],
   },
   {
+    id: "throat",
     name: "Throat Chakra",
     sanskrit: "Vishuddha",
     color: "#0000FF",
@@ -170,6 +180,7 @@ const CHAKRAS = [
     methods: ["Chanting / singing", "Journaling", "Neck stretches", "Blue gemstone therapy"],
   },
   {
+    id: "third_eye",
     name: "Third Eye Chakra",
     sanskrit: "Ajna",
     color: "#4B0082",
@@ -180,6 +191,7 @@ const CHAKRAS = [
     methods: ["Meditation", "Visualization", "Dream journaling", "Indigo gemstone therapy"],
   },
   {
+    id: "crown",
     name: "Crown Chakra",
     sanskrit: "Sahasrara",
     color: "#8B00FF",
@@ -549,8 +561,11 @@ export default function HealingPage() {
                   onChange={(e) => setCrystalFilter({ ...crystalFilter, chakra: e.target.value })}
                 >
                   <option value="">All Chakras</option>
+                  {/* The option value must be the id, which is what
+                      CRYSTALS[].chakras holds. Using the display name here made
+                      every chakra selection match nothing. */}
                   {CHAKRAS.map((ch) => (
-                    <option key={ch.name} value={ch.name}>{ch.name}</option>
+                    <option key={ch.id} value={ch.id}>{ch.name}</option>
                   ))}
                 </select>
                 {(crystalFilter.zodiac || crystalFilter.chakra) && (
@@ -624,7 +639,8 @@ export default function HealingPage() {
                           className="text-[10px] px-1.5 py-0.5 rounded"
                           style={{ background: "#E8B88A22", color: "#E8B88A", border: "1px solid #E8B88A44" }}
                         >
-                          {ch}
+                          {/* Slugs are for matching, not for reading. */}
+                          {CHAKRAS.find((k) => k.id === ch)?.name ?? ch}
                         </span>
                       ))}
                     </div>
