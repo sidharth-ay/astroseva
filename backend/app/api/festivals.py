@@ -7,6 +7,7 @@ depend entirely on latitude and longitude.
 """
 
 from datetime import date
+import asyncio
 import logging
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -56,7 +57,16 @@ async def list_festivals(
         return cached
 
     try:
-        festivals = get_festivals(
+        # Computed in a worker thread. `get_festivals` is synchronous and does
+        # thousands of ephemeris evaluations, so calling it inline here blocked
+        # the event loop: uvicorn runs a single worker, and while it was running,
+        # an unrelated request that otherwise takes 10ms was measured at 14.8s.
+        # Every feature in the app appeared broken at once, which is why this
+        # looked like a project-wide failure rather than one slow endpoint.
+        # `doshas.py` and `chat.py` already offload their blocking work the same
+        # way.
+        festivals = await asyncio.to_thread(
+            get_festivals,
             year=year,
             latitude=latitude,
             longitude=longitude,

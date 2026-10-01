@@ -42,7 +42,11 @@ from .panchang import (
     calculate_sunrise_sunset,
     calculate_tithi,
 )
-from .planets import get_sun_moon_longitudes, get_sun_sidereal_longitude
+from .planets import (
+    get_sun_moon_longitudes,
+    get_sun_moon_longitudes_batch,
+    get_sun_sidereal_longitude,
+)
 
 # --- rule times ------------------------------------------------------------
 
@@ -389,6 +393,23 @@ def _hhmm(hour: float) -> str:
 TITHI_RECOVERY_MINUTES = 20.0
 
 
+def _rounded_instant(d: date, hour: float, tz: float) -> tuple[int, int, int, float, int, float]:
+    """The instant tuple `_tithi_at` would evaluate for a probe hour.
+
+    The rounding here is the same arithmetic `_tithi_at` applies, and it must
+    stay identical: rounding rather than truncation is what keeps a tithi
+    boundary from flipping (see `_tithi_at`), so a batch that rounded
+    differently would silently move festival dates.
+    """
+    h = int(hour)
+    minute = int(round((hour - h) * 60))
+    if minute == 60:
+        h, minute = h + 1, 0
+    h = min(max(h, 0), 23)
+    minute = min(max(minute, 0), 59)
+    return (d.year, d.month, d.day, float(h), minute, tz)
+
+
 def _tithi_at(d: date, hour: float, tz: float) -> tuple[dict, float]:
     """(tithi, moon longitude) at a local clock hour on a date.
 
@@ -398,16 +419,31 @@ def _tithi_at(d: date, hour: float, tz: float) -> tuple[dict, float]:
     so probing at 06:36 reports Krishna Pratipada and loses the month's only
     Purnima. That single miss is what put Holi in January.
     """
-    h = int(hour)
-    minute = int(round((hour - h) * 60))
-    if minute == 60:
-        h, minute = h + 1, 0
-    h = min(max(h, 0), 23)
-    minute = min(max(minute, 0), 59)
-    sun_l, moon_l = get_sun_moon_longitudes(
-        d.year, d.month, d.day, float(h), float(minute), tz
-    )
+    sun_l, moon_l = get_sun_moon_longitudes(*_rounded_instant(d, hour, tz))
     return calculate_tithi(sun_l, moon_l), moon_l
+
+
+def _sample_plan(d: date, lat: float, lon: float, tz: float, rule: str):
+    """Sun times and the probe hours for one day under one rule, ephemeris-free.
+
+    Split out from `_day_sample` so the caller can collect every probe instant in
+    the whole year, evaluate them together, and hand the results back. The
+    probe hours depend only on the day's sunrise and sunset, so planning is
+    cheap; only the tithi lookup needs the ephemeris.
+    """
+    sun_times = calculate_sunrise_sunset(d, lat, lon, tz)
+    if sun_times["sunrise"] is None:
+        return {"sun_times": sun_times, "start": None, "end": None, "probes": []}
+    start, end = _rule_window(rule, sun_times["sunrise"], sun_times["sunset"])
+    probes = [(start + end) / 2.0]
+    if rule == RULE_SUNRISE:
+        probes.append(max(start - TITHI_RECOVERY_MINUTES / 60.0, 0.0))
+    return {
+        "sun_times": sun_times,
+        "start": start,
+        "end": end,
+        "probes": probes,
+    }
 
 
 def _day_sample(d: date, lat: float, lon: float, tz: float, rule: str) -> dict:
@@ -424,16 +460,38 @@ def _day_sample(d: date, lat: float, lon: float, tz: float, rule: str) -> dict:
     midpoint of the sunrise window, in which case the window probe reports the
     NEXT tithi and this one is lost for the whole lunar month. That is not a
     cosmetic miss: occurrence counting then slips by one, and every festival
-    counted after it in that lunar year lands a month early. Ten Shukla
-    Purnimas are missed this way between 2026 and 2033, which is why Holi was
-    reported in January 2028, 2029 and 2030 rather than March.
+    counted after it in that lunar year lands a month early. Ten Shukla Purnimas
+    are missed this way between 2026 and 2033, which is why Holi was reported in
+    January 2028, 2029 and 2030 rather than March.
 
     `alt_tithi` carries the tithi in progress earlier the same day, so the
     caller can accept the day if the target tithi was under way at ANY point
     in the window -- which is what the rules actually mean.
     """
-    sun_times = calculate_sunrise_sunset(d, lat, lon, tz)
-    if sun_times["sunrise"] is None:
+    plan = _sample_plan(d, lat, lon, tz, rule)
+    return _build_sample(d, rule, plan, _evaluate_probes(d, tz, plan["probes"]))
+
+
+def _evaluate_probes(d: date, tz: float, probes: list[float]) -> list[tuple[dict, float]]:
+    """(tithi, moon longitude) for each probe hour on one day."""
+    if not probes:
+        return []
+    longs = get_sun_moon_longitudes_batch(
+        [_rounded_instant(d, hour, tz) for hour in probes]
+    )
+    return [(calculate_tithi(sun_l, moon_l), moon_l) for sun_l, moon_l in longs]
+
+
+def _build_sample(d: date, rule: str, plan: dict, probes: list[tuple[dict, float]]) -> dict:
+    """Assemble a day sample from a plan and its already-computed probe tithis.
+
+    Kept separate so `_compute_year` can evaluate every probe in the year in one
+    batch and then call this per day. The arithmetic below is unchanged from the
+    single-day path; only the source of the tithi values differs.
+    """
+    sun_times = plan["sun_times"]
+    start, end = plan["start"], plan["end"]
+    if start is None:
         # Polar day or polar night: the sun does not cross the horizon, so there
         # is no sunrise window to test. Falling back to the 6.0/18.0 defaults
         # would sample the wrong time and report a festival that the rule
@@ -449,12 +507,9 @@ def _day_sample(d: date, lat: float, lon: float, tz: float, rule: str) -> dict:
             "alt_tithi": None,
             "polar_day_or_night": True,
         }
-    start, end = _rule_window(rule, sun_times["sunrise"], sun_times["sunset"])
-    probe = (start + end) / 2.0
-    tithi, moon_l = _tithi_at(d, probe, tz)
+    tithi, moon_l = probes[0]
 
-    # A tithi can END between sunrise and the midpoint of the sunrise window,
-    # in which case the window probe reports the NEXT tithi and this one is lost
+    # A tithi can END between sunrise and the midpoint of the sunrise window, in which case the window probe reports the NEXT tithi and this one is lost
     # for the whole lunar month. That is not a cosmetic miss: occurrence
     # counting then slips by one and every festival counted after it in that
     # lunar year lands a month early. Ten Shukla Purnimas are missed this way
@@ -470,10 +525,8 @@ def _day_sample(d: date, lat: float, lon: float, tz: float, rule: str) -> dict:
     # month early and broke the correct 2026 Sharad Navratri). Thirty minutes
     # clears the seconds-long edge cases without reaching back past dawn.
     alt_tithi = None
-    if rule == RULE_SUNRISE:
-        alt_tithi, _ = _tithi_at(
-            d, max(start - TITHI_RECOVERY_MINUTES / 60.0, 0.0), tz
-        )
+    if rule == RULE_SUNRISE and len(probes) > 1:
+        alt_tithi, _ = probes[1]
         if (alt_tithi["paksha"], alt_tithi["tithi_number"]) == (
             tithi["paksha"], tithi["tithi_number"]
         ):
@@ -562,16 +615,27 @@ def get_festivals(
         prefix = f"{year:04d}-{month:02d}"
         return [f for f in cached if f["date"].startswith(prefix)]
 
-    festivals = _compute_year(year, latitude, longitude, timezone_offset, month)
+    # The year is computed in full whatever the month, because occurrence
+    # counting needs the whole anchor-to-year window to place the January-March
+    # festivals in the lunar cycle that began the previous April. So the full
+    # set is what gets memoised, and a month request is a filter over it.
+    #
+    # Previously a month request memoised nothing, even though the work done was
+    # identical to the whole-year scan: every month switch in the UI paid the
+    # full cost again (measured 13.7s, then 13.8s for the same month twice).
+    festivals = _compute_year(year, latitude, longitude, timezone_offset)
+
+    if len(_MEMO) >= _MEMO_MAX:
+        _MEMO.pop(next(iter(_MEMO)))
+    _MEMO[key] = festivals
 
     if month is None:
-        if len(_MEMO) >= _MEMO_MAX:
-            _MEMO.pop(next(iter(_MEMO)))
-        _MEMO[key] = festivals
         return list(festivals)
 
-    # Month-scoped results are not memoised as a year, so a later whole-year
-    # request still computes the full set rather than seeing a partial cache.
+    # Filtered here, never inside `_compute_year`, so what lands in the memo is
+    # always the whole year. Passing the month down instead would memoise a
+    # single month under the year-wide key, and every other month would then
+    # come back empty for the life of the process.
     prefix = f"{year:04d}-{month:02d}"
     return [f for f in festivals if f["date"].startswith(prefix)]
 
@@ -605,24 +669,53 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
         days.append(d)
         d += timedelta(days=1)
 
-    # One sample per distinct rule-time per day.
-    samples: dict[tuple[str, date], dict] = {}
-    for d in days:
-        for rule_time in rules_by_time:
-            samples[(rule_time, d)] = _day_sample(d, latitude, longitude, timezone_offset, rule_time)
-
-    # One extra day BEFORE the window, so the first scanned day can be
-    # de-duplicated against its predecessor. The window opens on Mesha
-    # Sankranti, and the tithi still in force at that moment belongs to the
-    # lunar month that closed the day before. Without the lookback there is
-    # nothing to compare against, that stale occurrence is admitted, and every
-    # index after it shifts -- which is how Buddha Purnima came out as
-    # 2026-04-02 instead of 2026-05-01.
+    # One sample per distinct rule-time per day, including one extra day BEFORE
+    # the window (see below).
+    #
+    # The probe hours are collected across every day and rule-time first and
+    # evaluated in a single batch. Evaluating them one at a time through the JPL
+    # kernel was what made a year of scanning take fourteen seconds; the batch
+    # path computes the identical values far faster. Planning is done per
+    # (rule-time, day) exactly as before, so the probe hours -- and therefore the
+    # tithis and the dates derived from them -- do not change.
     lookback = days[0] - timedelta(days=1)
-    for rule_time in rules_by_time:
-        samples[(rule_time, lookback)] = _day_sample(
-            lookback, latitude, longitude, timezone_offset, rule_time
-        )
+    # The lookback day is scanned for the first scanned day to be de-duplicated
+    # against its predecessor. The window opens on Mesha Sankranti, and the tithi
+    # still in force at that moment belongs to the lunar month that closed the
+    # day before. Without it there is nothing to compare against, that stale
+    # occurrence is admitted, and every index after it shifts -- which is how
+    # Buddha Purnima came out as 2026-04-02 instead of 2026-05-01.
+    plan_days = days + [lookback]
+
+    plans: dict[tuple[str, date], dict] = {}
+    for d in plan_days:
+        for rule_time in rules_by_time:
+            plans[(rule_time, d)] = _sample_plan(
+                d, latitude, longitude, timezone_offset, rule_time
+            )
+
+    # One batch for the whole year: every probe instant, in a stable order, with
+    # the index each result belongs to.
+    probe_instants: list[tuple[int, int, int, float, int, float]] = []
+    probe_slots: list[list[int]] = []
+    for key, plan in plans.items():
+        d = key[1]
+        slots = []
+        for hour in plan["probes"]:
+            slots.append(len(probe_instants))
+            probe_instants.append(_rounded_instant(d, hour, timezone_offset))
+        probe_slots.append(slots)
+
+    probe_longs = get_sun_moon_longitudes_batch(probe_instants)
+
+    samples: dict[tuple[str, date], dict] = {}
+    for (key, plan), slots in zip(plans.items(), probe_slots):
+        d = key[1]
+        probes = [
+            (calculate_tithi(sun_l, moon_l), moon_l)
+            for sun_l, moon_l in (probe_longs[i] for i in slots)
+        ]
+        samples[key] = _build_sample(d, key[0], plan, probes)
 
     out: list[dict] = []
     seen: set[tuple[str, date]] = set()
@@ -667,6 +760,39 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
     # before. A rule with no explicit `occurrence` keeps every occurrence, which
     # is what the recurring vratas (Ekadashi, Pradosh, Sankashti Chaturthi)
     # want -- they are defined by the tithi, not by a particular month.
+    # Evening tithis depend only on the day, never on the rule, so they are
+    # built once for the whole window and shared. Each of the four evening
+    # rules used to rebuild this from scratch, costing 366 ephemeris
+    # evaluations apiece for four identical results.
+    #
+    # Computed lazily on first use, and only for a rule that actually asks for
+    # it: hoisting this so it was always populated made the `if evening_tithi
+    # is not None: continue` guard below true for EVERY rule, which silently
+    # skipped the `alt_tithi` recovery for all of them. That recovery is what
+    # rescues a Purnima that ends between sunrise and the window midpoint;
+    # without it occurrence counting slips by one and festivals move a month.
+    # The symptom was Holi and Sharad Navratri landing a month early.
+    _evening_cache: dict | None = None
+
+    def evening_for(d: date) -> dict:
+        nonlocal _evening_cache
+        if _evening_cache is None:
+            # One batch for the whole window, for the same reason as the probe
+            # hours above.
+            _evening_cache = {
+                dd: calculate_tithi(sun_l, moon_l)
+                for dd, (sun_l, moon_l) in zip(
+                    days,
+                    get_sun_moon_longitudes_batch(
+                        [
+                            _rounded_instant(dd, EVENING_HOUR, timezone_offset)
+                            for dd in days
+                        ]
+                    ),
+                )
+            }
+        return _evening_cache[d]
+
     for rule in FESTIVAL_RULES:
         if rule.get("kind") == "solar":
             continue
@@ -674,18 +800,10 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
         target = rule.get("occurrence")
 
         candidates = []
-        evening_tithi = None
-        if rule.get("tithi_source") == "evening":
-            evening_tithi = {}
-            for d in days:
-                e_sun, e_moon = get_sun_moon_longitudes(
-                    d.year, d.month, d.day, EVENING_HOUR, 0, timezone_offset
-                )
-                evening_tithi[d] = calculate_tithi(e_sun, e_moon)
-
+        uses_evening = rule.get("tithi_source") == "evening"
         for d in days:
-            if evening_tithi is not None:
-                t = evening_tithi[d]
+            if uses_evening:
+                t = evening_for(d)
                 basis = "evening"
             else:
                 s = samples[(rule_time, d)]
@@ -696,7 +814,7 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
             ):
                 candidates.append((d, samples[(rule_time, d)], t))
                 continue
-            if evening_tithi is not None:
+            if uses_evening:
                 continue
             # The window probe can land just after a tithi ended, in which case
             # the tithi that was in force a moment earlier still counts: the
@@ -741,10 +859,7 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
             # surface later the same day. Retry in the evening rather than
             # silently dropping the festival.
             for d in days:
-                e_sun, e_moon = get_sun_moon_longitudes(
-                    d.year, d.month, d.day, EVENING_HOUR, 0, timezone_offset
-                )
-                t = calculate_tithi(e_sun, e_moon)
+                t = evening_for(d)
                 if rule["paksha"] is not None and t["paksha"] != rule["paksha"]:
                     continue
                 if t["tithi_number"] != rule["tithi"]:
