@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { BookOpen, ChevronDown, RefreshCw, Sparkles } from "lucide-react";
-import { api, type Mantra, type Chalisa, type Aarti, type MantraCategories } from "@/lib/api";
+import { BookOpen, ChevronDown, RefreshCw, Sparkles, X } from "lucide-react";
+import { api, type Mantra, type Chalisa, type Aarti, type MantraCategories, type MantraFilter } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainerCustom,
@@ -30,8 +30,15 @@ export default function MantraPage() {
   const [categories, setCategories] = useState<MantraCategories | null>(null);
   const [purpose, setPurpose] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [mantras, setMantras] = useState<Mantra[]>([]);
+  const [mantraTotal, setMantraTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<MantraFilter | null>(null);
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState("");
   const reduced = useReducedMotion();
   const seqRef = useRef(0);
+  const listSeqRef = useRef(0);
 
   useEffect(() => {
     document.title = "Mantra, Chalisa & Aarti | AstroSeva";
@@ -84,6 +91,39 @@ export default function MantraPage() {
     fetchTab("mantras");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "mantras") return;
+    const seq = ++listSeqRef.current;
+    // Debounced so typing does not fire a request per keystroke; category
+    // clicks (search empty) run immediately. State is only touched inside the
+    // timer callback so the effect body itself stays side-effect free.
+    const timer = setTimeout(async () => {
+      setListLoading(true);
+      setListError("");
+      try {
+        const res = await api.listMantras({
+          ...filter,
+          q: search.trim() || undefined,
+        });
+        if (seq !== listSeqRef.current) return;
+        setMantras(res.mantras);
+        setMantraTotal(res.total);
+      } catch (e) {
+        if (seq !== listSeqRef.current) return;
+        setListError(e instanceof Error ? e.message : "Failed to load mantras");
+      } finally {
+        if (seq === listSeqRef.current) setListLoading(false);
+      }
+    }, search.trim() ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [activeTab, search, filter]);
+
+  const clearFilters = () => {
+    setFilter(null);
+    setSearch("");
+    setPurpose("all");
+  };
 
   const switchTab = (tab: TabId) => {
     setActiveTab(tab);
@@ -174,7 +214,10 @@ export default function MantraPage() {
             {purposes.map((p) => (
               <button
                 key={p}
-                onClick={() => setPurpose(p)}
+                onClick={() => {
+                  setPurpose(p);
+                  setFilter(p === "all" ? null : { purpose: p });
+                }}
                 className={purpose === p ? "btn-primary text-xs" : "btn-ghost text-xs"}
               >
                 {p === "all" ? "All" : p}
@@ -191,26 +234,144 @@ export default function MantraPage() {
             {(purpose === "all"
               ? [...categories.deity.map((d) => ({ ...d, kind: "Deity" })), ...categories.planet.map((p) => ({ ...p, kind: "Planet" }))]
               : categories.purpose.filter((p) => p.id === purpose).map((p) => ({ ...p, kind: "Purpose" }))
-            ).map((c) => (
-              <motion.div key={`${c.kind}-${c.id}`} className="glass-card p-5" variants={staggerItem}>
-                <p className="text-[10px] font-bold tracking-[0.2em] uppercase mb-1" style={{ color: "#C8956D" }}>
-                  {c.kind}
-                </p>
-                <h3 className="text-base font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
-                  {c.name}
-                </h3>
-                <p className="text-xs mb-2" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                  {c.description}
-                </p>
-                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                  {c.mantra_count} mantras
-                  {"related_mantras" in c && Array.isArray((c as { related_mantras?: string[] }).related_mantras) && (
-                    <> · {(c as { related_mantras: string[] }).related_mantras.slice(0, 3).join(", ")}</>
-                  )}
-                </p>
-              </motion.div>
-            ))}
+            ).map((c) => {
+              const kind = c.kind.toLowerCase();
+              const active = Boolean(filter && filter[kind as keyof MantraFilter] === c.id);
+              const next: MantraFilter =
+                kind === "deity" ? { deity: c.id } : kind === "planet" ? { planet: c.id } : { purpose: c.id };
+              return (
+                <motion.button
+                  type="button"
+                  key={`${c.kind}-${c.id}`}
+                  onClick={() => {
+                    // A category used to be countable but not openable: the card
+                    // showed a total and a list of raw ids, and nothing fetched
+                    // them. Clicking now loads the mantras behind it.
+                    setPurpose("all");
+                    setFilter(active ? null : next);
+                  }}
+                  className="glass-card p-5 text-left w-full cursor-pointer"
+                  style={active ? { boxShadow: "0 0 0 1px #C8956D" } : undefined}
+                  variants={staggerItem}
+                >
+                  <p className="text-[10px] font-bold tracking-[0.2em] uppercase mb-1" style={{ color: "#C8956D" }}>
+                    {c.kind}
+                  </p>
+                  <h3 className="text-base font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                    {c.name}
+                  </h3>
+                  <p className="text-xs mb-2" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                    {c.description}
+                  </p>
+                  <p className="text-xs" style={{ color: active ? "#C8956D" : "var(--text-secondary)" }}>
+                    {c.mantra_count} {c.mantra_count === 1 ? "mantra" : "mantras"}
+                    {active ? " · selected" : ""}
+                    {c.mantra_count === 0 ? " · none declared yet" : ""}
+                  </p>
+                </motion.button>
+              );
+            })}
           </motion.div>
+        </div>
+      )}
+
+      {/* Mantra search and results */}
+      {activeTab === "mantras" && (
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center mb-4">
+            <input
+              type="search"
+              className="input-field text-sm flex-1"
+              placeholder="Search mantras by name, meaning or deity"
+              aria-label="Search mantras"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {(filter || search.trim()) && (
+              <button type="button" onClick={clearFilters} className="btn-ghost text-xs whitespace-nowrap">
+                <X size={14} /> Clear
+              </button>
+            )}
+          </div>
+
+          <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
+            {listLoading
+              ? "Loading mantras…"
+              : `${mantraTotal} ${mantraTotal === 1 ? "mantra" : "mantras"}${filter ? " matching" : ""}`}
+          </p>
+
+          {listError && (
+            <div className="glass-card p-4 mb-4 text-center text-sm" style={{ color: "var(--danger)" }}>
+              {listError}
+            </div>
+          )}
+
+          {!listLoading && !listError && mantras.length === 0 && (
+            <div className="glass-card p-8 text-center">
+              <p className="text-sm mb-3" style={{ color: "var(--text-secondary)" }}>
+                {search.trim()
+                  ? `No mantras match \u201c${search.trim()}\u201d.`
+                  : "No mantras in this category yet."}
+              </p>
+              <button type="button" onClick={clearFilters} className="btn-ghost text-xs">
+                Show all mantras
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {mantras.map((m) => (
+              <div key={m.id} className="glass-card p-5">
+                <button
+                  onClick={() => setExpanded(expanded === m.id ? null : m.id)}
+                  className="w-full flex items-start justify-between gap-3 text-left"
+                >
+                  <div>
+                    <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {m.deity}
+                    </h3>
+                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                      {m.purpose} · {m.planet} · {m.repetitions}×
+                    </p>
+                  </div>
+                  <ChevronDown
+                    size={18}
+                    style={{
+                      color: "#C8956D",
+                      transform: expanded === m.id ? "rotate(180deg)" : "none",
+                      transition: "transform 0.2s",
+                    }}
+                  />
+                </button>
+                <AnimatePresence>
+                  {expanded === m.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <p className="text-lg mt-3 mb-2" style={{ color: "var(--text-primary)", lineHeight: 1.8 }}>
+                        {m.mantra_hindi}
+                      </p>
+                      <p className="text-sm italic mb-3" style={{ color: "var(--champagne)" }}>
+                        {m.transliteration}
+                      </p>
+                      <p className="text-sm mb-3" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
+                        {m.meaning}
+                      </p>
+                      <p className="text-xs mb-3" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
+                        {m.benefits}
+                      </p>
+                      <p className="text-xs" style={{ color: "#C8956D" }}>
+                        Best time: {m.best_time}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

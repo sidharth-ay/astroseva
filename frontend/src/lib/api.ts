@@ -400,10 +400,25 @@ export interface Aarti {
   aarti_transliteration: string[];
 }
 
+export interface MantraCategory {
+  id: string;
+  name: string;
+  description: string;
+  mantra_count: number;
+  related_mantras: string[];
+}
+
 export interface MantraCategories {
-  deity: { id: string; name: string; description: string; mantra_count: number }[];
-  purpose: { id: string; name: string; description: string; mantra_count: number; related_mantras: string[] }[];
-  planet: { id: string; name: string; description: string; mantra_count: number; related_mantras: string[] }[];
+  deity: MantraCategory[];
+  purpose: MantraCategory[];
+  planet: MantraCategory[];
+}
+
+export interface MantraFilter {
+  purpose?: string;
+  planet?: string;
+  deity?: string;
+  q?: string;
 }
 
 export interface Celebrity {
@@ -1164,6 +1179,21 @@ export const api = {
 
   getMantraCategories: () =>
     fetchAPI<MantraCategories>("/api/v1/mantra/categories"),
+
+  listMantras: (filter: MantraFilter = {}) => {
+    const params = new URLSearchParams();
+    if (filter.purpose) params.set("purpose", filter.purpose);
+    if (filter.planet) params.set("planet", filter.planet);
+    if (filter.deity) params.set("deity", filter.deity);
+    if (filter.q) params.set("q", filter.q);
+    const qs = params.toString();
+    return fetchAPI<{ total: number; mantras: Mantra[] }>(
+      `/api/v1/mantra${qs ? `?${qs}` : ""}`
+    );
+  },
+
+  getMantra: (id: string) =>
+    fetchAPI<{ mantra: Mantra }>(`/api/v1/mantra/${encodeURIComponent(id)}`),
 
   getCelebrities: () =>
     fetchAPI<{ celebrities: Celebrity[] }>("/api/v1/celebrity/list"),

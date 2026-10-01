@@ -2,9 +2,52 @@
 
 import random
 from datetime import date
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
 
 router = APIRouter(prefix="/api/v1/mantra", tags=["mantra"])
+
+
+def _members(kind: str, category_id: str) -> list[str]:
+    """Ids of the mantras that actually belong to a category.
+
+    `MANTRA_CATEGORIES` carried hand-written `mantra_count` and
+    `related_mantras` values, and they had drifted from `DAILY_MANTRAS`: the
+    career category claimed a mantra that declares `purpose: "success"` while
+    no mantra declares `purpose: "career"` at all, and peace, sun, jupiter and
+    ketu were each off by one. Counting the real list means a category can
+    never advertise a mantra it does not hold.
+    """
+    members = []
+    for mantra in DAILY_MANTRAS:
+        if kind == "purpose":
+            match = mantra.get("purpose") == category_id
+        elif kind == "planet":
+            match = (mantra.get("planet") or "").lower() == category_id
+        else:
+            # Deity is free text ("Lord Shiva", "Savitr (Sun God)"), so the
+            # category id is matched as a substring of it.
+            match = category_id.lower() in (mantra.get("deity") or "").lower()
+        if match:
+            members.append(mantra["id"])
+    return members
+
+
+def _categories() -> dict:
+    """Categories with their counts and members taken from the mantras."""
+    return {
+        kind: [
+            {
+                "id": entry["id"],
+                "name": entry["name"],
+                "description": entry["description"],
+                "mantra_count": len(members),
+                "related_mantras": members,
+            }
+            for entry in entries
+            for members in [_members(kind, entry["id"])]
+        ]
+        for kind, entries in MANTRA_CATEGORIES.items()
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1106,5 +1149,49 @@ async def get_aartis():
 
 @router.get("/categories")
 async def get_mantra_categories():
-    """Returns mantra categories: deity, purpose, and planet-based."""
-    return MANTRA_CATEGORIES
+    """Returns mantra categories: deity, purpose, and planet-based.
+
+    Counts and member ids are derived from `DAILY_MANTRAS`; see `_members`.
+    """
+    return _categories()
+
+
+@router.get("")
+async def list_mantras(
+    purpose: str | None = Query(None, description="Purpose category id"),
+    planet: str | None = Query(None, description="Planet category id"),
+    deity: str | None = Query(None, description="Deity category id"),
+    q: str | None = Query(None, min_length=1, description="Free-text search"),
+):
+    """List mantras, optionally narrowed by category or free text.
+
+    `/categories` reported a count and a list of ids, and until now no endpoint
+    served those mantras -- a category could be counted but never opened.
+    """
+    results = list(DAILY_MANTRAS)
+    if purpose:
+        results = [m for m in results if m.get("purpose") == purpose]
+    if planet:
+        results = [m for m in results if (m.get("planet") or "").lower() == planet.lower()]
+    if deity:
+        results = [m for m in results if deity.lower() in (m.get("deity") or "").lower()]
+    if q:
+        needle = q.lower()
+        results = [
+            m for m in results
+            if any(
+                needle in (m.get(field) or "").lower()
+                for field in ("id", "deity", "transliteration", "mantra_hindi",
+                              "meaning", "benefits", "purpose", "planet")
+            )
+        ]
+    return {"total": len(results), "mantras": results}
+
+
+@router.get("/{mantra_id}")
+async def get_mantra(mantra_id: str):
+    """One mantra by id. Declared last so `/daily` and friends still match."""
+    for mantra in DAILY_MANTRAS:
+        if mantra["id"] == mantra_id:
+            return {"mantra": mantra}
+    raise HTTPException(status_code=404, detail="Mantra not found.")
