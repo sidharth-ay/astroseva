@@ -21,17 +21,21 @@ const apiOrigin = (() => {
     } catch {
       console.warn(
         `[csp] NEXT_PUBLIC_API_URL is not a valid URL: ${configured}. ` +
-          `Falling back to same-origin only, which will block API calls.`,
+          `Falling back to the local default.`,
       );
     }
   }
-  return null;
+  // Unset, so this must be the same fallback the client uses. It was `'self'`
+  // here while `api.ts` defaulted to 127.0.0.1:8000, and the two files have to
+  // agree: the browser checks this policy before the request is made, so a
+  // `connect-src` that omits the API's real address produces "Failed to
+  // fetch" on login and registration while the backend is perfectly healthy.
+  // `API_BASE_FALLBACK` in src/lib/api.ts is the other half of this pair.
+  return "http://127.0.0.1:8000";
 })();
 
-// `'self'` alone is the right default: in production the API is normally
-// served behind the same host, so naming no domain is both correct and safe.
-const connectSrc =
-  apiOrigin === null ? "'self'" : `'self' ${apiOrigin}`;
+// `'self'` covers a same-origin API; the explicit origin covers a split one.
+const connectSrc = `'self' ${apiOrigin}`;
 
 /**
  * `'unsafe-eval'` and `'unsafe-inline'` in `script-src` together remove almost
@@ -40,10 +44,19 @@ const connectSrc =
  * because Next.js injects bootstrap and inline style props at runtime, and
  * removing it without nonces produces a blank page.
  *
- * `'unsafe-eval'` is not needed for a production React build and has been
- * dropped. If a dev-mode page breaks, it is because this is a production
- * header file; `next dev` does not apply it.
+ * `'unsafe-eval'` is not needed by a production React build, so it is only
+ * granted in development. React's dev runtime calls `eval` to reconstruct
+ * callstacks, and the development overlay needs it; without it the client
+ * throws during evaluation and the page never hydrates. It was previously
+ * dropped unconditionally on the assumption that `next dev` skips this file --
+ * it does not, `headers()` applies in dev as well as production, so the dev
+ * server was serving a policy that broke its own runtime.
  */
+const scriptSrc =
+  process.env.NODE_ENV === "development"
+    ? "'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com"
+    : "'self' 'unsafe-inline' https://fonts.googleapis.com";
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -53,7 +66,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+      `script-src ${scriptSrc}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob:",

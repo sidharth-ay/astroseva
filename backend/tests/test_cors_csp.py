@@ -4,7 +4,9 @@ Two independent things, both of which had been loosened to the point where the
 browser could not do its job.
 """
 
+import os
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -14,14 +16,52 @@ NEXTCONFIG = FRONTEND / "next.config.ts"
 CONFIG_SOURCE = NEXTCONFIG.read_text(encoding="utf-8")
 
 
-def _csp_directives() -> dict[str, str]:
-    """Parse the CSP array out of next.config.ts.
+def _config_expression(name: str, env: dict[str, str]) -> str:
+    """Evaluate one of the config's bindings with Node, under a given env.
 
-    Entries are plain or template literals, so both are matched. A CSP entry is
-    a directive NAME and its sources separated by whitespace -- not a colon, so
-    `default-src 'self'` has to be split on the first space. Splitting on a
-    colon would also mangle the `https://` inside a value.
+    The CSP entries are template literals referencing computed values, so
+    reading the file as text yields `${connectSrc}` rather than the policy. The
+    directives that matter depend on NODE_ENV and NEXT_PUBLIC_API_URL, and those
+    have to be checked -- a test that cannot resolve them would happily pass a
+    policy that blocks the API, which is the bug this file exists to catch.
+
+    Node is used rather than a Python regex or `exec` because the file is
+    TypeScript with comments that contain apostrophes and backticks
+    (`API's real address`), which any line- or comment-based slicing in Python
+    mis-parses. Node parses it the way the build does. Only the bindings before
+    `nextConfig` are evaluated; the config object itself is never constructed.
     """
+    script = f"""
+      const fs = require('fs');
+      const src = fs.readFileSync({str(NEXTCONFIG)!r}, 'utf8');
+      const head = src.split('const nextConfig')[0].replace(/^import type.*$/gm, '');
+      const m = {{ exports: {{}} }};
+      new Function('module', 'exports', head + '\\nmodule.exports = {{ {name} }};')(m, m.exports);
+      process.stdout.write(String(m.exports.{name}));
+    """
+    proc = subprocess.run(
+        ["node", "-e", script],
+        capture_output=True, text=True, env={**os.environ, **env},
+    )
+    if proc.returncode != 0:
+        raise AssertionError(
+            f"could not evaluate {name} from next.config.ts:\n{proc.stderr.strip()}"
+        )
+    return proc.stdout.strip()
+
+
+def _csp_directives(env: dict[str, str] | None = None) -> dict[str, str]:
+    """The real policy, with the config's computed values resolved.
+
+    `env` sets the environment the policy is built under; it defaults to
+    production with no `NEXT_PUBLIC_API_URL`, which is what a deployed build
+    sees.
+    """
+    environ = {"NODE_ENV": "production"}
+    environ.update(env or {})
+    connect_src = _config_expression("connectSrc", environ)
+    script_src = _config_expression("scriptSrc", environ)
+
     block = CONFIG_SOURCE.split('key: "Content-Security-Policy"')[1]
     array = block.split("value: [")[1].split("].join")[0]
     # Drop `//` comments, which carry no directives.
@@ -35,20 +75,38 @@ def _csp_directives() -> dict[str, str]:
         if not entry:
             continue
         name, _, value = entry.partition(" ")
+        value = value.replace("${connectSrc}", connect_src)
+        value = value.replace("${scriptSrc}", script_src)
         directives[name.strip()] = value.strip()
     return directives
 
 
 # --- CSP ----------------------------------------------------------------------
 
-def test_script_src_does_not_allow_eval():
+def test_script_src_never_allows_eval_in_production():
     """`'unsafe-eval'` permits eval(), which makes injection trivially exploitable.
 
-    It is not needed for a production React build. It was removed; `next dev`
-    does not apply this header file, so a development page that needs it is
-    working as intended.
+    It is not needed for a production React build. It IS needed by the dev
+    runtime, so it is granted conditionally on NODE_ENV. This asserts the
+    production half: the branch a deployed build takes must not contain it.
     """
     assert "unsafe-eval" not in _csp_directives()["script-src"]
+
+
+def test_script_src_allows_eval_in_development():
+    """React's dev runtime calls eval() to reconstruct callstacks.
+
+    Without it the client throws while evaluating and the page never hydrates,
+    which looks like an application bug rather than a header problem: the form
+    is present in the HTML source but nothing responds to a click.
+    """
+    dev = _csp_directives({"NODE_ENV": "development"})
+    assert "unsafe-eval" in dev["script-src"], (
+        "the development script-src must allow unsafe-eval or React cannot run"
+    )
+    # ...and development must not weaken the directives that have no dev story.
+    assert dev["object-src"] == "'none'"
+    assert dev["frame-ancestors"] == "'none'"
 
 
 def test_script_src_has_no_wildcard():
@@ -89,18 +147,67 @@ def test_frames_are_denied_in_both_places():
     assert 'value: "DENY"' in CONFIG_SOURCE
 
 
-# --- connect-src must not be hardcoded to localhost ---------------------------
+# --- connect-src must permit where the client actually calls -----------------
 
-def test_connect_src_is_not_hardcoded_to_localhost():
-    """It was, so the policy blocked the API in every deployed environment.
-
-    A browser would refuse the calls and the site would appear broken with
-    nothing in the server logs, because the requests never left the browser.
-    """
-    assert "localhost" not in _csp_directives()["connect-src"], (
-        "connect-src still names localhost, which blocks every real deployment"
+def _client_api_base() -> str:
+    """The origin the browser will request, from api.ts's own resolution."""
+    source = (FRONTEND / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
+    fallback = re.search(
+        r'API_BASE_FALLBACK\s*=\s*"([^"]+)"', source
     )
-    assert "127.0.0.1" not in _csp_directives()["connect-src"]
+    assert fallback, "API_BASE_FALLBACK not found in api.ts"
+    configured = re.search(r"process\.env\.NEXT_PUBLIC_API_URL", source)
+    # With no env file present (the default) the fallback is what is used.
+    return fallback.group(1) if configured else "'self'"
+
+
+def test_connect_src_permits_the_api_origin_the_client_uses():
+    """The regression that made login and registration report "Failed to fetch".
+
+    `next.config.ts` computed `connect-src` as `'self'` when
+    `NEXT_PUBLIC_API_URL` was unset, while `api.ts` fell back to
+    `http://127.0.0.1:8000`. The browser evaluates `connect-src` before sending,
+    so every API call was blocked with nothing in the server logs.
+
+    The previous version of this test asserted `connect-src` contained no
+    localhost, which was true of the broken file and therefore useless. The
+    property that matters is that the directive admits the client's own target.
+    """
+    origin = _client_api_base()
+    if origin == "'self'":
+        pytest.skip("no explicit API fallback to check against")
+    # Checked under development with no API url set, which is how the app runs
+    # by default and therefore how the breakage was reported.
+    connect_src = _csp_directives(
+        {"NODE_ENV": "development", "NEXT_PUBLIC_API_URL": ""}
+    )["connect-src"]
+    assert origin in connect_src, (
+        f"connect-src does not permit {origin}, which is where api.ts sends "
+        "requests, so every call is blocked in the browser"
+    )
+
+
+def test_connect_src_defaults_to_the_shared_constant():
+    """The two files must not be able to drift apart again.
+
+    The config's comment names the client file whose default it mirrors, and
+    the client's names the config. Each points at the other, so a change to one
+    that is not made in the other is visible in review rather than only in the
+    browser.
+    """
+    assert "api.ts" in CONFIG_SOURCE, (
+        "the config's fallback should name the client file it mirrors"
+    )
+    api_src = (FRONTEND / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
+    assert "next.config.ts" in api_src, (
+        "api.ts's fallback should name the config file it mirrors"
+    )
+    # And the literals must actually agree, not just the comments.
+    fallback = re.search(r'API_BASE_FALLBACK\s*=\s*"([^"]+)"', api_src)
+    assert fallback, "API_BASE_FALLBACK not found in api.ts"
+    assert fallback.group(1) in _csp_directives()["connect-src"], (
+        "the two defaults disagree, so the policy blocks the client's requests"
+    )
 
 
 def test_connect_src_is_derived_from_the_configured_api_url():
@@ -110,10 +217,9 @@ def test_connect_src_is_derived_from_the_configured_api_url():
     assert "const connectSrc" in CONFIG_SOURCE
 
 
-def test_connect_src_allows_same_origin_when_no_api_url_is_set():
-    """`'self'` alone is the production default, so parse the branch."""
-    assert "? \"'self'\"" in CONFIG_SOURCE or "'self'" in CONFIG_SOURCE
-    assert "apiOrigin === null" in CONFIG_SOURCE
+def test_connect_src_still_includes_self():
+    """A same-origin deployment must keep working."""
+    assert "'self'" in _csp_directives()["connect-src"]
 
 
 def test_the_api_url_is_reduced_to_an_origin():

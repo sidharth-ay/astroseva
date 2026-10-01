@@ -1,4 +1,15 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+/**
+ * Where the API lives.
+ *
+ * The fallback is half of a pair with the identical default in
+ * next.config.ts: the Content-Security-Policy's `connect-src` is computed from
+ * `NEXT_PUBLIC_API_URL` with the same value, because the browser applies that
+ * policy *before* a request is sent. If the two disagree, a request to this
+ * origin is blocked and the page reports "Failed to fetch" -- with no failed
+ * request in the API logs, because it never left the browser. Change both.
+ */
+const API_BASE_FALLBACK = "http://127.0.0.1:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || API_BASE_FALLBACK;
 
 const REQUEST_TIMEOUT = 60000;
 
