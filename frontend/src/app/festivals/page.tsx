@@ -198,12 +198,31 @@ export default function FestivalsPage() {
           </div>
       </div>
 
+      {/* A failure is stated, with a way to try again. Previously a failed load
+          showed an error line and nothing else, and a slow one showed skeletons
+          indefinitely -- so a page that never populated looked the same as a page
+          that was merely slow, which is how a backend fault was mistaken for the
+          UI being broken. */}
       {error && (
-        <p className="text-center mb-6" style={{ color: "var(--danger)" }}>{error}</p>
+        <div
+          className="glass-card p-6 mb-6 text-center"
+          role="alert"
+        >
+          <p className="text-sm mb-4" style={{ color: "var(--danger)" }}>
+            {error}
+          </p>
+          <button onClick={load} disabled={loading} className="btn-primary">
+            {loading ? "Please wait…" : "Try again"}
+          </button>
+        </div>
       )}
 
-      {loading && (
-        <div className="space-y-4">
+      {loading && !error && (
+        <div className="space-y-4" aria-busy="true" aria-live="polite">
+          <p className="text-sm text-center" style={{ color: "var(--text-tertiary)" }}>
+            Computing festival dates from the ephemeris. This takes a few seconds
+            the first time for a year, then is cached.
+          </p>
           {[1, 2, 3].map((i) => (
             <div key={i} className="glass-card p-6">
               <div className="shimmer h-24 w-full rounded-lg" />
