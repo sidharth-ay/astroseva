@@ -20,7 +20,7 @@ from slowapi.errors import RateLimitExceeded
 from .core.rate_limit import limiter
 from .services.auth_service import get_current_user, require_admin
 
-from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities, transit, gemstones, varshphal, baby_names, festivals, lalkitab, reports, celebrity, mantra, healing
+from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities, transit, gemstones, varshphal, baby_names, festivals, lalkitab, reports, celebrity, mantra, healing, settings
 from .api import astrologers, admin_astrologers, directory
 from .db.database import init_db
 # Importing this module registers the background job handlers.
@@ -202,6 +202,7 @@ app.include_router(reports.router, dependencies=require_auth)
 app.include_router(celebrity.router, dependencies=require_auth)
 app.include_router(mantra.router, dependencies=require_auth)
 app.include_router(healing.router, dependencies=require_auth)
+app.include_router(settings.router, dependencies=require_auth)
 
 # Astrologer marketplace. Each carries its own role dependency rather than the
 # plain require_auth, so authorisation cannot be forgotten per-endpoint:

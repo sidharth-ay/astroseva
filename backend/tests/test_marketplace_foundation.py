@@ -144,13 +144,45 @@ def test_registered_handlers_present():
 
 
 def test_migration_history_is_linear_from_baseline():
-    """The schema is now versioned; a second head would break `upgrade head`."""
+    """The schema is versioned; a second head would break `upgrade head`.
+
+    The chain is checked rather than a frozen list of filenames, so adding a
+    migration does not turn this into a tripwire -- only a genuinely branched
+    or unchained history should fail.
+    """
     import pathlib
-    versions = sorted(
-        p.name for p in pathlib.Path("migrations/versions").glob("*.py")
-        if not p.name.startswith("__")
-    )
-    assert versions == ["0001_baseline.py", "0002_astrologer_marketplace.py"]
+    import re
+
+    revisions = {}
+    for path in sorted(pathlib.Path("migrations/versions").glob("*.py")):
+        if path.name.startswith("__"):
+            continue
+        src = path.read_text(encoding="utf-8")
+        rev = re.search(r'^revision\s*(?::[^=]+)?=\s*["\']([^"\']+)["\']', src, re.M)
+        down = re.search(r'^down_revision\s*(?::[^=]+)?=\s*(.+)$', src, re.M)
+        assert rev, f"{path.name} does not declare a revision"
+        raw = down.group(1).strip().rstrip(",") if down else "None"
+        # The baseline declares `down_revision = None`, which is the root of the
+        # chain rather than a revision named "None".
+        parent = raw if raw.startswith(('"', "'")) else None
+        revisions[rev.group(1)] = parent.strip('"\'') if parent else None
+
+    assert len(revisions) == len(set(revisions)), "two files declare the same revision"
+
+    # Exactly one head: nothing else is a parent.
+    parents = {down for down in revisions.values() if down is not None}
+    heads = [rev for rev in revisions if rev not in parents]
+    assert len(heads) == 1, f"expected one head, found {heads}"
+
+    # Walk down to the baseline; every parent must exist.
+    seen, cursor = set(), heads[0]
+    while cursor is not None:
+        assert cursor not in seen, f"cycle at {cursor}"
+        seen.add(cursor)
+        assert cursor in revisions, f"{cursor} is a parent but has no migration file"
+        cursor = revisions[cursor]
+
+    assert "0001_baseline" in seen, "history no longer reaches the baseline"
 
 
 def test_users_has_a_role_column_with_a_default():

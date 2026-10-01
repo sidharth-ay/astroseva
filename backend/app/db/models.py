@@ -5,6 +5,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
+from ..core.houses import DEFAULT_HOUSE_SYSTEM
 from .database import Base
 
 # Account kinds. Stored as a plain string rather than a database Enum because the
@@ -265,4 +266,24 @@ class JobRun(Base):
     attempts = Column(Integer, nullable=False, default=0)
     last_error = Column(Text, nullable=True)
     run_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    finished_at = Column(DateTime, nullable=True)
+finished_at = Column(DateTime, nullable=True)
+
+
+class UserSettings(Base):
+    """Per-user calculation settings.
+
+    One row per user, written on first save rather than at registration, so
+    existing accounts pick up the defaults with no backfill.
+    """
+
+    __tablename__ = "user_settings"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    # whole-sign | equal -- see app.core.houses.HOUSE_SYSTEMS
+    house_system = Column(String(32), nullable=False, default=DEFAULT_HOUSE_SYSTEM)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )

@@ -1,6 +1,6 @@
 """Kundli (Birth Chart) API endpoints."""
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from ..core.rate_limit import limiter
 from fastapi.responses import StreamingResponse
 from datetime import datetime, timezone
@@ -13,7 +13,8 @@ from ..models.birth_data import BirthData
 from ..models.response import KundliResponse, PlanetResponse
 from ..core.planets import get_planetary_positions, get_retrograde_planets, get_exalted_planets, get_debilitated_planets
 from ..core.rashis import RASHI_NAMES
-from ..core.houses import get_kundli_chart, get_planets_in_houses
+from ..core.houses import DEFAULT_HOUSE_SYSTEM, get_kundli_chart, get_planets_in_houses
+from ..services.settings_service import house_system_setting
 from ..core.nakshatras import get_nakshatra_from_longitude
 from ..core.dasha import get_dasha_for_birth
 from ..services.cache_service import cache_service
@@ -35,7 +36,11 @@ def _validate_birth_data(birth_data: BirthData) -> None:
         raise HTTPException(status_code=400, detail="Name is required")
 
 
-def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") -> dict:
+def _generate_kundli_data(
+    birth_data: BirthData,
+    ayanamsa_type: str = "lahiri",
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
+) -> dict:
     """Generate kundli data from birth details. Shared by generate and PDF export."""
     _validate_birth_data(birth_data)
 
@@ -72,9 +77,9 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
         )
         planets.append(planet_response)
 
-    # Get houses (whole-sign, AstroSage convention)
+    # Get houses under the user's chosen house system
     planet_dicts = [{"planet": p.planet, "longitude": p.longitude} for p in planets]
-    houses = get_planets_in_houses(planet_dicts, positions["ascendant"])
+    houses = get_planets_in_houses(planet_dicts, positions["ascendant"], house_system)
 
     # Attach house numbers to PlanetResponse objects
     for p in planets:
@@ -84,7 +89,7 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
                 break
 
     # Get chart
-    chart = get_kundli_chart(positions["ascendant"], planet_dicts)
+    chart = get_kundli_chart(positions["ascendant"], planet_dicts, house_system)
 
     # Get retrograde, exalted, debilitated
     retrograde = get_retrograde_planets(positions["planets"])
@@ -224,7 +229,12 @@ def _generate_kundli_data(birth_data: BirthData, ayanamsa_type: str = "lahiri") 
 
 @router.post("/generate", response_model=KundliResponse)
 @limiter.limit("30/minute")
-async def generate_kundli(request: Request, birth_data: BirthData, ayanamsa_type: str = Query("lahiri", alias="ayanamsa_type")):
+async def generate_kundli(
+    request: Request,
+    birth_data: BirthData,
+    ayanamsa_type: str = Query("lahiri", alias="ayanamsa_type"),
+    house_system: str = Depends(house_system_setting),
+):
     """Generate a Vedic birth chart (Kundli)."""
     # Validate ayanamsa_type
     valid_ayanamsas = {"lahiri", "kp", "b_v_raman", "surya_siddhanta"}
@@ -236,14 +246,16 @@ async def generate_kundli(request: Request, birth_data: BirthData, ayanamsa_type
         f"kundli:{birth_data.name}:{birth_data.birth_date}:"
         f"{birth_data.birth_time}:{birth_data.birth_place}:"
         f"{birth_data.latitude}:{birth_data.longitude}:"
-        f"{birth_data.timezone_offset}:{ayanamsa_type}"
+        f"{birth_data.timezone_offset}:{ayanamsa_type}:{house_system}"
     )
     cached = await cache_service.get(cache_key)
     if cached:
         return KundliResponse(**cached)
 
     try:
-        data = _generate_kundli_data(birth_data, ayanamsa_type=ayanamsa_type)
+        data = _generate_kundli_data(
+            birth_data, ayanamsa_type=ayanamsa_type, house_system=house_system
+        )
 
         response = KundliResponse(
             name=birth_data.name,
@@ -290,6 +302,7 @@ async def generate_kundli(request: Request, birth_data: BirthData, ayanamsa_type
 async def get_sample_kundli(
     request: Request,
     ayanamsa_type: str = Query("lahiri", alias="ayanamsa_type"),
+    house_system: str = Depends(house_system_setting),
 ):
     """Get a sample kundli for testing."""
     sample_data = BirthData(
@@ -304,15 +317,21 @@ async def get_sample_kundli(
     # `generate_kundli` takes (request, birth_data, ayanamsa_type) because the
     # rate limiter needs the request. This endpoint called it with one
     # positional argument, so every hit raised TypeError and surfaced as a 500.
-    return await generate_kundli(request, sample_data, ayanamsa_type=ayanamsa_type)
+    return await generate_kundli(
+        request, sample_data, ayanamsa_type=ayanamsa_type, house_system=house_system
+    )
 
 
 @router.post("/export-pdf")
 @limiter.limit("30/minute")
-async def export_kundli_pdf(request: Request, birth_data: BirthData):
+async def export_kundli_pdf(
+    request: Request,
+    birth_data: BirthData,
+    house_system: str = Depends(house_system_setting),
+):
     """Export Kundli as PDF. Uses the same calculation path as generate."""
     try:
-        data = _generate_kundli_data(birth_data)
+        data = _generate_kundli_data(birth_data, house_system=house_system)
 
         kundli_data = {
             "name": birth_data.name,

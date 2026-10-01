@@ -1,7 +1,7 @@
 """Dosha detection API endpoints."""
 
 from datetime import date
-from fastapi import APIRouter, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from ..core.rate_limit import limiter
 import logging
 import asyncio
@@ -9,7 +9,8 @@ import asyncio
 from ..models.birth_data import BirthData
 from ..models.response import DoshaResponse
 from ..core.planets import get_planetary_positions
-from ..core.houses import get_house_from_longitude
+from ..core.houses import DEFAULT_HOUSE_SYSTEM, get_house_from_longitude
+from ..services.settings_service import house_system_setting
 from ..core.doshas import detect_all_doshas, detect_manglik, detect_sade_sati, detect_pitru_dosha, get_transit_saturn_sign, get_sade_sati_periods
 from ..services.remedy_service import build_remedies
 from ..services.cache_service import cache_service
@@ -19,12 +20,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/doshas", tags=["doshas"])
 
 
-def _planets_with_houses(positions: dict) -> tuple:
-    """Attach whole-sign houses to planet dicts; return (planets, asc_sign, moon_sign)."""
+def _planets_with_houses(
+    positions: dict,
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
+) -> tuple:
+    """Attach houses under the chosen house system; return (planets, asc_sign, moon_sign)."""
     asc_sign = int(positions["ascendant"] / 30)
     moon_sign = 0
     for planet in positions["planets"]:
-        planet["house"] = get_house_from_longitude(planet.get("longitude", 0), positions["ascendant"])
+        planet["house"] = get_house_from_longitude(
+            planet.get("longitude", 0), positions["ascendant"], house_system
+        )
         if planet.get("planet") == "Moon":
             moon_sign = planet.get("sign", 0)
     return positions["planets"], asc_sign, moon_sign
@@ -51,13 +57,15 @@ async def detect_doshas(
     request: Request,
     birth_data: BirthData,
     as_of_date: date | None = Query(default=None, description="As-of date for Sade Sati transit (default today)"),
+    house_system: str = Depends(house_system_setting),
 ):
     """Detect all doshas in a birth chart."""
     _validate_location(birth_data)
     as_of = (as_of_date or date.today()).isoformat()
     cache_key = (
         f"doshas:{birth_data.birth_date}:{birth_data.birth_time}:"
-        f"{birth_data.latitude}:{birth_data.longitude}:{birth_data.timezone_offset}:{as_of}"
+        f"{birth_data.latitude}:{birth_data.longitude}:{birth_data.timezone_offset}:{as_of}:"
+        f"{house_system}"
     )
     cached = await cache_service.get(cache_key)
     # Only trust a cache entry that carries every field DoshaResponse requires.
@@ -81,7 +89,7 @@ async def detect_doshas(
         )
 
         # Get ascendant and moon signs
-        planets, asc_sign, moon_sign = _planets_with_houses(positions)
+        planets, asc_sign, moon_sign = _planets_with_houses(positions, house_system)
 
         # Detect doshas (Sade Sati uses transit Saturn as of the given date)
         doshas = detect_all_doshas(
@@ -117,13 +125,15 @@ async def get_remedies(
     birth_data: BirthData,
     language: str = "en",
     as_of_date: date | None = Query(default=None, description="As-of date for Sade Sati transit (default today)"),
+    house_system: str = Depends(house_system_setting),
 ):
     """Get remedies for detected doshas."""
     _validate_location(birth_data)
     as_of = (as_of_date or date.today()).isoformat()
     cache_key = (
         f"remedies:{birth_data.birth_date}:{birth_data.birth_time}:"
-        f"{birth_data.latitude}:{birth_data.longitude}:{language}:{as_of}"
+        f"{birth_data.latitude}:{birth_data.longitude}:{language}:{as_of}:"
+        f"{house_system}"
     )
     cached = await cache_service.get(cache_key)
     if cached:
@@ -142,7 +152,7 @@ async def get_remedies(
             longitude=birth_data.longitude,
         )
 
-        planets, asc_sign, moon_sign = _planets_with_houses(positions)
+        planets, asc_sign, moon_sign = _planets_with_houses(positions, house_system)
 
         doshas = detect_all_doshas(
             planets=planets,

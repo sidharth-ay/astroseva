@@ -598,6 +598,17 @@ export interface RemedyReport {
   note?: string;
 }
 
+/**
+ * Calculation preferences stored per user on the server. `house_system` is
+ * not display-only: every chart endpoint reads it per request and includes
+ * it in its cache key, so changing it changes the houses that are computed.
+ */
+export interface SettingsResponse {
+  house_system: string;
+  house_systems: string[];
+  default_house_system: string;
+}
+
 // Endpoints where a 401 is a normal, expected response rather than an expired
 // session: bad credentials on login, or a register attempt. Redirecting there
 // would bounce the user off the form instead of showing the error.
@@ -1465,4 +1476,12 @@ export const api = {
 
   getAuditTrail: (id: number) =>
     fetchAuth<{ events: OnboardingEvent[] }>(`/api/v1/admin/astrologers/${id}/audit`),
+
+  getSettings: () => fetchAPI<SettingsResponse>("/api/v1/settings"),
+
+  updateSettings: (house_system: string) =>
+    fetchAPI<SettingsResponse>("/api/v1/settings", {
+      method: "PUT",
+      body: JSON.stringify({ house_system }),
+    }),
 };

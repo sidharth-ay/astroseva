@@ -1,12 +1,13 @@
 """Gemstone recommendation API."""
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from ..core.rate_limit import limiter
 import logging
 
 from ..models.birth_data import BirthData
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
+from ..services.settings_service import house_system_setting
 from ..core.planets import _get_dignity
 from ..core.rashis import RASHI_NAMES
 from ..core.grahayukti import COMBUST_DEGREES
@@ -26,7 +27,11 @@ GEMSTONE_MAP = {
 
 @router.post("/recommend")
 @limiter.limit("60/minute")
-async def recommend_gemstones(request: Request, birth_data: BirthData):
+async def recommend_gemstones(
+    request: Request,
+    birth_data: BirthData,
+    house_system: str = Depends(house_system_setting),
+):
     """Recommend gemstones based on birth chart."""
     try:
         # The birth coordinates must be passed: the ascendant depends on where
@@ -91,7 +96,7 @@ async def recommend_gemstones(request: Request, birth_data: BirthData):
             dignity = _get_dignity(name, p["sign"])
             limit = COMBUST_DEGREES.get(name)
             combust = limit is not None and _separation(p["longitude"]) < limit
-            house = get_house_from_longitude(p["longitude"], positions["ascendant"])
+            house = get_house_from_longitude(p["longitude"], positions["ascendant"], house_system)
 
             if combust:
                 condition = "combust"

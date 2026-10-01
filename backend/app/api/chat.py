@@ -1,6 +1,6 @@
 """AI Chat API endpoint for talking with AstroSeva AI."""
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from ..core.rate_limit import limiter
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
@@ -8,6 +8,9 @@ import asyncio
 import logging
 
 from ..services.ai_service import configure_gemini, get_model_name, SYSTEM_PROMPT
+
+from ..core.houses import DEFAULT_HOUSE_SYSTEM
+from ..services.settings_service import house_system_setting
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +33,10 @@ class ChatRequest(BaseModel):
 # Chart computation from raw birth data
 # ---------------------------------------------------------------------------
 
-def compute_chat_birth_context(birth_details: dict) -> str:
+def compute_chat_birth_context(
+    birth_details: dict,
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
+) -> str:
     """Compute chart from birth details and return a concise summary for AI."""
     try:
         from ..core.planets import get_planetary_positions
@@ -66,7 +72,7 @@ def compute_chat_birth_context(birth_details: dict) -> str:
 
         # Compute houses
         planet_dicts = [{"planet": p["planet"], "longitude": p["longitude"], "sign": p["sign"]} for p in planets]
-        houses = get_planets_in_houses(planet_dicts, result["ascendant"])
+        houses = get_planets_in_houses(planet_dicts, result["ascendant"], house_system)
 
         # Assign house numbers to planets
         for p in planets:
@@ -163,8 +169,10 @@ def detect_user_intent(message: str) -> str:
 # Feature response handlers
 # ---------------------------------------------------------------------------
 
-def handle_kundli_intent(birth_details: dict) -> str:
-    context = compute_chat_birth_context(birth_details)
+def handle_kundli_intent(
+    birth_details: dict, house_system: str = DEFAULT_HOUSE_SYSTEM
+) -> str:
+    context = compute_chat_birth_context(birth_details, house_system)
     if not context:
         return "I'd love to generate your Kundli, but I need your birth details. Please visit /kundli to enter your birth date, time, and place, and your chart will be generated instantly!"
     name = birth_details.get("name", "friend")
@@ -175,8 +183,10 @@ def handle_matching_intent(birth_details: dict) -> str:
     return "Marriage matching (Ashtakoot Gun Milan) requires both partners' birth details — name, date, time, and place of birth.\n\nVisit /matching to enter both birth details and get a complete compatibility analysis with 8 koota scores out of 36 points, Nadi Dosha detection, and a personalized recommendation.\n\nWould you like to know what each koota means?"
 
 
-def handle_dosha_check_intent(birth_details: dict) -> str:
-    context = compute_chat_birth_context(birth_details)
+def handle_dosha_check_intent(
+    birth_details: dict, house_system: str = DEFAULT_HOUSE_SYSTEM
+) -> str:
+    context = compute_chat_birth_context(birth_details, house_system)
     if not context:
         return "To check your doshas, I need your birth details. Please visit /kundli first to generate your chart."
     dosha_lines = [line for line in context.split('\n') if 'Dosha' in line or 'Manglik' in line or 'Sade' in line or 'Pitru' in line]
@@ -224,7 +234,13 @@ def build_chat_prompt(message: str, history: list, language: str = "en", birth_c
 # Generate response
 # ---------------------------------------------------------------------------
 
-async def generate_chat_response(message: str, history: list, language: str = "en", birth_details: dict = None) -> str:
+async def generate_chat_response(
+    message: str,
+    history: list,
+    language: str = "en",
+    birth_details: dict = None,
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
+) -> str:
     """Generate a chat response with intent detection and feature handling."""
     from ..services.ai_service import _gemini_quota_exhausted, _quota_retry_after
     import time as _time
@@ -232,11 +248,11 @@ async def generate_chat_response(message: str, history: list, language: str = "e
     intent = detect_user_intent(message)
 
     if intent == "kundli" and birth_details:
-        return handle_kundli_intent(birth_details)
+        return handle_kundli_intent(birth_details, house_system)
     if intent == "matching":
         return handle_matching_intent(birth_details)
     if intent == "dosha_check" and birth_details:
-        return handle_dosha_check_intent(birth_details)
+        return handle_dosha_check_intent(birth_details, house_system)
     if intent == "horoscope":
         return handle_horoscope_intent()
     if intent == "numerology":
@@ -246,13 +262,13 @@ async def generate_chat_response(message: str, history: list, language: str = "e
     if _gemini_quota_exhausted and _time.time() < _quota_retry_after:
         birth_context = ""
         if birth_details:
-            birth_context = compute_chat_birth_context(birth_details)
+            birth_context = compute_chat_birth_context(birth_details, house_system)
         return generate_local_chat_response(message, birth_details, birth_context)
 
     model = configure_gemini()
     birth_context = ""
     if birth_details:
-        birth_context = compute_chat_birth_context(birth_details)
+        birth_context = compute_chat_birth_context(birth_details, house_system)
 
     if model is None:
         return generate_local_chat_response(message, birth_details, birth_context)
@@ -803,7 +819,11 @@ def generate_local_chat_response(message: str, birth_details: dict = None, birth
 
 @router.post("/send")
 @limiter.limit("30/minute")
-async def send_chat_message(request: Request, payload: ChatRequest):
+async def send_chat_message(
+    request: Request,
+    payload: ChatRequest,
+    house_system: str = Depends(house_system_setting),
+):
     """Send a chat message to AstroSeva AI."""
     try:
         history_data = [msg.model_dump() for msg in (payload.history or [])]
@@ -812,6 +832,7 @@ async def send_chat_message(request: Request, payload: ChatRequest):
             history=history_data,
             language=payload.language or "en",
             birth_details=payload.birth_details,
+            house_system=house_system,
         )
         return {"response": response, "model": get_model_name()}
     except Exception as e:

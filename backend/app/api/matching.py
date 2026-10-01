@@ -2,7 +2,7 @@
 
 import io
 import re
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from ..core.rate_limit import limiter
 from fastapi.responses import StreamingResponse
 from datetime import datetime
@@ -12,6 +12,7 @@ from ..models.birth_data import BirthData, MatchingData, LoveMatchData
 from ..models.response import LoveMatchResponse, MatchingResponse
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
+from ..services.settings_service import house_system_setting
 from ..core.rashis import RASHI_NAMES
 from ..core.matching import analyze_matching
 from ..core.doshas import detect_manglik
@@ -140,7 +141,11 @@ async def get_sample_matching(request: Request):
 
 @router.post("/export-pdf")
 @limiter.limit("30/minute")
-async def export_matching_pdf(request: Request, matching_data: MatchingData):
+async def export_matching_pdf(
+    request: Request,
+    matching_data: MatchingData,
+    house_system: str = Depends(house_system_setting),
+):
     """Export marriage matching report as PDF, including Manglik cross-check."""
     try:
         # `analyze_marriage_matching` takes the request first, for the rate
@@ -160,7 +165,9 @@ async def export_matching_pdf(request: Request, matching_data: MatchingData):
             asc_sign = int(positions["ascendant"] / 30)
             moon_sign = next((p["sign"] for p in planets if p.get("planet") == "Moon"), 0)
             for p in planets:
-                p["house"] = get_house_from_longitude(p["longitude"], positions["ascendant"])
+                p["house"] = get_house_from_longitude(
+                    p["longitude"], positions["ascendant"], house_system
+                )
             m = detect_manglik(planets, asc_sign, moon_sign)
             if m.get("is_manglik"):
                 return f"Manglik ({m.get('severity', 'Present')})"

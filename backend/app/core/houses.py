@@ -2,6 +2,14 @@
 
 from typing import Optional
 
+# The house systems this app can compute, and the default used when a user
+# has not chosen one. "whole-sign" follows the North-Indian Rasi convention;
+# "equal" is the Bhava-style 30-degree slice from the Lagna longitude.
+HOUSE_SYSTEM_WHOLE_SIGN = "whole-sign"
+HOUSE_SYSTEM_EQUAL = "equal"
+HOUSE_SYSTEMS = (HOUSE_SYSTEM_WHOLE_SIGN, HOUSE_SYSTEM_EQUAL)
+DEFAULT_HOUSE_SYSTEM = HOUSE_SYSTEM_WHOLE_SIGN
+
 # House names
 HOUSE_NAMES = {
     1: {"en": "Lagna/Ascendant", "hi": "लग्न", "keywords": ["self", "personality", "appearance", "health"]},
@@ -78,14 +86,18 @@ def get_house_lord(house_number: int) -> str:
     return NATURAL_HOUSE_LORDS[house_number]
 
 
-def get_house_from_longitude(longitude: float, asc_longitude: float, house_system: str = "whole-sign") -> int:
+def get_house_from_longitude(
+    longitude: float,
+    asc_longitude: float,
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
+) -> int:
     """Get house number from planet longitude and ascendant longitude.
 
     Default "whole-sign" follows the North-Indian Rasi-chart convention
     (same as AstroSage): house = signs counted from the Lagna sign.
     "equal" keeps the old Bhava-style 30-degree slices from Lagna longitude.
     """
-    if house_system == "whole-sign":
+    if house_system == HOUSE_SYSTEM_WHOLE_SIGN:
         return (int(longitude / 30) - int(asc_longitude / 30)) % 12 + 1
     # Equal-house fallback (Bhava style)
     relative_long = (longitude - asc_longitude) % 360
@@ -95,18 +107,26 @@ def get_house_from_longitude(longitude: float, asc_longitude: float, house_syste
     return house
 
 
-def get_planets_in_houses(planets: list[dict], asc_longitude: float) -> dict:
+def get_planets_in_houses(
+    planets: list[dict],
+    asc_longitude: float,
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
+) -> dict:
     """Assign planets to houses based on their longitudes."""
     houses = {i: [] for i in range(1, 13)}
 
     for planet in planets:
-        house = get_house_from_longitude(planet["longitude"], asc_longitude)
+        house = get_house_from_longitude(planet["longitude"], asc_longitude, house_system)
         houses[house].append(planet["planet"])
 
     return houses
 
 
-def get_kundli_chart(asc_longitude: float, planets: list[dict]) -> dict:
+def get_kundli_chart(
+    asc_longitude: float,
+    planets: list[dict],
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
+) -> dict:
     """Generate a North Indian style Kundli chart."""
     asc_sign = int(asc_longitude / 30)
 
@@ -121,7 +141,7 @@ def get_kundli_chart(asc_longitude: float, planets: list[dict]) -> dict:
 
     # Place planets in houses
     for planet in planets:
-        house = get_house_from_longitude(planet["longitude"], asc_longitude)
+        house = get_house_from_longitude(planet["longitude"], asc_longitude, house_system)
         chart[house]["planets"].append(planet["planet"])
 
     return chart
@@ -141,11 +161,16 @@ def is_house_malefic(house_number: int, planet: str) -> bool:
     return planet in HOUSE_NATURE[house_number]["malefic"]
 
 
-def get_house_strength(house_number: int, planets: list[dict], asc_longitude: float) -> str:
+def get_house_strength(
+    house_number: int,
+    planets: list[dict],
+    asc_longitude: float,
+    house_system: str = DEFAULT_HOUSE_SYSTEM,
+) -> str:
     """Evaluate house strength based on occupants and aspects."""
     house_planets = []
     for planet in planets:
-        house = get_house_from_longitude(planet["longitude"], asc_longitude)
+        house = get_house_from_longitude(planet["longitude"], asc_longitude, house_system)
         if house == house_number:
             house_planets.append(planet)
 

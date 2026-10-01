@@ -1,6 +1,6 @@
 """Personalized astrology reports API."""
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from ..core.rate_limit import limiter
 from pydantic import BaseModel
 from typing import Optional
@@ -9,6 +9,7 @@ import logging
 from ..models.birth_data import BirthData
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
+from ..services.settings_service import house_system_setting
 from ..services.ai_service import generate_prediction, generate_fallback_prediction
 from ..services.cache_service import cache_service
 
@@ -31,7 +32,11 @@ HOUSE_NAMES = {
 
 @router.post("/generate")
 @limiter.limit("30/minute")
-async def generate_report(request: Request, payload: ReportRequest):
+async def generate_report(
+    request: Request,
+    payload: ReportRequest,
+    house_system: str = Depends(house_system_setting),
+):
     """Generate a personalized astrology report."""
     try:
         bd = payload.birth_data
@@ -50,7 +55,7 @@ async def generate_report(request: Request, payload: ReportRequest):
         planet_signs = {p["planet"]: RASHI_NAMES[p["sign"]] for p in positions["planets"]}
         planet_houses = {}
         for p in positions["planets"]:
-            h = get_house_from_longitude(p["longitude"], positions["ascendant"])
+            h = get_house_from_longitude(p["longitude"], positions["ascendant"], house_system)
             planet_houses[p["planet"]] = h
 
         # Build birth details for AI
@@ -111,7 +116,7 @@ async def generate_report(request: Request, payload: ReportRequest):
             cache_key = (
                 f"report:{bd.birth_date}:{bd.birth_time}:{bd.latitude}:"
                 f"{bd.longitude}:{bd.timezone_offset}:"
-                f"{payload.report_type}"
+                f"{payload.report_type}:{house_system}"
             )
             cached = await cache_service.get(cache_key)
             if cached:

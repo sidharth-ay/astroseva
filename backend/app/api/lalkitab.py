@@ -1,11 +1,12 @@
 """Lal Kitab chart and remedies API."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 import logging
 
 from ..models.birth_data import BirthData
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
+from ..services.settings_service import house_system_setting
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/lalkitab", tags=["lalkitab"])
@@ -136,7 +137,10 @@ RASHI_NAMES = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
                "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
 
 @router.post("/chart")
-async def get_lalkitab_chart(birth_data: BirthData):
+async def get_lalkitab_chart(
+    birth_data: BirthData,
+    house_system: str = Depends(house_system_setting),
+):
     """Generate Lal Kitab chart with house placements and remedies."""
     try:
         # The birth coordinates must be passed: the ascendant depends on where
@@ -161,7 +165,7 @@ async def get_lalkitab_chart(birth_data: BirthData):
         planet_signs = {}
         for p in positions["planets"]:
             planet_houses[p["planet"]] = get_house_from_longitude(
-                p["longitude"], positions["ascendant"]
+                p["longitude"], positions["ascendant"], house_system
             )
             planet_signs[p["planet"]] = RASHI_NAMES[int(p["longitude"] / 30) % 12]
 
