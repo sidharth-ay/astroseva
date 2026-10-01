@@ -964,6 +964,21 @@ async function fetchUpload<T>(endpoint: string, form: FormData): Promise<T> {
   return res.json();
 }
 
+/**
+ * Query string for a panchang request: the coordinates, the offset, and
+ * (when the caller has one) the IANA zone.
+ *
+ * The dataset stores a single offset per city, which is only right for the day
+ * it was built -- Sydney's record says +10, but a January request is on AEDT,
+ * so sunrise came out an hour early. With `tzIana` the backend resolves the
+ * offset for the date asked about instead; without it the old fixed offset
+ * still applies, so a caller that only knows lat/lng behaves as before.
+ */
+function panchangQuery(lat: number, lng: number, tz: number, tzIana?: string): string {
+  const zone = tzIana ? `&timezone_iana=${encodeURIComponent(tzIana)}` : "";
+  return `latitude=${lat}&longitude=${lng}&timezone_offset=${tz}${zone}`;
+}
+
 export const api = {
   /**
    * Search the shared city/town dataset.
@@ -1034,27 +1049,20 @@ export const api = {
       body: JSON.stringify({ name, birth_date }),
     }),
 
-  /**
-   * Panchang is location- and zone-specific: sunrise is a local wall-clock
-   * hour and the kaals are scaled off it, so these must be sent together. The
-   * defaults preserve the old behaviour for callers that pass only lat/lng.
-   */
-  getPanchang: (lat = 28.6139, lng = 77.209, tz = 5.5) =>
-    fetchAPI<PanchangResponse>(
-      `/api/v1/panchang/daily?latitude=${lat}&longitude=${lng}&timezone_offset=${tz}`,
-    ),
+  getPanchang: (lat = 28.6139, lng = 77.209, tz = 5.5, tzIana?: string) =>
+    fetchAPI<PanchangResponse>(`/api/v1/panchang/daily?${panchangQuery(lat, lng, tz, tzIana)}`),
 
-  getChoghadiya: (lat = 28.6139, lng = 77.209, tz = 5.5) =>
-    fetchAPI<{ date: string; sunrise: string; sunset: string; day_choghadiya: { name: string; start: string; end: string; type: string }[]; night_choghadiya: { name: string; start: string; end: string; type: string }[] }>(`/api/v1/panchang/choghadiya?latitude=${lat}&longitude=${lng}&timezone_offset=${tz}`),
+  getChoghadiya: (lat = 28.6139, lng = 77.209, tz = 5.5, tzIana?: string) =>
+    fetchAPI<{ date: string; sunrise: string; sunset: string; day_choghadiya: { name: string; start: string; end: string; type: string }[]; night_choghadiya: { name: string; start: string; end: string; type: string }[] }>(`/api/v1/panchang/choghadiya?${panchangQuery(lat, lng, tz, tzIana)}`),
 
-  getHora: (lat = 28.6139, lng = 77.209, tz = 5.5) =>
-    fetchAPI<{ date: string; day_hora: { planet: string; start: string; end: string; type: string }[]; night_hora: { planet: string; start: string; end: string; type: string }[] }>(`/api/v1/panchang/hora?latitude=${lat}&longitude=${lng}&timezone_offset=${tz}`),
+  getHora: (lat = 28.6139, lng = 77.209, tz = 5.5, tzIana?: string) =>
+    fetchAPI<{ date: string; day_hora: { planet: string; start: string; end: string; type: string }[]; night_hora: { planet: string; start: string; end: string; type: string }[] }>(`/api/v1/panchang/hora?${panchangQuery(lat, lng, tz, tzIana)}`),
 
-  getGowri: (lat = 28.6139, lng = 77.209, tz = 5.5) =>
-    fetchAPI<{ date: string; periods: { name: string; start: string; end: string; nature: string }[] }>(`/api/v1/panchang/gowri?latitude=${lat}&longitude=${lng}&timezone_offset=${tz}`),
+  getGowri: (lat = 28.6139, lng = 77.209, tz = 5.5, tzIana?: string) =>
+    fetchAPI<{ date: string; periods: { name: string; start: string; end: string; nature: string }[] }>(`/api/v1/panchang/gowri?${panchangQuery(lat, lng, tz, tzIana)}`),
 
-  getGhatiMuhurat: (lat = 28.6139, lng = 77.209, tz = 5.5) =>
-    fetchAPI<{ date: string; muhurats: { start: string; end: string; name: string }[] }>(`/api/v1/panchang/ghati?latitude=${lat}&longitude=${lng}&timezone_offset=${tz}`),
+  getGhatiMuhurat: (lat = 28.6139, lng = 77.209, tz = 5.5, tzIana?: string) =>
+    fetchAPI<{ date: string; muhurats: { start: string; end: string; name: string }[] }>(`/api/v1/panchang/ghati?${panchangQuery(lat, lng, tz, tzIana)}`),
 
   generatePrediction: (data: BirthData, prediction_type: string) =>
     fetchAPI<{ content: string; ai_model: string }>("/api/v1/predictions/generate", {

@@ -218,3 +218,98 @@ def test_out_of_range_coordinates_are_rejected(client):
         "latitude": 999, "longitude": 0,
     })
     assert response.status_code == 422
+
+
+# --- the offset must apply to the date asked about, not to today's record ----
+
+SYDNEY = {"latitude": -33.8688, "longitude": 151.2093}
+# Sydney is on AEDT (+11) in January and AEST (+10) in July; London is on GMT
+# (0) in January and BST (+1) in July. The dataset stores one fixed number per
+# city, so half the year it is an hour out.
+JANUARY = "2026-01-15"
+
+
+def test_the_zone_beats_the_stored_offset(client):
+    """A caller that sends a zone gets the offset for the date it asked about."""
+    from app.api.panchang import _zone_offset_for
+
+    assert _zone_offset_for(JANUARY, 10.0, "Australia/Sydney") == 11.0
+    assert _zone_offset_for(JANUARY, 1.0, "Europe/London") == 0.0
+    assert _zone_offset_for("2026-07-15", 11.0, "Australia/Sydney") == 10.0
+
+
+def test_without_a_zone_the_supplied_offset_is_used_unchanged(client):
+    """No zone means the old behaviour: the caller's number, whatever it is."""
+    from app.api.panchang import _zone_offset_for
+
+    assert _zone_offset_for(JANUARY, 10.0, None) == 10.0
+    assert _zone_offset_for(JANUARY, 10.0, "") == 10.0
+    assert _zone_offset_for("not-a-date", 5.5, "Asia/Kolkata") == 5.5
+
+
+def test_an_unknown_zone_keeps_the_supplied_offset_rather_than_utc(client):
+    """Failing open to the caller's number beats a silent jump to UTC."""
+    from app.api.panchang import _zone_offset_for
+
+    assert _zone_offset_for(JANUARY, 5.5, "Mars/Olympus_Mons") == 5.5
+
+
+def test_daily_uses_daylight_saving_for_the_date(client):
+    """Sydney in January must be AEDT, not the +10 the record stores."""
+    with_zone = client.get("/api/v1/panchang/daily", params={
+        **SYDNEY, "timezone_offset": 10.0, "timezone_iana": "Australia/Sydney",
+        "date_str": JANUARY,
+    })
+    on_aedt = client.get("/api/v1/panchang/daily", params={
+        **SYDNEY, "timezone_offset": 11.0, "date_str": JANUARY,
+    })
+    on_aest = client.get("/api/v1/panchang/daily", params={
+        **SYDNEY, "timezone_offset": 10.0, "date_str": JANUARY,
+    })
+    assert with_zone.status_code == 200, with_zone.text
+    assert with_zone.json()["sunrise"] == on_aedt.json()["sunrise"]
+    assert with_zone.json()["sunrise"] != on_aest.json()["sunrise"]
+
+
+def test_london_in_winter_is_on_gmt(client):
+    """The record says +1 (BST); January is GMT, so sunrise shifts an hour."""
+    with_zone = client.get("/api/v1/panchang/daily", params={
+        **LONDON, "timezone_offset": 1.0, "timezone_iana": "Europe/London",
+        "date_str": JANUARY,
+    })
+    on_gmt = client.get("/api/v1/panchang/daily", params={
+        **LONDON, "timezone_offset": 0.0, "date_str": JANUARY,
+    })
+    assert with_zone.status_code == 200, with_zone.text
+    assert with_zone.json()["sunrise"] == on_gmt.json()["sunrise"]
+
+
+@pytest.mark.parametrize("path,first_period", [
+    ("/api/v1/panchang/choghadiya", "day_choghadiya"),
+    ("/api/v1/panchang/hora", "day_hora"),
+    ("/api/v1/panchang/gowri", "periods"),
+    ("/api/v1/panchang/ghati", "muhurats"),
+])
+def test_every_period_endpoint_applies_the_zone(client, path, first_period):
+    """All four scale off sunrise, so all four must use the same offset."""
+    with_zone = client.get(path, params={
+        **SYDNEY, "timezone_offset": 10.0, "timezone_iana": "Australia/Sydney",
+        "date_str": JANUARY,
+    })
+    on_aedt = client.get(path, params={
+        **SYDNEY, "timezone_offset": 11.0, "date_str": JANUARY,
+    })
+    assert with_zone.status_code == 200, with_zone.text
+    # Each response opens with a period that begins at sunrise, so the first
+    # start time stands in for the sunrise none of the three of them return.
+    assert with_zone.json()[first_period][0]["start"] == \
+        on_aedt.json()[first_period][0]["start"]
+
+
+def test_a_request_without_a_zone_is_unchanged(client):
+    """The zone is additive: a client that sends only an offset still works."""
+    before = client.get("/api/v1/panchang/daily", params={
+        **DELHI, "date_str": DATE,
+    })
+    assert before.status_code == 200, before.text
+    assert to_minutes(before.json()["sunrise"]) > 0

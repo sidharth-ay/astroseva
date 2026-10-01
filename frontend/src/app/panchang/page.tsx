@@ -64,6 +64,10 @@ export default function PanchangPage() {
    * sunrise, sunset, Rahu Kaal and every period derived from them.
    */
   const [tz, setTz] = useState(5.5);
+  // IANA zone for the chosen city; the offset above is only right for the day
+  // the dataset was built, so the backend resolves the one that applies to the
+  // date asked about when this is present.
+  const [tzIana, setTzIana] = useState<string | undefined>(undefined);
   const [city, setCity] = useState("Delhi");
   const [activeTab, setActiveTab] = useState<TabId>("daily");
   const [loading, setLoading] = useState(false);
@@ -87,11 +91,12 @@ export default function PanchangPage() {
     document.title = "Panchang | AstroSeva";
   }, []);
 
-  const handleCityChange = (c: { name: string; lat: number; lng: number; tz: number }) => {
+  const handleCityChange = (c: { name: string; lat: number; lng: number; tz: number; tz_iana?: string }) => {
     setCity(c.name);
     setLat(c.lat);
     setLng(c.lng);
     setTz(c.tz);
+    setTzIana(c.tz_iana);
     // Results already on screen were computed for the previous city. Leaving
     // them up under the new city's label meant picking London showed Delhi's
     // Rahu Kaal while the header named London.
@@ -110,19 +115,19 @@ export default function PanchangPage() {
     try {
       switch (tab) {
         case "daily":
-          setDailyData(await api.getPanchang(lat, lng, tz));
+          setDailyData(await api.getPanchang(lat, lng, tz, tzIana));
           break;
         case "choghadiya":
-          setChogData(await api.getChoghadiya(lat, lng, tz));
+          setChogData(await api.getChoghadiya(lat, lng, tz, tzIana));
           break;
         case "hora":
-          setHoraData(await api.getHora(lat, lng, tz));
+          setHoraData(await api.getHora(lat, lng, tz, tzIana));
           break;
         case "gowri":
-          setGowriData(await api.getGowri(lat, lng, tz));
+          setGowriData(await api.getGowri(lat, lng, tz, tzIana));
           break;
         case "ghati":
-          setGhatiData(await api.getGhatiMuhurat(lat, lng, tz));
+          setGhatiData(await api.getGhatiMuhurat(lat, lng, tz, tzIana));
           break;
       }
     } catch (e: unknown) {

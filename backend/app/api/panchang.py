@@ -8,10 +8,31 @@ from ..models.response import PanchangResponse
 from ..core.planets import get_planetary_positions
 from ..core.panchang import calculate_sunrise_sunset, get_panchang
 from ..services.cache_service import cache_service
+from ..services.timezone_service import resolve_offset
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/panchang", tags=["panchang"])
+
+def _zone_offset_for(date_str: str, timezone_offset: float, timezone_iana: str = None) -> float:
+    """UTC offset that applies on `date_str`, when the caller sends a zone.
+
+    The dataset stores one offset per city, which is right only for the day it
+    was built: Sydney's record says +10, but a January request is on AEDT
+    (+11), so sunrise came out an hour early and every period derived from it
+    moved with it. The same is true of London and New York twice a year.
+
+    A caller that sends `timezone_iana` gets the offset for the date it asked
+    about; one that does not keeps its own, which is what every existing
+    client sends.
+    """
+    if not timezone_iana:
+        return timezone_offset
+    try:
+        target = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return timezone_offset
+    return resolve_offset(timezone_iana, target, fallback=timezone_offset)
 
 # â”€â”€â”€ Helper calculation functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -211,6 +232,7 @@ async def get_daily_panchang(
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
+    timezone_iana: str = None,
     timezone_offset: float = 5.5,
     sunrise_hour: float = None,
     sunset_hour: float = None,
@@ -235,6 +257,8 @@ async def get_daily_panchang(
             status_code=400,
             detail="Invalid date format. Use YYYY-MM-DD.",
         )
+
+    timezone_offset = _zone_offset_for(date_str, timezone_offset, timezone_iana)
 
     if sunrise_hour is None or sunset_hour is None:
         sun_times = calculate_sunrise_sunset(
@@ -378,11 +402,14 @@ async def get_choghadiya(
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
+    timezone_iana: str = None,
     timezone_offset: float = 5.5,
 ):
     """Get Choghadiya periods (auspicious/inauspicious time slots) for the day."""
     if date_str is None:
         date_str = date.today().isoformat()
+
+    timezone_offset = _zone_offset_for(date_str, timezone_offset, timezone_iana)
 
     cache_key = (
         f"choghadiya:{date_str}:{latitude}:{longitude}:{timezone_offset}"
@@ -441,12 +468,14 @@ async def get_hora(
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
+    timezone_iana: str = None,
     timezone_offset: float = 5.5,
 ):
     """Get Hora periods (hourly planetary rulers) for the day."""
     if date_str is None:
         date_str = date.today().isoformat()
 
+    timezone_offset = _zone_offset_for(date_str, timezone_offset, timezone_iana)
     cache_key = f"hora:{date_str}:{latitude}:{longitude}:{timezone_offset}"
     cached = await cache_service.get(cache_key)
     if cached:
@@ -509,6 +538,7 @@ async def get_gowri(
     date_str: str = None,
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
+    timezone_iana: str = None,
     timezone_offset: float = 5.5,
 ):
     """Get Gowri Panchangam periods (South Indian auspicious timing).
@@ -521,6 +551,7 @@ async def get_gowri(
     if date_str is None:
         date_str = date.today().isoformat()
 
+    timezone_offset = _zone_offset_for(date_str, timezone_offset, timezone_iana)
     cache_key = f"gowri:{date_str}:{latitude}:{longitude}:{timezone_offset}"
     cached = await cache_service.get(cache_key)
     if cached:
@@ -567,11 +598,13 @@ async def get_ghati_muhurat(
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
+    timezone_iana: str = None,
     timezone_offset: float = 5.5,
 ):
     if date_str is None:
         date_str = date.today().isoformat()
 
+    timezone_offset = _zone_offset_for(date_str, timezone_offset, timezone_iana)
     cache_key = f"ghati:{date_str}:{latitude}:{longitude}:{timezone_offset}"
     cached = await cache_service.get(cache_key)
     if cached:
@@ -641,6 +674,7 @@ async def get_monthly_panchang(
     # cover the case that previously surfaced as a 500.
     month: int | None = Query(None, ge=1, le=12),
     year: int | None = Query(None, ge=2000, le=2100),
+    timezone_iana: str = None,
     timezone_offset: float = 5.5,
 ):
     """Get monthly Panchang â€” daily summaries for every day in the given month."""
@@ -649,6 +683,10 @@ async def get_monthly_panchang(
         month = today.month
     if year is None:
         year = today.year
+
+    timezone_offset = _zone_offset_for(
+        date(year, month, 1).isoformat(), timezone_offset, timezone_iana,
+    )
 
     cache_key = (
         f"panchang:monthly:{year}:{month}:{latitude}:{longitude}:{timezone_offset}"
