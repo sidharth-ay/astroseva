@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:baseline": "node scripts/check-lint-baseline.mjs",
+    "lint:baseline:update": "node scripts/check-lint-baseline.mjs --update"
   },
   "dependencies": {
     "clsx": "^2.1.1",

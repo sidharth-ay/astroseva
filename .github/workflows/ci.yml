@@ -1,0 +1,168 @@
+name: CI
+
+# The five gates that were previously run by hand, now run on every push.
+# See README for the equivalent local commands.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new push makes an in-flight run irrelevant. Cancel rather than queue, so a
+# broken branch does not consume the runner while waiting.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          # Warns while resolving rather than failing on a resolution change,
+          # so a new patch release cannot silently break the build.
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # app/core/planets.py calls skyfield's load(), which downloads de421.bsp
+      # (~16 MB) on first use. It is gitignored, so without this cache every
+      # single run re-downloads it from JPL.
+      - name: Cache the JPL ephemeris
+        uses: actions/cache@v4
+        with:
+          path: backend/de421.bsp
+          key: ephemeris-${{ runner.os }}-de421
+          # Re-download at most weekly even if the file is never written.
+          restore-keys: |
+            ephemeris-${{ runner.os }}-de421
+
+      - name: Run tests
+        # Only JWT_SECRET is mandatory: app/services/auth_service.py raises at
+        # import without it, which is the intended fail-fast. DATABASE_URL
+        # falls back to SQLite and Redis falls back to a disk cache, so no
+        # services are needed for this job.
+        env:
+          JWT_SECRET: ci-not-a-real-secret
+          GEMINI_API_KEY: ''
+        run: python -m pytest tests/ -q
+
+  migrations:
+    name: Migrations on PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: astroseva
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: astroseva
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U astroseva"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # The test suite and local development both run on SQLite, but production
+      # runs PostgreSQL. batch_alter_table is the documented workaround for
+      # adding a column on SQLite and its behaviour differs from a plain ALTER
+      # on PostgreSQL, so a migration can pass every test and still fail on
+      # deploy. This job is the only place migrations touch the real engine.
+      - name: Upgrade to head
+        env:
+          DATABASE_URL: postgresql://astroseva:ci-password@localhost:5432/astroseva
+          JWT_SECRET: ci-not-a-real-secret
+        run: alembic upgrade head
+
+      - name: Downgrade to base
+        env:
+          DATABASE_URL: postgresql://astroseva:ci-password@localhost:5432/astroseva
+          JWT_SECRET: ci-not-a-real-secret
+        run: alembic downgrade base
+
+      - name: Upgrade again (idempotence from a clean slate)
+        env:
+          DATABASE_URL: postgresql://astroseva:ci-password@localhost:5432/astroseva
+          JWT_SECRET: ci-not-a-real-secret
+        run: alembic upgrade head
+
+      - name: The schema has the tables the models declare
+        env:
+          DATABASE_URL: postgresql://astroseva:ci-password@localhost:5432/astroseva
+          JWT_SECRET: ci-not-a-real-secret
+        run: |
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, inspect
+
+          engine = create_engine(os.environ["DATABASE_URL"])
+          present = set(inspect(engine).get_table_names())
+          expected = {
+              "users", "saved_charts", "user_settings",
+              "astrologers", "astrologer_documents", "astrologer_assessments",
+              "astrologer_mock_consults", "astrologer_availability",
+              "onboarding_events", "job_runs",
+              "alembic_version",
+          }
+          missing = expected - present
+          if missing:
+              raise SystemExit(f"migrations did not create: {sorted(missing)}")
+          print(f"all {len(expected)} expected tables present")
+          PY
+
+  frontend:
+    name: Frontend gates
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      # Fails only when the count rises above the recorded baseline: 59 errors
+      # and 35 warnings pre-date this workflow. `npm run lint:baseline:update`
+      # re-records after an intentional change.
+      - name: Lint (regression gate)
+        run: npm run lint:baseline
+
+      - name: Build
+        run: npm run build

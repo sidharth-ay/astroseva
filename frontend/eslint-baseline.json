@@ -1,0 +1,5 @@
+{
+  "_comment": "Recorded by `npm run lint:baseline:update`. CI fails only when these counts increase. Delete this file (and the lint:baseline scripts) once the backlog reaches zero.",
+  "errors": 59,
+  "warnings": 35
+}
