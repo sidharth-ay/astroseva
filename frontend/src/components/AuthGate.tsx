@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, getToken, clearSession } from "@/lib/api";
+import { PUBLIC_PATHS } from "@/lib/public-paths";
 
 // Routes usable WITHOUT logging in. Everything else requires a session.
-const PUBLIC_PATHS = new Set(["/", "/login", "/terms", "/privacy", "/refund", "/grievance"]);
+// (Imported from lib/public-paths, which sitemap.ts also reads, so the gate
+// and the sitemap cannot disagree about what is public.)
 
 // The token last validated via /me, plus when it was validated. The TTL is
 // essential, not an optimisation: a bare token fingerprint was trusted for the
