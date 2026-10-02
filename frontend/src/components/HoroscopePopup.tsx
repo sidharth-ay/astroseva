@@ -30,6 +30,8 @@ export default function HoroscopePopup({ sign, onClose }: Props) {
   const element = elementMap[sign] || "fire";
 
   useEffect(() => {
+    // Fetching for the newly chosen sign is what this effect is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true); setError(false);
     api.getDailyHoroscope(sign).then(setResult).catch(() => setError(true)).finally(() => setLoading(false));
   }, [sign]);

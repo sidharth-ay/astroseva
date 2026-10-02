@@ -1,6 +1,8 @@
 'use client';
+/* eslint-disable react-hooks/static-components -- motionFor() returns a cached, stable component (see motion-component.ts), so nothing here is actually recreated per render; the rule cannot see through the cache lookup. */
 import { type JSX } from 'react';
 import { motion, Transition } from 'motion/react';
+import { motionFor } from './motion-component';
 import { cn } from '@/lib/utils';
 
 export type TextShimmerWaveProps = {
@@ -30,9 +32,8 @@ export function TextShimmerWave({
   rotateYDistance = 10,
   transition,
 }: TextShimmerWaveProps) {
-  const MotionComponent = motion.create(
-    Component as keyof JSX.IntrinsicElements
-  );
+  // See motion-component.ts: cached and stable, so not recreated per render.
+  const MotionComponent = motionFor(Component as keyof JSX.IntrinsicElements);
 
   return (
     <MotionComponent

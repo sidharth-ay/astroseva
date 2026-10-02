@@ -7,17 +7,19 @@ import { api } from "@/lib/api";
 function VerifyEmailLogic() {
   const search = useSearchParams();
   const token = search.get("token");
-  const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
-  const [errorMsg, setErrorMsg] = useState("");
+  // A missing token is known before anything runs, so the error state is the
+  // initial state rather than something an effect switches to.
+  const [status, setStatus] = useState<"verifying" | "success" | "error">(() =>
+    token ? "verifying" : "error"
+  );
+  const [errorMsg, setErrorMsg] = useState(() =>
+    token ? "" : "Verification token is missing."
+  );
   const router = useRouter();
 
   useEffect(() => {
     document.title = "Verify Email | AstroSeva";
-    if (!token) {
-      setStatus("error");
-      setErrorMsg("Verification token is missing.");
-      return;
-    }
+    if (!token) return;
 
     api.verifyEmail(token)
       .then(() => setStatus("success"))

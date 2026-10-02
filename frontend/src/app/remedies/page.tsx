@@ -55,12 +55,17 @@ function loadDone(): Record<string, boolean> {
 
 export default function RemediesPage() {
   const [selected, setSelected] = useState<string[]>(["peace"]);
-  const [done, setDone] = useState<Record<string, boolean>>({});
+  const [done, setDone] = useState<Record<string, boolean>>(() => {
+    try {
+      return loadDone();
+    } catch {
+      return {};
+    }
+  });
   const reduced = useReducedMotion();
 
   useEffect(() => {
     document.title = "Remedy Planner | AstroSeva";
-    setDone(loadDone());
   }, []);
 
   const toggleConcern = (c: string) =>

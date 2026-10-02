@@ -19,48 +19,61 @@ function read(key: string): unknown {
   }
 }
 
+interface AnalyticsSnapshot {
+  stats: Stat[];
+  topPages: { page: string; visits: number }[];
+  week: { day: string; visits: number }[];
+}
+
+/** Everything the page shows, computed from this device's stored data. */
+function computeAnalytics(): AnalyticsSnapshot {
+  const visits = (read("astroseva_visits") || {}) as { total?: number; pages?: Record<string, number>; days?: Record<string, number> };
+  const academy = (read("astroseva_academy") || { lessonsDone: {}, quizPassed: {} }) as { lessonsDone: Record<string, string[]>; quizPassed: Record<string, boolean> };
+  const remedyAll = (read("astroseva_remedy_done") || {}) as Record<string, Record<string, boolean>>;
+  const moles = (read("astroseva_moles") || []) as unknown[];
+  const consults = (read("astroseva_photo_consults") || []) as unknown[];
+
+  const lessonsDone = Object.values(academy.lessonsDone || {}).flat().length;
+  const certs = Object.keys(academy.quizPassed || {}).length;
+  const remediesDone = Object.values(remedyAll).reduce((s, w) => s + Object.values(w).filter(Boolean).length, 0);
+
+  const stats = [
+    { label: "Page Visits", value: visits.total || 0, hint: "Your total visits on this device" },
+    { label: "Lessons Completed", value: lessonsDone, hint: "Academy lessons finished" },
+    { label: "Certificates Earned", value: certs, hint: "Academy exams passed" },
+    { label: "Remedies Completed", value: remediesDone, hint: "Remedy planner check-offs" },
+    { label: "Moles Tracked", value: Array.isArray(moles) ? moles.length : 0, hint: "Entries in your mole diary" },
+    { label: "Consult Requests", value: Array.isArray(consults) ? consults.length : 0, hint: "Photo consultation queue" },
+  ];
+
+  const topPages = Object.entries(visits.pages || {})
+    .map(([page, v]) => ({ page: page === "/" ? "Home" : page, visits: v as number }))
+    .sort((x, y) => y.visits - x.visits)
+    .slice(0, 6);
+
+  const week: { day: string; visits: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    week.push({ day: key.slice(5), visits: (visits.days || {})[key] || 0 });
+  }
+
+  return { stats, topPages, week };
+}
+
 export default function AnalyticsPage() {
-  const [stats, setStats] = useState<Stat[]>([]);
-  const [topPages, setTopPages] = useState<{ page: string; visits: number }[]>([]);
-  const [week, setWeek] = useState<{ day: string; visits: number }[]>([]);
+  // Computed on first render rather than in an effect: `read` already guards
+  // the server case, so the server renders the empty snapshot -- exactly what
+  // it rendered before -- and the client shows the stored numbers immediately
+  // instead of flashing empty cards first. Each slice reads once.
+  const [stats] = useState<Stat[]>(() => computeAnalytics().stats);
+  const [topPages] = useState<{ page: string; visits: number }[]>(() => computeAnalytics().topPages);
+  const [week] = useState<{ day: string; visits: number }[]>(() => computeAnalytics().week);
   const reduced = useReducedMotion();
 
   useEffect(() => {
     document.title = "My Analytics | AstroSeva";
-
-    const visits = (read("astroseva_visits") || {}) as { total?: number; pages?: Record<string, number>; days?: Record<string, number> };
-    const academy = (read("astroseva_academy") || { lessonsDone: {}, quizPassed: {} }) as { lessonsDone: Record<string, string[]>; quizPassed: Record<string, boolean> };
-    const remedyAll = (read("astroseva_remedy_done") || {}) as Record<string, Record<string, boolean>>;
-    const moles = (read("astroseva_moles") || []) as unknown[];
-    const consults = (read("astroseva_photo_consults") || []) as unknown[];
-
-    const lessonsDone = Object.values(academy.lessonsDone || {}).flat().length;
-    const certs = Object.keys(academy.quizPassed || {}).length;
-    const remediesDone = Object.values(remedyAll).reduce((s, w) => s + Object.values(w).filter(Boolean).length, 0);
-
-    setStats([
-      { label: "Page Visits", value: visits.total || 0, hint: "Your total visits on this device" },
-      { label: "Lessons Completed", value: lessonsDone, hint: "Academy lessons finished" },
-      { label: "Certificates Earned", value: certs, hint: "Academy exams passed" },
-      { label: "Remedies Completed", value: remediesDone, hint: "Remedy planner check-offs" },
-      { label: "Moles Tracked", value: Array.isArray(moles) ? moles.length : 0, hint: "Entries in your mole diary" },
-      { label: "Consult Requests", value: Array.isArray(consults) ? consults.length : 0, hint: "Photo consultation queue" },
-    ]);
-
-    const pages = Object.entries(visits.pages || {})
-      .map(([page, v]) => ({ page: page === "/" ? "Home" : page, visits: v as number }))
-      .sort((x, y) => y.visits - x.visits)
-      .slice(0, 6);
-    setTopPages(pages);
-
-    const days: { day: string; visits: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      days.push({ day: key.slice(5), visits: (visits.days || {})[key] || 0 });
-    }
-    setWeek(days);
   }, []);
 
   const maxDay = Math.max(1, ...week.map((d) => d.visits));

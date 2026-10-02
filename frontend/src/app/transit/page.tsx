@@ -137,6 +137,8 @@ export default function TransitPage() {
   }, []);
 
   useEffect(() => {
+    // Loading the transit on mount is what this effect is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTransit();
     return () => abortRef.current?.abort();
   }, [fetchTransit]);

@@ -61,7 +61,13 @@ function load(): Question[] {
 }
 
 export default function CommunityPage() {
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<Question[]>(() => {
+    try {
+      return load();
+    } catch {
+      return [];
+    }
+  });
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
   const [name, setName] = useState("");
@@ -73,7 +79,6 @@ export default function CommunityPage() {
 
   useEffect(() => {
     document.title = "Community Q&A | AstroSeva";
-    setQuestions(load());
   }, []);
 
   const persistUser = (list: Question[]) => {

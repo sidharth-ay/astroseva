@@ -76,6 +76,9 @@ export default function PredictionsPage() {
   // Pre-fetch all categories when birthData is set
   useEffect(() => {
     if (!birthData) return;
+    // Pre-fetching all categories once birth data is set is what this effect
+    // is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGenerating(true);
     const tasks = categories.map((cat) => fetchPrediction(cat.key, birthData));
     Promise.all(tasks).finally(() => setGenerating(false));

@@ -80,6 +80,8 @@ export default function ReportsPage() {
       return;
     }
     if (!form.name.trim()) return;
+    // Regenerating when the report type changes is what this effect is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     generate(reportType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportType]);

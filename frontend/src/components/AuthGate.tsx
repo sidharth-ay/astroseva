@@ -16,30 +16,44 @@ const VALIDATION_TTL_MS = 60_000;
 let validated: { token: string; at: number } | null = null;
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
-  const [allowed, setAllowed] = useState<boolean | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const checking = useRef(false);
 
-  useEffect(() => {
-    if (PUBLIC_PATHS.has(pathname)) {
-      setAllowed(true);
-      return;
+  // Everything the effect used to decide synchronously lives here instead, so
+  // the effect below only performs the one thing effects are for: the async
+  // validation request. `getToken` is safe to call during render -- it guards
+  // the server case itself and returns null there, which decides "undecided".
+  const decide = (path: string): boolean | null => {
+    if (PUBLIC_PATHS.has(path)) return true;
+    const tok = getToken();
+    if (tok && validated && validated.token === tok && Date.now() - validated.at < VALIDATION_TTL_MS) {
+      return true;
     }
+    return null;
+  };
+
+  // Decided on first render and re-decided during render on navigation, rather
+  // than after an effect round-trip. Public pages and recently validated
+  // sessions render immediately with no shimmer flash; anything else starts
+  // undecided and goes through the token check in the effect below.
+  const [allowed, setAllowed] = useState<boolean | null>(() => decide(pathname));
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (prevPath !== pathname) {
+    setPrevPath(pathname);
+    setAllowed(decide(pathname));
+  }
+
+  useEffect(() => {
+    if (allowed !== null) return;
     const tok = getToken();
     if (!tok) {
       validated = null;
-      setAllowed(false);
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-      return;
-    }
-    if (validated && validated.token === tok && Date.now() - validated.at < VALIDATION_TTL_MS) {
-      setAllowed(true);
       return;
     }
     if (checking.current) return;
     checking.current = true;
-    setAllowed(null);
     api
       .getMe()
       .then(() => {
@@ -55,7 +69,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       .finally(() => {
         checking.current = false;
       });
-  }, [pathname, router]);
+  }, [pathname, router, allowed]);
 
   if (!allowed) {
     return (

@@ -13,6 +13,13 @@ interface CitySearchProps {
 
 export default function CitySearch({ id, value, onChange, placeholder = "Search city..." }: CitySearchProps) {
   const [query, setQuery] = useState(value);
+  // Syncs the controlled input with the parent-provided value during render
+  // rather than in an effect: same outcome, no extra render, no lint exception.
+  const [prevValue, setPrevValue] = useState(value);
+  if (prevValue !== value) {
+    setPrevValue(value);
+    setQuery(value);
+  }
   const [results, setResults] = useState<CityEntry[]>([]);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -25,8 +32,6 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
   // Distinguishes "the server found nothing" from "the request failed", which
   // used to be the same empty list and so read as a missing town.
   const [noMatches, setNoMatches] = useState(false);
-
-  useEffect(() => { setQuery(value); }, [value]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

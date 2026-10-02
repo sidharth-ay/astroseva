@@ -127,8 +127,10 @@ export default function LoveMatchPage() {
   }, []);
 
   useEffect(() => {
+    // `result` starts null and is never cleared back to it -- a new analysis
+    // overwrites it directly -- so there is no reset branch here. The counter
+    // starts at 0 from its initializer and only ever counts up to a result.
     if (!result) {
-      setDisplayScore(0);
       return;
     }
     const target = result.overall_score;

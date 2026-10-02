@@ -65,7 +65,10 @@ export default function MatchingPage() {
   }, []);
 
   useEffect(() => {
-    if (!result) { setDisplayScore(0); return; }
+    // `result` starts null and is never cleared back to it -- a new analysis
+    // overwrites it directly -- so there is no reset branch here. The counter
+    // starts at 0 from its initializer and only ever counts up to a result.
+    if (!result) return;
     const target = result.total_score;
     const start = performance.now();
     const durationMs = 1000;

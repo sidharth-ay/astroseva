@@ -105,6 +105,10 @@ export default function HoroscopePage() {
   );
 
   useEffect(() => {
+    // Loading the forecast on mount and on control change is what this effect
+    // is for; the loading flag is set rather than derived so a slow first paint
+    // still shows a skeleton instead of an empty form.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchHoroscope(activeTab, sign);
   }, [activeTab, sign, fetchHoroscope]);
 

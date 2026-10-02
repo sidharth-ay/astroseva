@@ -1,3 +1,6 @@
+import { readdirSync, rmSync, statSync } from "node:fs";
+import { join } from "node:path";
+
 import { defineConfig, devices } from "@playwright/test";
 
 // Playwright drives the Chrome that is already installed (`channel: "chrome"`)
@@ -12,6 +15,25 @@ import { defineConfig, devices } from "@playwright/test";
 const API_PORT = 8010;
 const WEB_PORT = 3100;
 const API_URL = `http://127.0.0.1:${API_PORT}`;
+
+// A fresh database file per run, so two runs can never contend over -- or
+// inherit the schema of -- one shared file. (`create_all` builds the schema on
+// startup, so no migration step is needed.) Stale files from previous runs are
+// removed best-effort below; a lock held by a still-shutting-down server must
+// never fail a new run, so errors are swallowed.
+const E2E_DB = `e2e-test-${Date.now()}.db`;
+try {
+  const backendDir = join(__dirname, "..", "backend");
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  for (const entry of readdirSync(backendDir)) {
+    if (/^e2e-test-.*\.db$/.test(entry)) {
+      const full = join(backendDir, entry);
+      if (statSync(full).mtimeMs < cutoff) rmSync(full, { force: true });
+    }
+  }
+} catch {
+  // Best-effort housekeeping only.
+}
 
 export default defineConfig({
   testDir: "./e2e",
@@ -49,9 +71,9 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 120_000,
       env: {
-        // A throwaway database. `*.db` is gitignored, and `init_db()` creates
-        // the schema on startup, so this needs no migration step.
-        DATABASE_URL: "sqlite:///./e2e-test.db",
+        // A throwaway database unique to this run (`E2E_DB` above).
+        // `init_db()` creates the schema on startup, so no migration step.
+        DATABASE_URL: `sqlite:///./${E2E_DB}`,
         REDIS_URL: "",
         JWT_SECRET: "e2e-not-a-real-secret",
         GEMINI_API_KEY: "",

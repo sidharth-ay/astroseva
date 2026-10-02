@@ -25,7 +25,10 @@ export function Magnetic({
   actionArea = 'self',
   springOptions = SPRING_CONFIG,
 }: MagneticProps) {
-  const [isHovered, setIsHovered] = useState(false);
+  // `global` means hovered from the start; that is decided in the state
+  // initializer above rather than in an effect, where a synchronous set is
+  // both flagged by the linter and unnecessary.
+  const [isHovered, setIsHovered] = useState(actionArea === 'global');
   const ref = useRef<HTMLDivElement>(null);
 
   const x = useMotionValue(0);
@@ -61,7 +64,7 @@ export function Magnetic({
     return () => {
       document.removeEventListener('mousemove', calculateDistance);
     };
-  }, [ref, isHovered, intensity, range]);
+  }, [ref, isHovered, intensity, range, x, y]);
 
   useEffect(() => {
     if (actionArea === 'parent' && ref.current?.parentElement) {
@@ -73,14 +76,12 @@ export function Magnetic({
       parent.addEventListener('mouseenter', handleParentEnter);
       parent.addEventListener('mouseleave', handleParentLeave);
 
-      return () => {
-        parent.removeEventListener('mouseenter', handleParentEnter);
-        parent.removeEventListener('mouseleave', handleParentLeave);
-      };
-    } else if (actionArea === 'global') {
-      setIsHovered(true);
-    }
-  }, [actionArea]);
+  return () => {
+    parent.removeEventListener('mouseenter', handleParentEnter);
+    parent.removeEventListener('mouseleave', handleParentLeave);
+  };
+  }
+}, [actionArea]);
 
   const handleMouseEnter = () => {
     if (actionArea === 'self') {

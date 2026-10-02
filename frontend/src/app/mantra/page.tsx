@@ -88,6 +88,8 @@ export default function MantraPage() {
   };
 
   useEffect(() => {
+    // Loading the tab content on mount is what this effect is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTab("mantras");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

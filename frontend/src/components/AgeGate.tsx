@@ -8,8 +8,15 @@ const KEY = "astroseva_age_ok";
 export default function AgeGate() {
   const [show, setShow] = useState(false);
 
+  // Deliberately NOT a lazy initializer: on the server there is no
+  // localStorage, so an initializer would render the overlay into the
+  // prerendered HTML and hydration would disagree with the client, leaving
+  // AnimatePresence stuck showing the gate over a consented session. Reading
+  // the stored choice after mount -- assuming no gate until proven otherwise
+  // -- is the correct progressive enhancement here.
   useEffect(() => {
     try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (!localStorage.getItem(KEY)) setShow(true);
     } catch {
       setShow(true);

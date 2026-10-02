@@ -46,7 +46,13 @@ function load(): MoleEntry[] {
 }
 
 export default function MolesPage() {
-  const [entries, setEntries] = useState<MoleEntry[]>([]);
+  const [entries, setEntries] = useState<MoleEntry[]>(() => {
+    try {
+      return load();
+    } catch {
+      return [];
+    }
+  });
   const [zone, setZone] = useState(ZONES[0]);
   const [side, setSide] = useState("Right");
   const [size, setSize] = useState("Small");
@@ -57,7 +63,6 @@ export default function MolesPage() {
 
   useEffect(() => {
     document.title = "Mole Tracker | AstroSeva";
-    setEntries(load());
   }, []);
 
   const persist = (list: MoleEntry[]) => {

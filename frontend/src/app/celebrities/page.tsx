@@ -127,7 +127,7 @@ export default function CelebritiesPage() {
     }
   }, [selectedZodiac]);
 
-  const fetchCelebrities = async () => {
+  async function fetchCelebrities() {
     const seq = ++seqRef.current;
     setLoading(true);
     setError("");
@@ -143,9 +143,9 @@ export default function CelebritiesPage() {
     } finally {
       if (seq === seqRef.current) setLoading(false);
     }
-  };
+  }
 
-  const fetchByZodiac = async (sign: string) => {
+  async function fetchByZodiac(sign: string) {
     const seq = ++seqRef.current;
     setLoading(true);
     setError("");
@@ -161,7 +161,7 @@ export default function CelebritiesPage() {
     } finally {
       if (seq === seqRef.current) setLoading(false);
     }
-  };
+  }
 
   const retryList = () => {
     if (selectedZodiac !== "All") {
@@ -186,7 +186,7 @@ export default function CelebritiesPage() {
     await loadDetail(id);
   };
 
-  const loadDetail = async (id: string) => {
+  async function loadDetail(id: string) {
     const seq = ++detailSeqRef.current;
     setDetail(null);
     setDetailLoading(true);
@@ -231,7 +231,7 @@ export default function CelebritiesPage() {
     } finally {
       if (seq === detailSeqRef.current) setDetailLoading(false);
     }
-  };
+  }
 
   const filtered = celebrities.filter((c) => {
     if (selectedProfession !== "All") {
@@ -265,6 +265,9 @@ export default function CelebritiesPage() {
   };
 
   // Deep-link support: ?zodiac=&profession=&id= — read on mount, sync on change.
+  // Hydrating the filters from the URL (and fetching the linked chart) on mount
+  // is what this effect is for.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -279,6 +282,7 @@ export default function CelebritiesPage() {
       }
     } catch { /* ignore */ }
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     try {

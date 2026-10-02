@@ -1,13 +1,15 @@
 'use client';
-import { type JSX, useEffect, useState } from 'react';
-import { motion, MotionProps } from 'motion/react';
+/* eslint-disable react-hooks/static-components -- motionFor() returns a cached, stable component (see motion-component.ts), so nothing here is actually recreated per render; the rule cannot see through the cache lookup. */
+import { type ElementType, type JSX, useCallback, useEffect, useState } from 'react';
+import { MotionProps } from 'motion/react';
+import { motionFor } from './motion-component';
 
 export type TextScrambleProps = {
   children: string;
   duration?: number;
   speed?: number;
   characterSet?: string;
-  as?: React.ElementType;
+  as?: ElementType;
   className?: string;
   trigger?: boolean;
   onScrambleComplete?: () => void;
@@ -27,15 +29,16 @@ export function TextScramble({
   onScrambleComplete,
   ...props
 }: TextScrambleProps) {
-  const MotionComponent = motion.create(
-    Component as keyof JSX.IntrinsicElements
-  );
+  // See motion-component.ts: cached and stable, so not recreated per render.
+  const MotionComponent = motionFor(Component as keyof JSX.IntrinsicElements);
   const [scrambledText, setScrambledText] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const text = children;
   const displayText = scrambledText ?? children;
 
-  const scramble = async () => {
+  // Memoized so the trigger effect below can depend on it without re-running
+  // on every render -- which would restart the animation in a loop.
+  const scramble = useCallback(async () => {
     if (isAnimating) return;
     setIsAnimating(true);
 
@@ -70,13 +73,16 @@ export function TextScramble({
         onScrambleComplete?.();
       }
     }, speed * 1000);
-  };
+  }, [characterSet, duration, isAnimating, onScrambleComplete, speed, text]);
 
   useEffect(() => {
     if (!trigger) return;
 
+    // Starting the animation in response to the trigger prop is what this
+    // effect is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     scramble();
-  }, [trigger]);
+  }, [trigger, scramble]);
 
   return (
     <MotionComponent className={className} {...props}>

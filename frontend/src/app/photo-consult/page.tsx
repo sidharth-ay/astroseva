@@ -30,13 +30,18 @@ export default function PhotoConsultPage() {
   const [topic, setTopic] = useState(TOPICS[0]);
   const [question, setQuestion] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
-  const [requests, setRequests] = useState<ConsultRequest[]>([]);
+  const [requests, setRequests] = useState<ConsultRequest[]>(() => {
+    try {
+      return load();
+    } catch {
+      return [];
+    }
+  });
   const [msg, setMsg] = useState("");
   const reduced = useReducedMotion();
 
   useEffect(() => {
     document.title = "Photo Consultation | AstroSeva";
-    setRequests(load());
   }, []);
 
   const onPhoto = (file: File | undefined) => {

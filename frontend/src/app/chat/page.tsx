@@ -28,6 +28,17 @@ interface KundliProfile {
   saved_at: string;
 }
 
+/** Saved chart profiles, newest first. Reads the same key the kundli page
+ * writes; a corrupt entry yields no profiles rather than a broken page. */
+function loadProfiles(): KundliProfile[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem("kundli_history") || "[]");
+    return Array.isArray(saved) ? saved.slice(0, 10) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function ChatPage() {
   const reduced = useReducedMotion();
   const [messages, setMessages] = useState<Message[]>([
@@ -40,21 +51,13 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [language, setLanguage] = useState<"en" | "hi">("en");
-  const [profiles, setProfiles] = useState<KundliProfile[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<KundliProfile | null>(null);
+  const [profiles] = useState<KundliProfile[]>(() => loadProfiles());
+  const [selectedProfile, setSelectedProfile] = useState<KundliProfile | null>(() => loadProfiles()[0] ?? null);
   const [showProfiles, setShowProfiles] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.title = "AI Chat | AstroSeva";
-  }, []);
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("kundli_history") || "[]");
-      setProfiles(saved.slice(0, 10));
-      if (saved.length > 0) setSelectedProfile(saved[0]);
-    } catch { setProfiles([]); }
   }, []);
 
   useEffect(() => {

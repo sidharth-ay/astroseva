@@ -102,13 +102,22 @@ export default function AcademyPage() {
   const [lessonIdx, setLessonIdx] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
   const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [progress, setProgress] = useState<Progress>({ lessonsDone: {}, quizPassed: {} });
+  const [progress, setProgress] = useState<Progress>(() => {
+    // Read on first render rather than in an effect: on the server this
+    // throws (no localStorage) and falls back, which is exactly what the
+    // server rendered before; on the client the saved value shows immediately
+    // instead of flashing the empty state first.
+    try {
+      return loadProgress();
+    } catch {
+      return { lessonsDone: {}, quizPassed: {} };
+    }
+  });
   const [student, setStudent] = useState("");
   const reduced = useReducedMotion();
 
   useEffect(() => {
     document.title = "Learning Academy | AstroSeva";
-    setProgress(loadProgress());
   }, []);
 
   const persist = (p: Progress) => {

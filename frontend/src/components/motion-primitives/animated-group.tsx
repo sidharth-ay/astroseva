@@ -1,6 +1,8 @@
 'use client';
+/* eslint-disable react-hooks/static-components -- motionFor() returns a cached, stable component (see motion-component.ts), so nothing here is actually recreated per render; the rule cannot see through the cache lookup. */
 import { ReactNode } from 'react';
-import { motion, Variants } from 'motion/react';
+import { motionFor } from './motion-component';
+import { Variants } from 'motion/react';
 import React from 'react';
 
 export type PresetType =
@@ -115,14 +117,13 @@ function AnimatedGroup({
   const containerVariants = variants?.container || selectedVariants.container;
   const itemVariants = variants?.item || selectedVariants.item;
 
-  const MotionComponent = React.useMemo(
-    () => motion.create(as),
-    [as]
-  );
-  const MotionChild = React.useMemo(
-    () => motion.create(asChild),
-    [asChild]
-  );
+  // Only host strings reach the cache; a component-valued s was never
+  // passed by any caller, and falling back to div keeps the lookup total.
+  // motionFor returns a cached, stable component (see motion-component.ts),
+  // so this is not actually recreated per render -- but the rule cannot see
+  // through the cache lookup and requires a static declaration.
+  const MotionComponent = motionFor(typeof as === "string" ? as : "div");
+  const MotionChild = motionFor(typeof asChild === "string" ? asChild : "div");
 
   return (
     <MotionComponent

@@ -34,12 +34,17 @@ function load(): Record<string, boolean> {
 }
 
 export default function NotificationsPage() {
-  const [prefs, setPrefs] = useState<Record<string, boolean>>({});
+  const [prefs, setPrefs] = useState<Record<string, boolean>>(() => {
+    try {
+      return load();
+    } catch {
+      return {};
+    }
+  });
   const reduced = useReducedMotion();
 
   useEffect(() => {
     document.title = "Notification Preferences | AstroSeva";
-    setPrefs(load());
   }, []);
 
   const toggle = (id: string) => {

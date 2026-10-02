@@ -142,6 +142,9 @@ export default function PanchangPage() {
   };
 
   useEffect(() => {
+    // Loading the tab content on mount and on tab change is what this effect
+    // is for.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTab(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
@@ -385,7 +388,7 @@ function ChoghadiyaTab({ data }: { data: ChoghadiyaResponse }) {
       <motion.div variants={staggerItem} className="glass-card p-5">
         <h3 className="font-semibold mb-4 text-sm" style={{ color: "#C8956D" }}>Day Choghadiya</h3>
         <div className="space-y-2">
-          {data.day_choghadiya?.map((ch: any, i: number) => (
+          {data.day_choghadiya?.map((ch, i) => (
             <div
               key={i}
               className="flex items-center justify-between rounded-lg px-4 py-3"
@@ -412,7 +415,7 @@ function ChoghadiyaTab({ data }: { data: ChoghadiyaResponse }) {
       <motion.div variants={staggerItem} className="glass-card p-5">
         <h3 className="font-semibold mb-4 text-sm" style={{ color: "#C8956D" }}>Night Choghadiya</h3>
         <div className="space-y-2">
-          {data.night_choghadiya?.map((ch: any, i: number) => (
+          {data.night_choghadiya?.map((ch, i) => (
             <div
               key={i}
               className="flex items-center justify-between rounded-lg px-4 py-3"
@@ -451,7 +454,7 @@ function HoraTab({ data }: { data: HoraResponse }) {
       <motion.div variants={staggerItem} className="glass-card p-5">
         <h3 className="font-semibold mb-4 text-sm" style={{ color: "#C8956D" }}>Day Hora</h3>
         <div className="space-y-2">
-          {data.day_hora?.map((h: any, i: number) => (
+          {data.day_hora?.map((h, i) => (
             <div
               key={i}
               className="flex items-center justify-between rounded-lg px-4 py-3"
@@ -478,7 +481,7 @@ function HoraTab({ data }: { data: HoraResponse }) {
       <motion.div variants={staggerItem} className="glass-card p-5">
         <h3 className="font-semibold mb-4 text-sm" style={{ color: "#C8956D" }}>Night Hora</h3>
         <div className="space-y-2">
-          {data.night_hora?.map((h: any, i: number) => (
+          {data.night_hora?.map((h, i) => (
             <div
               key={i}
               className="flex items-center justify-between rounded-lg px-4 py-3"
@@ -516,7 +519,7 @@ function GowriTab({ data }: { data: GowriResponse }) {
 
       <motion.div variants={staggerItem} className="glass-card p-5">
         <div className="space-y-2">
-          {data.periods?.map((p: any, i: number) => (
+          {data.periods?.map((p, i) => (
             <div
               key={i}
               className="flex items-center justify-between rounded-lg px-4 py-3"
@@ -554,7 +557,7 @@ function GhatiTab({ data }: { data: GhatiMuhuratResponse }) {
 
       <motion.div variants={staggerItem} className="glass-card p-5">
         <div className="space-y-2">
-          {data.muhurats?.map((m: any, i: number) => (
+          {data.muhurats?.map((m, i) => (
             <div
               key={i}
               className="flex items-center justify-between rounded-lg px-4 py-3"
