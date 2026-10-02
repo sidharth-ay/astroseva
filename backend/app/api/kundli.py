@@ -321,6 +321,42 @@ async def get_sample_kundli(
     )
 
 
+
+def _doshas_for_export(data: dict, birth_data: BirthData, house_system: str) -> dict:
+    """Dosha summary for the PDF, using the same path as /doshas/detect.
+
+    Recomputing here instead would risk the export disagreeing with the page.
+    Anything that fails degrades to an empty summary rather than failing the
+    whole export: a missing dosha section is better than no PDF.
+    """
+    try:
+        from ..core.doshas import detect_all_doshas
+        from .doshas import _planets_with_houses, _transit_saturn_for
+
+        positions = data.get("positions") or {}
+        if not positions.get("planets"):
+            return {}
+        planets, asc_sign, moon_sign = _planets_with_houses(positions, house_system)
+        transit_saturn, _ = _transit_saturn_for(None)
+        doshas = detect_all_doshas(
+            planets=planets,
+            asc_sign=asc_sign,
+            moon_sign=moon_sign or 0,
+            transit_saturn_sign=transit_saturn,
+        )
+        return {
+            "manglik": bool((doshas.get("manglik") or {}).get("is_manglik")),
+            "kaal_sarp": bool((doshas.get("kaal_sarp") or {}).get("has_dosha")),
+            "kaal_sarp_type": (doshas.get("kaal_sarp") or {}).get("kaal_sarp_type") or "",
+            "sade_sati": bool((doshas.get("sade_sati") or {}).get("is_active")),
+            "sade_sati_phase": (doshas.get("sade_sati") or {}).get("phase") or "",
+            "pitru_dosha": bool((doshas.get("pitru_dosha") or {}).get("has_dosha")),
+        }
+    except Exception as e:  # noqa: BLE001 - degraded section, not a failed export
+        logger.warning(f"Dosha section error: {e}")
+        return {}
+
+
 @router.post("/export-pdf")
 @limiter.limit("30/minute")
 async def export_kundli_pdf(
@@ -332,6 +368,14 @@ async def export_kundli_pdf(
     try:
         data = _generate_kundli_data(birth_data, house_system=house_system)
 
+        # Dasha, divisional charts and doshas are computed by
+        # _generate_kundli_data but were never passed to the PDF, so the export
+        # was a thinner document than the page. They are attached here rather
+        # than recomputed.
+        dasha_info = data.get("dasha_info") or {}
+        vargas = (data.get("extras") or {}).get("vargas") or {}
+        doshas = _doshas_for_export(data, birth_data, house_system)
+
         kundli_data = {
             "name": birth_data.name,
             "birth_date": str(birth_data.birth_date),
@@ -342,6 +386,10 @@ async def export_kundli_pdf(
             "ayanamsa": round(data["positions"]["ayanamsa"], 4),
             "ascendant": round(data["positions"]["ascendant"], 4),
             "asc_sign_name": data["asc_sign_name"],
+            "dasha_info": dasha_info,
+            "navamsa": (vargas.get("D9") or {}),
+            "dasamsa": (vargas.get("D10") or {}),
+            "doshas": doshas,
             "planets": [
                 {
                     "planet": p.planet,
