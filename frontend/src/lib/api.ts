@@ -95,6 +95,34 @@ export async function fetchBlob(endpoint: string, options?: RequestInit): Promis
 }
 
 /**
+ * POST a `FormData` body (file uploads). Unlike `fetchAPI` this must not set
+ * `Content-Type` itself: the browser derives the multipart boundary, and an
+ * explicit JSON content type would both break the upload and lie about it.
+ * Auth, refresh-on-401 and error surfacing mirror `fetchAPI`.
+ */
+export async function uploadFile<T>(endpoint: string, form: FormData): Promise<T> {
+  const token = getToken();
+  const res = await fetchWithTimeout(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    body: form,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    if (res.status === 401 && !NO_REDIRECT_ON_401.some((p) => endpoint.startsWith(p))) {
+      handleExpiredSession();
+    }
+    const error = await res.json().catch(() => ({ detail: res.statusText }));
+    const message = error.detail || error.error || res.statusText || "Request failed";
+    const err = new Error(message) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  return res.json() as Promise<T>;
+}
+
+/**
  * Hand a Blob to the browser as a download and release the object URL.
  *
  * The URL is revoked on the next tick rather than synchronously after
@@ -1311,6 +1339,19 @@ export const api = {
     const qs = params.toString();
     return fetchAPI<{ crystals: HealingCrystal[]; total: number }>(
       `/api/v1/healing/crystals${qs ? `?${qs}` : ""}`
+    );
+  },
+
+  /**
+   * Store a palm photo and return its reference key. Uploading and analyzing
+   * are separate steps: this stores the file, it does not read the palm.
+   */
+  uploadPalmImage: (file: File) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    return uploadFile<{ key: string; content_type: string; size_bytes: number }>(
+      "/api/v1/palmistry/upload",
+      form
     );
   },
 

@@ -184,3 +184,32 @@ describe("PDF export", () => {
     );
   });
 });
+
+describe("palm photo upload", () => {
+  it("posts multipart without forcing a JSON content type", async () => {
+    // The browser must set the multipart boundary itself; an explicit
+    // Content-Type would break the upload and lie about it.
+    setSession("token-abc", TEST_USER);
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ key: "palmistry/1/abc.png", content_type: "image/png", size_bytes: 10 }),
+    );
+
+    const file = new File(["x".repeat(10)], "palm.png", { type: "image/png" });
+    const res = await api.uploadPalmImage(file);
+
+    expect(res.key).toBe("palmistry/1/abc.png");
+    const call = lastCall();
+    expect(call.url).toContain("/api/v1/palmistry/upload");
+    expect(call.init?.method).toBe("POST");
+    expect(headerOf(call, "Authorization")).toBe("Bearer token-abc");
+    expect(headerOf(call, "Content-Type")).toBeNull();
+    expect(call.init?.body).toBeInstanceOf(FormData);
+  });
+
+  it("reports the backend's rejection message", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ detail: "Invalid PNG signature" }, 400));
+
+    const file = new File(["nope"], "evil.png", { type: "image/png" });
+    await expect(api.uploadPalmImage(file)).rejects.toThrow("Invalid PNG signature");
+  });
+});

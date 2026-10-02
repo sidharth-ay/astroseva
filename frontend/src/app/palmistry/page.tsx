@@ -19,11 +19,21 @@ export default function PalmistryPage() {
   const [response, setResponse] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadKey, setUploadKey] = useState<string | null>(null);
   const reduced = useReducedMotion();
 
   useEffect(() => {
     document.title = "Palmistry | AstroSeva";
-  }, []);
+    return () => {
+      // Release the preview URL so a large photo does not linger in memory
+      // after leaving the page.
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
 
   const handleCity = (city: CityEntry) => {
     setForm({ ...form, ...locationFromCity(city) });
@@ -85,7 +95,91 @@ export default function PalmistryPage() {
         </div>
       </motion.div>
 
-      {/* Question */}
+      {/* Palm photo */}
+  <motion.div className="glass-card p-5 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+    <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>
+      Palm Photo (optional)
+    </h3>
+    <p className="text-xs mb-4" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
+      A clear photo of your dominant palm, fingers together, in good light.
+      JPEG, PNG, or WebP, up to 10&nbsp;MB. The photo is stored with your
+      account; automated analysis is not available yet, so uploading does not
+      produce a reading today.
+    </p>
+    <input
+      id="pm-photo"
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      className="input-field text-xs"
+      onChange={(e) => {
+        const file = e.target.files?.[0] ?? null;
+        setPhotoError("");
+        setUploadKey(null);
+        if (photoPreview) URL.revokeObjectURL(photoPreview);
+        if (!file) {
+          setPhoto(null);
+          setPhotoPreview(null);
+          return;
+        }
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+          setPhotoError("That file is not a JPEG, PNG, or WebP image.");
+          setPhoto(null);
+          setPhotoPreview(null);
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          setPhotoError("That file is over the 10 MB limit.");
+          setPhoto(null);
+          setPhotoPreview(null);
+          return;
+        }
+        setPhoto(file);
+        setPhotoPreview(URL.createObjectURL(file));
+      }}
+    />
+    {photoPreview && (
+      <div className="mt-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photoPreview}
+          alt="Selected palm photo preview"
+          className="rounded-lg max-h-64 object-contain"
+        />
+      </div>
+    )}
+    {photoError && (
+      <p className="text-xs mt-3" style={{ color: "var(--danger)" }}>{photoError}</p>
+    )}
+    {photo && !photoError && (
+      <button
+        type="button"
+        className="btn-secondary mt-4"
+        disabled={uploading}
+        onClick={async () => {
+          setUploading(true);
+          setPhotoError("");
+          try {
+            const res = await api.uploadPalmImage(photo);
+            setUploadKey(res.key);
+          } catch (e) {
+            setPhotoError(e instanceof Error ? e.message : "Upload failed.");
+          } finally {
+            setUploading(false);
+          }
+        }}
+      >
+        {uploading ? "Uploading…" : "Upload Photo"}
+      </button>
+    )}
+    {uploadKey && (
+      <p className="text-xs mt-3" style={{ color: "var(--color-success, #4ade80)" }}>
+        Photo stored. Automated palm analysis is not available yet — nothing has
+        been read from it.
+      </p>
+    )}
+  </motion.div>
+
+  {/* Question */}
       <motion.div className="glass-card p-5 mb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
         <h3 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: "#C8956D" }}>Your Question</h3>
         <textarea
