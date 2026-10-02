@@ -10,7 +10,8 @@
     "lint:baseline": "node scripts/check-lint-baseline.mjs",
     "lint:baseline:update": "node scripts/check-lint-baseline.mjs --update",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e": "node scripts/build-for-e2e.mjs && playwright test"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -22,6 +23,7 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

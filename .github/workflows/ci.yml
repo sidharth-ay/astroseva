@@ -158,6 +158,9 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Unit tests
+        run: npm test
+
       # Fails only when the count rises above the recorded baseline: 59 errors
       # and 35 warnings pre-date this workflow. `npm run lint:baseline:update`
       # re-records after an intentional change.
@@ -166,3 +169,50 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      # The browser is the one thing this job cannot borrow from the machine.
+      # Locally the config drives the already-installed Chrome via
+      # `channel: "chrome"`; a GitHub runner has none, so the bundled Chromium
+      # is installed here instead and selected through this variable.
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      # The specs start the backend themselves, but `next build` has to happen
+      # first because NEXT_PUBLIC_API_URL is inlined at build time.
+      - name: Run the end-to-end specs
+        run: npm run e2e
+        env:
+          E2E_BROWSER_CHANNEL: chromium
+
+      - name: Upload the trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: frontend/test-results/
+          retention-days: 7

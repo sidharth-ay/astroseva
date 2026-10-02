@@ -59,3 +59,10 @@ gh_login_*.txt
 check_*.py
 read_charts.py
 verify_*.py
+
+# Playwright output. `test-results` holds a trace per failed test, and
+# `playwright-report` is the HTML report; neither belongs in the repository.
+# The e2e database is covered by the `*.db` rule above.
+frontend/test-results/
+frontend/playwright-report/
+frontend/.playwright/
