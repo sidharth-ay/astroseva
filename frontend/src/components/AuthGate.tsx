@@ -62,7 +62,19 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         validated = { token: getToken() ?? "", at: Date.now() };
         setAllowed(true);
       })
-      .catch(() => {
+      .catch((e: unknown) => {
+        // Only a 401 proves the session is dead. A 429 (or a 5xx, or a dropped
+        // connection) says nothing about validity, yet clearing the session
+        // here logged out a user whose only mistake was loading one page too
+        // many in a minute: this gate is asked on every hard navigation while
+        // the limiter counts per IP. So on any non-401 the token is kept and
+        // the page renders; if it truly is stale, the next data call 401s and
+        // fetchAPI's own refresh/logout path takes over.
+        const status = (e as { status?: number } | null)?.status;
+        if (status !== 401) {
+          setAllowed(true);
+          return;
+        }
         validated = null;
         clearSession();
         setAllowed(false);

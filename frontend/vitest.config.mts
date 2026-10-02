@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
@@ -11,6 +13,13 @@ import { defineConfig } from "vitest/config";
 // build pipeline, and pulling it in would only slow collection down.
 export default defineConfig({
   plugins: [react()],
+  // Next resolves the `@/` alias from tsconfig paths; Vitest does not read that
+  // file, so component tests would fail to import any module that uses it.
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
   test: {
     environment: "jsdom",
     globals: true,
