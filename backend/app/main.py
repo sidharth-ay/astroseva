@@ -19,15 +19,13 @@ from .services.auth_service import get_current_user, require_admin
 
 from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities, transit, gemstones, varshphal, baby_names, festivals, lalkitab, reports, celebrity, mantra, healing, settings
 from .api import astrologers, admin_astrologers, directory
-from .db.database import init_db
+from .db.database import init_db, SessionLocal
 # Importing this module registers the background job handlers.
 from .services import job_handlers as _job_handlers  # noqa: F401
 
-# Logging configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
+from .core.logging import RequestIdMiddleware, configure_logging
+
+configure_logging()
 logger = logging.getLogger(__name__)
 
 # Initialize database
@@ -172,6 +170,8 @@ app.add_middleware(
     max_age=600,
 )
 
+app.add_middleware(RequestIdMiddleware)
+
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
@@ -275,6 +275,32 @@ async def health_check(request: Request):
             "timestamp": datetime.now(UTC).isoformat(),
         },
     )
+
+
+@app.get("/ready")
+@limiter.limit(HEALTH_LIMIT)
+async def readiness_check(request: Request):
+    """Ready to serve traffic: database reachable and schema current."""
+    from sqlalchemy import text
+
+    try:
+        db = SessionLocal()
+        try:
+            # Reachability first: without it nothing else matters.
+            db.execute(text("SELECT 1"))
+            # Then currency: code migrated past its database answers 500s with
+            # a healthy-looking process, which is exactly what this endpoint
+            # exists to catch. The user_settings table arrived in 0003, so its
+            # presence proves the chain ran to at least the current head.
+            db.execute(text("SELECT 1 FROM user_settings LIMIT 1"))
+        finally:
+            db.close()
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"ready": False, "reason": f"{type(e).__name__}"},
+        )
+    return {"ready": True}
 
 
 # Cache namespaces an admin may clear.

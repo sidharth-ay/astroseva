@@ -1,0 +1,30 @@
+# Dependabot: keep pinned dependencies patched.
+#
+# Every dependency in this repo is pinned exactly, which is good for
+# reproducibility and bad for staying patched: a pin never moves on its own.
+# This file makes GitHub open a pull request when a new version appears, so
+# "update the pin" becomes reviewing a diff rather than remembering to look.
+#
+# Python and npm are covered. GitHub Actions versions are covered too, because
+# a compromised action runs with this repository's secrets. Docker base images
+# are not listed here -- postgres:16-alpine and redis:7-alpine move only when
+# someone edits docker-compose.yml deliberately.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies]
