@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AstroSeva frontend
 
-## Getting Started
+Next.js 16 (App Router) · React 19 · Tailwind 4 · TypeScript 5.
 
-First, run the development server:
+See the [root README](../README.md) for architecture, setup, and the full
+command list. This file covers only what is specific to this app.
+
+## Develop
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The client calls `http://127.0.0.1:8000` by default. Set `NEXT_PUBLIC_API_URL`
+to point it elsewhere — the same variable feeds the Content-Security-Policy's
+`connect-src`, so the two must agree or the browser blocks every request.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Test
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm test           # unit tests (Vitest + Testing Library)
+npm run e2e        # end-to-end specs (Playwright)
+```
 
-## Learn More
+`npm run e2e` drives the Chrome already installed on the machine rather than
+downloading a browser. A CI runner has no Chrome, so the workflow sets
+`E2E_BROWSER_CHANNEL=chromium` to use the bundled build there instead.
 
-To learn more about Next.js, take a look at the following resources:
+## Lint
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run lint            # eslint
+npm run lint:baseline   # fails only if the count rises above the recorded baseline
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The repo carries a number of pre-existing lint problems. `lint:baseline` records
+the counts in `eslint-baseline.json` and fails only when they increase, so a
+broken branch does not train anyone to ignore lint. After an intentional change,
+re-record with `npm run lint:baseline:update`. Once the backlog reaches zero,
+delete both the script and the baseline file.
 
-## Deploy on Vercel
+## Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+src/app/        one directory per route
+src/components/ shared UI (navigation, chart renderer, city search, gates)
+src/lib/        api client, motion helpers, local storage
+e2e/            Playwright specs
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+
+- `next dev` rewrites `AGENTS.md` on every run. The end-to-end job uses
+  `next start` for exactly this reason.
+- The app is dark-only. The settings page stores a theme preference, but there
+  is no light palette to apply it to.
