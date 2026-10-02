@@ -12,15 +12,13 @@ These tests pin the endpoint's own construction so a future required field
 cannot silently break it again.
 """
 
-import os
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.core.doshas import detect_all_doshas
 from app.core.planets import get_planetary_positions
-from app.main import app
 from app.models.response import DoshaResponse
 
 
@@ -148,5 +146,7 @@ def test_stale_cache_entry_without_kaal_sarp_is_ignored():
     is_complete = required.issubset(stale.keys())
     assert is_complete is False  # endpoint must treat this as a miss and recompute
     # And the current bug: constructing from the stale payload would raise.
-    with pytest.raises(Exception):
+    # An incomplete cached payload must fail validation loudly rather than
+    # construct a response missing a required field.
+    with pytest.raises(ValidationError):
         DoshaResponse(**stale)

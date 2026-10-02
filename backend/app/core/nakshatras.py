@@ -1,6 +1,5 @@
 """Nakshatra (Lunar Mansion) definitions and properties."""
 
-from typing import Optional
 
 # 27 Nakshatras with their details
 NAKSHATRAS = {
@@ -292,7 +291,7 @@ def get_nakshatra_lord(nakshatra_index: int) -> str:
     return NAKSHATRAS[nakshatra_index]["lord"]
 
 
-def get_nakshatra_by_name(name: str) -> Optional[dict]:
+def get_nakshatra_by_name(name: str) -> dict | None:
     """Get nakshatra details by name."""
     for index, nak in NAKSHATRAS.items():
         if nak["name"].lower() == name.lower():

@@ -7,9 +7,7 @@ the birth data beyond the ascendant, or any dasha or transit. Two charts with
 the same ascendant received identical text for every year.
 """
 
-import pytest
 
-from fastapi.testclient import TestClient
 
 
 def _payload(**overrides):

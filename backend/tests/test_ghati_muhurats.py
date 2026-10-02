@@ -8,7 +8,7 @@ overlapped its predecessor and the last was clamped to sunset.
 
 import pytest
 
-from app.api.panchang import MUHURAT_HOURS, _calculate_ghati_muhurat, _hours_to_time_str
+from app.api.panchang import MUHURAT_HOURS, _calculate_ghati_muhurat
 
 
 def _hours(clock: str) -> float:
@@ -26,7 +26,7 @@ def test_windows_do_not_overlap(sunrise, sunset):
     """The bug: 15 windows spaced 45 minutes apart, each 48 minutes long."""
     windows = _calculate_ghati_muhurat(sunrise, sunset)
     assert windows
-    for earlier, later in zip(windows, windows[1:]):
+    for earlier, later in zip(windows, windows[1:], strict=False):
         assert _hours(later["start"]) >= _hours(earlier["end"]) - 1e-9, (
             f"{earlier['end']} -> {later['start']} overlaps"
         )
@@ -36,7 +36,7 @@ def test_windows_are_contiguous_from_sunrise():
     """Sequential placement leaves no gap between consecutive windows."""
     windows = _calculate_ghati_muhurat(6.0, 18.0)
     assert _hours(windows[0]["start"]) == pytest.approx(6.0)
-    for earlier, later in zip(windows, windows[1:]):
+    for earlier, later in zip(windows, windows[1:], strict=False):
         assert _hours(later["start"]) == pytest.approx(_hours(earlier["end"]))
 
 
@@ -110,5 +110,5 @@ def test_endpoint_windows_do_not_overlap(client):
         "&latitude=28.6139&longitude=77.209"
     ).json()["muhurats"]
     assert windows
-    for earlier, later in zip(windows, windows[1:]):
+    for earlier, later in zip(windows, windows[1:], strict=False):
         assert _hours(later["start"]) >= _hours(earlier["end"]) - 1e-9

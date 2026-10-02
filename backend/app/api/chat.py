@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from ..core.rate_limit import limiter
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
+from typing import Literal
 import asyncio
 import logging
 
@@ -24,9 +24,9 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(..., max_length=1000, description="Chat message")
-    history: Optional[List[ChatMessage]] = Field(default=[], max_length=10)
-    birth_details: Optional[dict] = None
-    language: Optional[str] = "en"
+    history: list[ChatMessage] | None = Field(default=[], max_length=10)
+    birth_details: dict | None = None
+    language: str | None = "en"
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +287,6 @@ async def generate_chat_response(
         response = await asyncio.to_thread(_call_gemini)
         return response.text
     except Exception as e:
-        from ..services.ai_service import _gemini_quota_exhausted as _gqe, _quota_retry_after as _qra
         err_str = str(e).lower()
         if "429" in err_str or "quota" in err_str or "resourceexhausted" in type(e).__name__.lower():
             import app.services.ai_service as ai_mod
@@ -387,13 +386,7 @@ def _planets_in_house(chart: dict, house_num: int) -> list:
 def _analyze_career(chart: dict) -> str:
     """Generate career analysis from chart."""
     name = chart["name"] or "friend"
-    asc = chart["ascendant"].lower()
-    asc_lord = _find_planet(chart, {"aries": "Mars", "taurus": "Venus", "gemini": "Mercury",
-        "cancer": "Moon", "leo": "Sun", "virgo": "Mercury", "libra": "Venus",
-        "scorpio": "Mars", "sagittarius": "Jupiter", "capricorn": "Saturn",
-        "aquarius": "Saturn", "pisces": "Jupiter"}.get(asc, ""))
 
-    tenth_lord = _find_planet(chart, "Saturn")  # Natural 10th lord
     tenth_planets = _planets_in_house(chart, 10)
     sun = _find_planet(chart, "Sun")
     mercury = _find_planet(chart, "Mercury")
@@ -521,7 +514,6 @@ def _analyze_health(chart: dict) -> str:
     sun = _find_planet(chart, "Sun")
     sixth_planets = _planets_in_house(chart, 6)
     eighth_planets = _planets_in_house(chart, 8)
-    twelfth_planets = _planets_in_house(chart, 12)
 
     lines = [f"Here's your health analysis, {name}:\n"]
 
@@ -837,7 +829,7 @@ async def send_chat_message(
         return {"response": response, "model": get_model_name()}
     except Exception as e:
         logger.error(f"Chat error: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate response. Please try again.")
+        raise HTTPException(status_code=500, detail="Failed to generate response. Please try again.") from e
 
 
 @router.get("/suggestions")

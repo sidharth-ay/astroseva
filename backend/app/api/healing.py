@@ -5,10 +5,10 @@ from fastapi import Request
 from fastapi import APIRouter, HTTPException
 
 from ..models.birth_data import BirthData
+from ..core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
-from ..core.rate_limit import limiter
 router = APIRouter(prefix="/api/v1/healing", tags=["healing"])
 
 
@@ -798,4 +798,4 @@ async def get_healing_recommendation(request: Request, data: BirthData):
         }
     except Exception as e:
         logger.error(f"Healing recommendation failed: {e}")
-        raise HTTPException(status_code=500, detail="Failed to generate healing recommendation")
+        raise HTTPException(status_code=500, detail="Failed to generate healing recommendation") from e

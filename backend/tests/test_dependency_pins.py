@@ -53,6 +53,7 @@ def test_the_pin_matches_the_installed_version(package, bad):
 def test_the_two_packages_actually_work_at_the_pinned_versions():
     """Bumped, so prove the JWT and multipart paths still function."""
     import jose
+    import jose.exceptions
     import jose.jwt
     from multipart.multipart import parse_options_header  # noqa: F401
 
@@ -70,7 +71,10 @@ def test_the_algorithm_is_still_pinned_on_decode(client, test_sessionmaker):
     unsigned_style = jose.jwt.encode(
         {"sub": "42", "exp": 9999999999}, "k", algorithm="HS256"
     )
-    with pytest.raises(Exception):
+    # HS256 with an RSA/ECDSA-only allow-list (and especially "none") must be
+    # rejected: accepting it would let anyone mint tokens. python-jose raises
+    # JWTError for all three.
+    with pytest.raises(jose.exceptions.JWTError):
         jose.jwt.decode(
             unsigned_style, "k", algorithms=["RS256", "ES256", "none"]
         )

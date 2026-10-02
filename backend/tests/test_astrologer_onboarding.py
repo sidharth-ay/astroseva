@@ -6,7 +6,6 @@ wrong in a marketplace are (a) an applicant skipping a verification stage, and
 tested directly rather than inferred from endpoint tests.
 """
 
-import io
 import uuid
 from datetime import date, timedelta
 
@@ -68,7 +67,7 @@ def _profile(db, user, status=STATUS_DRAFT, headline="Vedic astrologer", bio="Bi
 def test_happy_path_transitions_are_legal():
     path = [STATUS_DRAFT, STATUS_APPLIED, STATUS_UNDER_REVIEW,
             STATUS_ASSESSMENT_PENDING, STATUS_MOCK_PENDING, STATUS_VERIFIED]
-    for a, b in zip(path, path[1:]):
+    for a, b in zip(path, path[1:], strict=False):
         assert svc.can_transition(a, b), f"{a} -> {b} should be legal"
 
 
@@ -428,15 +427,14 @@ def test_client_can_read_own_application(client):
 def test_one_applicant_cannot_delete_another_applicants_document(applicant_client, isolated_db):
     """Ownership is enforced in the query, not by a later comparison."""
     owner = _user(isolated_db, name="Owner One", email="owner1@example.com")
-    other = _user(isolated_db, name="Owner Two", email="owner2@example.com")
     po = _profile(isolated_db, owner)
     doc = AstrologerDocument(astrologer_id=po.id, kind="pan",
                               storage_key="astrologers/x/a.pdf")
     isolated_db.add(doc)
     isolated_db.commit()
 
-    # The client is authenticated as `other`, so their own profile is empty and
-    # the document belongs to someone else entirely.
+    # The client is authenticated as a different applicant (applicant@example.com)
+    # whose profile is empty, and the document belongs to someone else entirely.
     resp = applicant_client.delete(f"/api/v1/astrologer/documents/{doc.id}")
     assert resp.status_code in (404, 200)
     if resp.status_code == 200:

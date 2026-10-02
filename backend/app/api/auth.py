@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..db.database import get_db
 from ..db.models import User, AuthToken, UserSession
 from ..services.email_service import send_email
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from ..services.auth_service import generate_secure_token, hash_secure_token
 from ..services.auth_service import (
     MAX_PASSWORD_BYTES,
@@ -141,7 +141,7 @@ async def login(request: Request, login_data: LoginRequest, db: Session = Depend
         refresh_token_hash=hashed_refresh,
         user_agent=request.headers.get("User-Agent", "")[:255],
         ip_address=request.client.host if request.client else "",
-        expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        expires_at=datetime.now(UTC) + timedelta(days=30),
     )
     db.add(session)
     db.commit()
@@ -217,7 +217,7 @@ async def refresh_token(request: Request, data: RefreshTokenRequest, db: Session
     hashed_token = hash_secure_token(data.refresh_token)
     session = db.query(UserSession).filter(UserSession.refresh_token_hash == hashed_token).first()
     
-    if not session or session.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+    if not session or session.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
         
     user = db.query(User).filter(User.id == session.user_id).first()
@@ -227,7 +227,7 @@ async def refresh_token(request: Request, data: RefreshTokenRequest, db: Session
     # Rotate the token (single use)
     new_raw, new_hash = generate_secure_token()
     session.refresh_token_hash = new_hash
-    session.last_used_at = datetime.now(timezone.utc)
+    session.last_used_at = datetime.now(UTC)
     db.commit()
     
     token = create_access_token({"sub": str(user.id), "email": user.email, "version": getattr(user, "token_version", 0) or 0})
@@ -243,7 +243,7 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest, db: Ses
             user_id=user.id,
             purpose="password_reset",
             token_hash=token_hash,
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1)
+            expires_at=datetime.now(UTC) + timedelta(hours=1)
         )
         db.add(token_record)
         db.commit()
@@ -272,7 +272,7 @@ async def reset_password(request: Request, data: ResetPasswordRequest, db: Sessi
         AuthToken.used_at.is_(None)
     ).first()
     
-    if not token_record or token_record.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+    if not token_record or token_record.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
         # We use a generic message to prevent token enumeration
         raise HTTPException(status_code=400, detail="Invalid or expired token")
         
@@ -282,7 +282,7 @@ async def reset_password(request: Request, data: ResetPasswordRequest, db: Sessi
         
     user.hashed_password = hash_password(data.new_password)
     user.token_version = (getattr(user, "token_version", 0) or 0) + 1
-    token_record.used_at = datetime.now(timezone.utc)
+    token_record.used_at = datetime.now(UTC)
     db.commit()
     
     return {"message": "Password reset successfully. You can now log in."}
@@ -297,7 +297,7 @@ async def resend_verification(request: Request, data: ResendVerificationRequest,
             user_id=user.id,
             purpose="email_verification",
             token_hash=token_hash,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=1)
+            expires_at=datetime.now(UTC) + timedelta(days=1)
         )
         db.add(token_record)
         db.commit()
@@ -320,13 +320,13 @@ async def verify_email(request: Request, data: VerifyEmailRequest, db: Session =
         AuthToken.used_at.is_(None)
     ).first()
     
-    if not token_record or token_record.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+    if not token_record or token_record.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
         raise HTTPException(status_code=400, detail="Invalid or expired token")
         
     user = db.query(User).filter(User.id == token_record.user_id).first()
     if user:
         user.email_verified = True
-    token_record.used_at = datetime.now(timezone.utc)
+    token_record.used_at = datetime.now(UTC)
     db.commit()
     
     return {"message": "Email verified successfully."}
@@ -334,7 +334,7 @@ async def verify_email(request: Request, data: VerifyEmailRequest, db: Session =
 @router.get("/sessions")
 @limiter.limit("10/minute")
 async def list_sessions(request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    sessions = db.query(UserSession).filter(UserSession.user_id == user.id, UserSession.expires_at > datetime.now(timezone.utc)).all()
+    sessions = db.query(UserSession).filter(UserSession.user_id == user.id, UserSession.expires_at > datetime.now(UTC)).all()
     return {"sessions": [{"id": s.id, "user_agent": s.user_agent, "ip_address": s.ip_address, "created_at": str(s.created_at), "last_used_at": str(s.last_used_at)} for s in sessions]}
 
 @router.delete("/sessions/{session_id}")

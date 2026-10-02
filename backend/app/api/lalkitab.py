@@ -248,4 +248,4 @@ async def get_lalkitab_chart(
         }
     except Exception as e:
         logger.error(f"Lal Kitab error: {e}")
-        raise HTTPException(status_code=500, detail="Error generating Lal Kitab chart.")
+        raise HTTPException(status_code=500, detail="Error generating Lal Kitab chart.") from e

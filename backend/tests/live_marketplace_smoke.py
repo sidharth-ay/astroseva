@@ -7,6 +7,7 @@ first unexpected response, so it is usable as a gate.
 
 import io
 import os
+import sqlite3
 import sys
 import time
 import uuid
@@ -153,7 +154,6 @@ print("== 8. a reviewer walks the application through ==")
 reviewer = register(f"smoke_rev_{suffix}@example.com", "Smoke Reviewer")
 rev_tok = reviewer["token"]
 # Promote in the DB: there is no self-service reviewer signup by design.
-import sqlite3
 db_path = os.environ.get("SMOKE_DB", "astroseva.db")
 con = sqlite3.connect(db_path)
 con.execute("UPDATE users SET role='reviewer' WHERE email=?", (f"smoke_rev_{suffix}@example.com",))

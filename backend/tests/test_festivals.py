@@ -12,7 +12,6 @@ import pytest
 from app.core.festivals import (
     FESTIVAL_RULES,
     get_festivals,
-    _MEMO,
 )
 
 # drik-panchang 2026 landmarks.
@@ -196,12 +195,12 @@ def test_results_differ_by_location():
     assert shared, "the two locations should share some November observances"
     name = shared[0]
     d = next(f for f in delhi if f["name"] == name)
-    l = next(f for f in london if f["name"] == name)
-    assert d["sunrise"] != l["sunrise"]
-    assert d["sunset"] != l["sunset"]
+    london_fest = next(f for f in london if f["name"] == name)
+    assert d["sunrise"] != london_fest["sunrise"]
+    assert d["sunset"] != london_fest["sunset"]
     # London in late autumn has a much shorter day than Delhi.
-    assert l["sunset"] < d["sunset"]
-    assert l["muhurat"]["start"] != d["muhurat"]["start"]
+    assert london_fest["sunset"] < d["sunset"]
+    assert london_fest["muhurat"]["start"] != d["muhurat"]["start"]
 
 
 

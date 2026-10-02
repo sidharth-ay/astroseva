@@ -2,9 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Request
 from ..core.rate_limit import limiter
-from datetime import datetime, timedelta, timezone
-from pydantic import BaseModel
-from typing import Optional
+from datetime import datetime, timedelta, UTC
 import logging
 
 from ..models.birth_data import BirthData
@@ -74,9 +72,9 @@ async def calculate_varshphal(request: Request, data: VarshphalRequest):
         )
         birth_utc = datetime(
             data.birth_date.year, data.birth_date.month, data.birth_date.day,
-            data.birth_time.hour, data.birth_time.minute, tzinfo=timezone.utc,
+            data.birth_time.hour, data.birth_time.minute, tzinfo=UTC,
         ) - timedelta(hours=data.timezone_offset)
-        year_midpoint = datetime(data.year, 7, 1, 12, 0, tzinfo=timezone.utc)
+        year_midpoint = datetime(data.year, 7, 1, 12, 0, tzinfo=UTC)
         running = (
             get_dasha_for_birth(moon_longitude, birth_utc, year_midpoint)
             .get("current_dasha") or {}
@@ -141,4 +139,4 @@ async def calculate_varshphal(request: Request, data: VarshphalRequest):
         }
     except Exception as e:
         logger.error(f"Varshphal error: {e}")
-        raise HTTPException(status_code=500, detail="Error calculating Varshphal.")
+        raise HTTPException(status_code=500, detail="Error calculating Varshphal.") from e

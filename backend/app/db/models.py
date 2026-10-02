@@ -4,7 +4,7 @@ from sqlalchemy import (
     Column, Integer, String, DateTime, Float, ForeignKey, Text, JSON, Boolean, Date,
 )
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from ..core.houses import DEFAULT_HOUSE_SYSTEM
 from .database import Base
 
@@ -28,8 +28,8 @@ class User(Base):
     role = Column(String(32), nullable=False, default=ROLE_CLIENT, index=True)
     token_version = Column(Integer, nullable=False, default=0)
     email_verified = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     charts = relationship("SavedChart", back_populates="owner")
     # astrologers references users twice (user_id and reviewed_by), so the
@@ -56,7 +56,7 @@ class SavedChart(Base):
     longitude = Column(Float, nullable=False)
     timezone_offset = Column(Float, nullable=False)
     chart_data = Column(JSON, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     owner = relationship("User", back_populates="charts")
 
@@ -121,8 +121,8 @@ class Astrologer(Base):
     total_assessments = Column(Integer, nullable=False, default=0)
     score_computed_at = Column(DateTime, nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
     user = relationship("User", back_populates="astrologer_profile",
                         foreign_keys=[user_id])
@@ -166,7 +166,7 @@ class AstrologerDocument(Base):
     reviewer_note = Column(Text, nullable=True)
     reviewed_at = Column(DateTime, nullable=True)
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
-    uploaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    uploaded_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     astrologer = relationship("Astrologer", back_populates="documents")
 
@@ -187,7 +187,7 @@ class AstrologerAssessment(Base):
     max_score = Column(Integer, nullable=False, default=0)
     passed = Column(Boolean, nullable=False, default=False)
     pass_mark = Column(Integer, nullable=False, default=0)
-    submitted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    submitted_at = Column(DateTime, default=lambda: datetime.now(UTC))
     # Set only when an admin overrides the auto-graded outcome.
     overridden_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     override_note = Column(Text, nullable=True)
@@ -213,7 +213,7 @@ class AstrologerMockConsult(Base):
     score_structure = Column(Integer, nullable=False, default=0)
     verdict = Column(String(32), nullable=False, default="fail")
     notes = Column(Text, nullable=True)
-    evaluated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    evaluated_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     astrologer = relationship("Astrologer", back_populates="mock_consults")
 
@@ -231,7 +231,7 @@ class AstrologerAvailability(Base):
     timezone_offset = Column(Float, nullable=False, default=5.5)
     slot_minutes = Column(Integer, nullable=False, default=30)
     is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     astrologer = relationship("Astrologer", back_populates="availability")
 
@@ -252,7 +252,7 @@ class OnboardingEvent(Base):
     to_status = Column(String(32), nullable=True)
     actor_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     payload = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), index=True)
 
 
 class JobRun(Base):
@@ -266,7 +266,7 @@ class JobRun(Base):
     status = Column(String(32), nullable=False, default="pending", index=True)
     attempts = Column(Integer, nullable=False, default=0)
     last_error = Column(Text, nullable=True)
-    run_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    run_at = Column(DateTime, default=lambda: datetime.now(UTC))
 finished_at = Column(DateTime, nullable=True)
 
 
@@ -280,7 +280,7 @@ class AuthToken(Base):
     token_hash = Column(String(255), nullable=False, unique=True, index=True)
     expires_at = Column(DateTime, nullable=False)
     used_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
 class UserSession(Base):
     """Active sessions for refresh token rotation and device tracking."""
@@ -292,8 +292,8 @@ class UserSession(Base):
     user_agent = Column(String(255), nullable=True)
     ip_address = Column(String(64), nullable=True)
     expires_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    last_used_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    last_used_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
 class UserSettings(Base):
     """Per-user calculation settings.
@@ -307,9 +307,9 @@ class UserSettings(Base):
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     # whole-sign | equal -- see app.core.houses.HOUSE_SYSTEMS
     house_system = Column(String(32), nullable=False, default=DEFAULT_HOUSE_SYSTEM)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )

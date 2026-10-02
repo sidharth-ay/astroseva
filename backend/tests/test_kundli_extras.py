@@ -12,7 +12,6 @@ below is against a value fixed outside this codebase:
 
 import pytest
 
-from app.core import kundli_extras as extras
 from app.core.kundli_extras import (
     FRIENDSHIPS,
     GANA,

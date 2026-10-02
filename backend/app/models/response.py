@@ -1,7 +1,7 @@
 """Response models for API outputs."""
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Any
 from datetime import datetime
 
 
@@ -15,7 +15,7 @@ class PlanetResponse(BaseModel):
     retrograde: bool
     dignity: str
     is_own_sign: bool
-    house: Optional[int] = None
+    house: int | None = None
 
 
 class KundliResponse(BaseModel):
@@ -34,20 +34,20 @@ class KundliResponse(BaseModel):
     # The IANA zone the offset was resolved from, when one was supplied. Passed
     # back so a re-sent request resolves the same historical offset rather than
     # trusting whatever offset the client happens to have stored.
-    timezone_iana: Optional[str] = None
+    timezone_iana: str | None = None
     ayanamsa: float
     ascendant: float
     asc_sign: int
     asc_sign_name: str
     asc_sign_degree: float
-    planets: List[PlanetResponse]
-    houses: Dict[int, List[str]]
-    chart: Dict[int, Dict[str, Any]]
-    retrograde_planets: List[str]
-    exalted_planets: List[str]
-    debilitated_planets: List[str]
-    dasha_info: Optional[Dict[str, Any]] = None
-    extras: Optional[Dict[str, Any]] = None
+    planets: list[PlanetResponse]
+    houses: dict[int, list[str]]
+    chart: dict[int, dict[str, Any]]
+    retrograde_planets: list[str]
+    exalted_planets: list[str]
+    debilitated_planets: list[str]
+    dasha_info: dict[str, Any] | None = None
+    extras: dict[str, Any] | None = None
     created_at: datetime = Field(default_factory=datetime.now)
 
 
@@ -60,9 +60,9 @@ class MatchingResponse(BaseModel):
     compatibility_percentage: float
     recommendation: str
     nadi_dosha: bool
-    kootas: Dict[str, Any]
-    boy_nakshatra: Dict[str, Any]
-    girl_nakshatra: Dict[str, Any]
+    kootas: dict[str, Any]
+    boy_nakshatra: dict[str, Any]
+    girl_nakshatra: dict[str, Any]
 
 
 class PredictionResponse(BaseModel):
@@ -70,44 +70,44 @@ class PredictionResponse(BaseModel):
     prediction_type: str
     content: str
     ai_model: str
-    tokens_used: Optional[int] = None
+    tokens_used: int | None = None
     language: str = "en"
     created_at: datetime = Field(default_factory=datetime.now)
 
 
 class DoshaResponse(BaseModel):
     """Dosha detection response (Manglik, Kaal Sarp, Sade Sati, Pitru; total 0-4)."""
-    manglik: Dict[str, Any]
-    kaal_sarp: Dict[str, Any]
-    sade_sati: Dict[str, Any]
-    pitru_dosha: Dict[str, Any]
+    manglik: dict[str, Any]
+    kaal_sarp: dict[str, Any]
+    sade_sati: dict[str, Any]
+    pitru_dosha: dict[str, Any]
     total_doshas: int
 
 
 class PanchangResponse(BaseModel):
     """Panchang response."""
     date: str
-    tithi: Dict[str, Any]
-    nakshatra: Dict[str, Any]
-    yoga: Dict[str, Any]
-    karana: Dict[str, Any]
-    vara: Dict[str, Any]
-    rahu_kaal: Dict[str, Any]
-    gulika_kaal: Dict[str, Any]
+    tithi: dict[str, Any]
+    nakshatra: dict[str, Any]
+    yoga: dict[str, Any]
+    karana: dict[str, Any]
+    vara: dict[str, Any]
+    rahu_kaal: dict[str, Any]
+    gulika_kaal: dict[str, Any]
     sunrise: str
     sunset: str
 
 
 class NumerologyResponse(BaseModel):
     """Numerology analysis response."""
-    life_path: Dict[str, Any]
-    destiny: Dict[str, Any]
-    soul_urge: Dict[str, Any]
-    personality: Dict[str, Any]
-    birthday: Dict[str, Any]
-    name_number: Dict[str, Any]
-    lucky_numbers: List[int]
-    compatibility: Dict[str, Any]
+    life_path: dict[str, Any]
+    destiny: dict[str, Any]
+    soul_urge: dict[str, Any]
+    personality: dict[str, Any]
+    birthday: dict[str, Any]
+    name_number: dict[str, Any]
+    lucky_numbers: list[int]
+    compatibility: dict[str, Any]
 
 
 class HoroscopeResponse(BaseModel):
@@ -118,7 +118,7 @@ class HoroscopeResponse(BaseModel):
     love_rating: int
     career_rating: int
     health_rating: int
-    lucky_numbers: List[int]
+    lucky_numbers: list[int]
     lucky_color: str
     ai_model: str
 
@@ -126,7 +126,7 @@ class HoroscopeResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Error response."""
     error: str
-    detail: Optional[str] = None
+    detail: str | None = None
     status_code: int
 
 
@@ -135,58 +135,58 @@ class ChoghadiyaResponse(BaseModel):
     date: str
     sunrise: str
     sunset: str
-    day_choghadiya: List[Dict[str, Any]]
-    night_choghadiya: List[Dict[str, Any]]
+    day_choghadiya: list[dict[str, Any]]
+    night_choghadiya: list[dict[str, Any]]
 
 
 class HoraResponse(BaseModel):
     """Hora response."""
     date: str
-    day_hora: List[Dict[str, Any]]
-    night_hora: List[Dict[str, Any]]
+    day_hora: list[dict[str, Any]]
+    night_hora: list[dict[str, Any]]
 
 
 class GowriResponse(BaseModel):
     """Gowri Panchangam response."""
     date: str
-    periods: List[Dict[str, Any]]
+    periods: list[dict[str, Any]]
 
 
 class GhatiMuhuratResponse(BaseModel):
     """Do Ghati Muhurat response."""
     date: str
-    muhurats: List[Dict[str, Any]]
+    muhurats: list[dict[str, Any]]
 
 
 class MonthlyPanchangResponse(BaseModel):
     """Monthly Panchang response."""
     month: int
     year: int
-    days: List[Dict[str, Any]]
+    days: list[dict[str, Any]]
 
 
 class TransitResponse(BaseModel):
     """Transit (Gochar) response."""
     date: str
-    transits: List[Dict[str, Any]]
-    current_signs: Dict[str, str]
+    transits: list[dict[str, Any]]
+    current_signs: dict[str, str]
 
 
 class GemstoneResponse(BaseModel):
     """Gemstone recommendation response."""
-    birth_data: Dict[str, Any]
-    gemstones: List[Dict[str, Any]]
+    birth_data: dict[str, Any]
+    gemstones: list[dict[str, Any]]
     recommendations: str
 
 
 class VarshphalResponse(BaseModel):
     """Annual horoscope (Varshphal) response."""
-    birth_data: Dict[str, Any]
+    birth_data: dict[str, Any]
     year: int
-    Varshphal_chart: Dict[str, Any]
-    predictions: Dict[str, Any]
-    auspicious_months: List[str]
-    challenging_months: List[str]
+    Varshphal_chart: dict[str, Any]
+    predictions: dict[str, Any]
+    auspicious_months: list[str]
+    challenging_months: list[str]
 
 
 class LoveMatchResponse(BaseModel):
@@ -204,16 +204,16 @@ class LoveMatchResponse(BaseModel):
 class BabyNameResponse(BaseModel):
     """Baby name suggestion response."""
     gender: str
-    names: List[Dict[str, Any]]
-    lucky_numbers: List[int]
-    lucky_letters: List[str]
+    names: list[dict[str, Any]]
+    lucky_numbers: list[int]
+    lucky_letters: list[str]
 
 
 class FestivalResponse(BaseModel):
     """Festival calendar response."""
     month: int
     year: int
-    festivals: List[Dict[str, Any]]
+    festivals: list[dict[str, Any]]
 
 
 class ReportResponse(BaseModel):

@@ -1,6 +1,5 @@
 """Rashi (Zodiac Sign) definitions and properties for Vedic Astrology."""
 
-from typing import Optional
 
 # Rashi names (0-indexed: Aries=0)
 RASHI_NAMES = {

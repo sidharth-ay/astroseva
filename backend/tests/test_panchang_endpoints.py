@@ -54,7 +54,7 @@ def test_hora_day_periods_tile_the_daylight(client):
     """Day horas must run sunrise to sunset with no gaps or overlaps."""
     r = client.get("/api/v1/panchang/hora?date_str=2026-03-11")
     day = r.json()["day_hora"]
-    for earlier, later in zip(day, day[1:]):
+    for earlier, later in zip(day, day[1:], strict=False):
         assert earlier["end"] == later["start"], (earlier, later)
 
 

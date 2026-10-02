@@ -8,12 +8,12 @@ heliocentric longitudes (hlon) for the planets.
 
 import math
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 try:
     from skyfield.api import load
-except ImportError:
-    raise ImportError("Skyfield is required: pip install skyfield")
+except ImportError as e:
+    raise ImportError("Skyfield is required: pip install skyfield") from e
 
 # --- Ephemeris singletons (loaded once, cached on disk) ---------------------
 _TS = load.timescale()
@@ -84,7 +84,7 @@ def _to_utc_time(year: int, month: int, day: int,
     """Local birth time -> Skyfield Time in UTC."""
     naive = datetime(year, month, day) + timedelta(hours=float(hour), minutes=float(minute))
     aware = naive.replace(tzinfo=timezone(timedelta(hours=float(tz_offset))))
-    return _TS.from_datetime(aware.astimezone(timezone.utc))
+    return _TS.from_datetime(aware.astimezone(UTC))
 
 
 def _tropical_longitude(body_name: str, t) -> float:
@@ -213,7 +213,7 @@ def get_sun_moon_longitudes_batch(
         aware = naive.replace(
             tzinfo=timezone(timedelta(hours=float(tz)))
         )
-        times.append(aware.astimezone(timezone.utc))
+        times.append(aware.astimezone(UTC))
     t = _TS.from_datetimes(times)
 
     # The ayanamsa is also evaluated per instant, so it comes back as an array of
@@ -232,7 +232,7 @@ def get_sun_moon_longitudes_batch(
     sun_list = [float(x) for x in _as_sequence(sun_deg)]
     moon_list = [float(x) for x in _as_sequence(moon_deg)]
     for idx, (sun_l, moon_l, ay) in enumerate(
-        zip(sun_list, moon_list, ayanamsa_list)
+        zip(sun_list, moon_list, ayanamsa_list, strict=True)
     ):
         results[idx] = ((sun_l - ay) % 360, (moon_l - ay) % 360)
 
@@ -326,15 +326,22 @@ AYANAMSA_OFFSETS = {
 
 
 def get_planetary_positions(year: int, month: int, day: int,
-                            hour: float = 12.0, minute: float = 0,
-                            timezone_offset: float = 5.5,
-                            latitude: float = 28.6139,
-                            longitude: float = 77.2090,
-                            ayanamsa_type: str = "lahiri") -> dict:
+    hour: float = 12.0, minute: float = 0,
+    timezone_offset: float = 5.5,
+    latitude: float = 28.6139,
+    longitude: float = 77.2090,
+    ayanamsa_type: str = "lahiri") -> dict:
     """Calculate sidereal planetary positions for birth details.
 
     Same signature as before -- all existing callers work unchanged.
     ayanamsa_type: "lahiri" (default), "kp", "b_v_raman", "surya_siddhanta"
+
+    Scope, stated plainly: only the kundli endpoints pass a value here. Every
+    other caller (doshas, matching, gemstones, lalkitab, reports, chat) uses
+    the default, so those modules always compute Lahiri regardless of any
+    per-request choice. Non-Lahiri values are Lahiri plus a fixed offset, not
+    independently computed ephemerides -- close enough for chart display, not
+    a substitute for a full KP engine.
     """
     t = _to_utc_time(year, month, day, hour, minute, timezone_offset)
     ayanamsa = _lahiri_ayanamsa(t)

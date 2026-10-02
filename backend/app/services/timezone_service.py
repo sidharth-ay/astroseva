@@ -20,7 +20,6 @@ offset that was already wrong.
 
 import logging
 from datetime import datetime
-from typing import Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ _unavailable_warned: set = set()
 
 
 def resolve_offset(
-    tz_iana: Optional[str],
+    tz_iana: str | None,
     birth_date,
     birth_time=None,
     fallback: float = 5.5,

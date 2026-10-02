@@ -37,7 +37,7 @@ async def analyze_numerology(request: Request, payload: NumerologyRequest):
         raise HTTPException(
             status_code=500,
             detail="Error analyzing numerology. Please try again."
-        )
+        ) from e
 
 
 @router.get("/life-path/{birth_date}")
@@ -54,7 +54,7 @@ async def get_life_path_number(request: Request, birth_date: str):
         raise HTTPException(
             status_code=400,
             detail="Invalid date format. Use DD-MM-YYYY."
-        )
+        ) from e
 
 
 @router.get("/destiny/{name}")
@@ -71,4 +71,4 @@ async def get_destiny_number(request: Request, name: str):
         raise HTTPException(
             status_code=400,
             detail="Error calculating destiny number. Please try again."
-        )
+        ) from e

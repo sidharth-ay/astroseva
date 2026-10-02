@@ -177,4 +177,4 @@ async def recommend_gemstones(
 
     except Exception as e:
         logger.error(f"Gemstone error: {e}")
-        raise HTTPException(status_code=500, detail="Error generating gemstone recommendations.")
+        raise HTTPException(status_code=500, detail="Error generating gemstone recommendations.") from e

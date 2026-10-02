@@ -6,7 +6,6 @@ everyone, plus a recommendations paragraph that varied only on whether Saturn,
 Jupiter or Mercury happened to be retrograde.
 """
 
-import pytest
 
 BASE = {
     "name": "Test", "birth_date": "1990-05-15", "birth_time": "10:30",

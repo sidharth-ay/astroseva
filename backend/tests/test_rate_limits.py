@@ -19,10 +19,8 @@ decay is enforced here rather than trusted.
 """
 
 import ast
-import re
 from pathlib import Path
 
-import pytest
 
 from app.core.rate_limit import HEALTH_LIMIT, limiter
 

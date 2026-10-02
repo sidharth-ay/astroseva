@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import random
-from datetime import date, datetime
+from datetime import date
 from fastapi import APIRouter, HTTPException, Request
 from ..core.rate_limit import limiter
 
@@ -383,7 +383,7 @@ async def get_all_daily_horoscopes(request: Request, language: str = "en"):
 
     horoscopes = []
     signs_to_warm = []
-    for sign, r in zip(ZODIAC_SIGNS, results):
+    for sign, r in zip(ZODIAC_SIGNS, results, strict=True):
         if isinstance(r, Exception):
             horoscopes.append(_local_response(sign).model_dump())
             signs_to_warm.append(sign)

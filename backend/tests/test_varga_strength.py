@@ -5,12 +5,11 @@ import pytest
 
 from app.core.vargas import (
     build_vargas, get_varga_signs, d1_rasi, d2_hora, d3_drekkana,
-    d4_chaturthamsa, d5_panchamsa, d6_shashtamsa, d7_saptamsa, d8_ashtamsa,
-    d9_navamsa, d10_dasamsa, d12_dwadasamsa, d16_kalamsa, CHART_FN, DIVISIONS,
+    d5_panchamsa, d7_saptamsa, d9_navamsa, d10_dasamsa, d12_dwadasamsa, d16_kalamsa, CHART_FN, DIVISIONS,
 )
 from app.core.shadbala import build_shadbala, build_bhavabala, GRAHAS, STHANA
 from app.core.ashtakavarga import (
-    build_ashtakavarga, build_prasthara_ashtakavarga, _POSITIONS, GRAHAS as AV_GRAHAS,
+    build_ashtakavarga, build_prasthara_ashtakavarga, _POSITIONS,
 )
 from app.core.navatara import build_navatara, build_arudha, NAVATARA_TOTAL
 
@@ -488,7 +487,7 @@ def test_navatara_published_totals_are_classical():
 
 # ─── Arudha ───────────────────────────────────────────────────
 
-def test_arudha_lagna_is_ninth_from_ascendant():
+def test_arudha_lagna_is_ninth_from_every_ascendant():
     for asc in range(12):
         r = build_arudha(_chart7(), asc)
         assert r["arudha_lagna"] == (asc + 8) % 12, asc

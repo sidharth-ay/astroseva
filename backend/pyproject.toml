@@ -1,0 +1,45 @@
+# Ruff configuration for the AstroSeva backend.
+#
+# There was no Python linter in this project at all -- eslint covered the
+# frontend while anything went on the backend. These rules are the subset that
+# catches real defects (unused imports that hide circular imports, undefined
+# names, genuinely unused variables) without relitigating style. Formatting
+# (line length, quotes, whitespace) is intentionally not enforced: reformatting
+# thirty files to satisfy a formatter would bury the history for no safety gain.
+
+[tool.ruff]
+target-version = "py314"
+
+[tool.ruff.lint]
+select = [
+  "F",     # pyflakes: undefined names, unused imports, redefinitions
+  "E4",    # import order sanity (subset of pycodestyle errors)
+  "E7",    # statement sanity (bare except, etc.)
+  "E9",    # syntax errors
+  "B",     # flake8-bugbear: mutable defaults, except-pass, unused loop vars
+  "UP",    # pyupgrade: dead six/py2 shims, old typing forms
+  "ASYNC", # flake8-async: blocking calls in async code
+  "S101",  # asserts used outside tests (asserts vanish under -O)
+]
+ignore = [
+  # Test files assert constantly; that is their entire job.
+  # (Scoped per-file below instead of globally.)
+  "BLE001", # blind except: the services log-and-record deliberately
+  "S110",   # try-except-pass: used for best-effort cache/optional work
+  "E501",   # line length: not enforced (see header comment)
+  "B008",   # function call in defaults: every FastAPI endpoint in this project
+            # declares Depends/Query/File this way, which is the framework's
+            # documented pattern rather than a mutable-default bug.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["S101"]
+"app/services/*.py" = ["S110"]
+# main.py calls load_dotenv() before any other import so that modules reading
+# environment variables at import time (auth_service and JWT_SECRET in
+# particular) see them. Reordering would break startup, so the placement is
+# load-bearing rather than sloppy.
+"app/main.py" = ["E402"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["dict", "list", "tuple"]

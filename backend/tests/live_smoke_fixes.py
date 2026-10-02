@@ -157,7 +157,7 @@ def main() -> int:
     body = r.json()
     windows = body["muhurats"]
     overlaps = [
-        1 for a, b in zip(windows, windows[1:])
+        1 for a, b in zip(windows, windows[1:], strict=False)
         if _minutes(b["start"]) < _minutes(a["end"])
     ]
     check("/ghati windows do not overlap", not overlaps, f"{len(overlaps)} overlaps")

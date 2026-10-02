@@ -3,8 +3,7 @@
 Implements proper Vimshottari Dasha based on Moon's nakshatra at birth.
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import datetime, timedelta, UTC
 
 # Dasha lords and their durations (total 120 years)
 DASHA_SEQUENCE = [
@@ -164,8 +163,6 @@ def calculate_antardashas(mahadasha_start: datetime, mahadasha_end: datetime,
 
     The duration of each Antardasha = (Mahadasha lord duration × Sub lord duration) / 120
     """
-    mahadasha_days = (mahadasha_end - mahadasha_start).total_seconds() / 86400.0
-
     # Find the starting Antardasha lord
     start_idx = 0
     for i, (lord, _) in enumerate(DASHA_SEQUENCE):
@@ -266,7 +263,7 @@ def calculate_pratyantardashas(antardasha_start: datetime, antardasha_end: datet
     return pratyardashas
 
 
-def get_current_dasha(mahadashas: list, current_date: datetime) -> Optional[dict]:
+def get_current_dasha(mahadashas: list, current_date: datetime) -> dict | None:
     """Get the current Mahadasha, Antardasha, and Pratyantardasha for a given date.
 
     Args:
@@ -364,7 +361,7 @@ def get_dasha_for_birth(moon_longitude: float, birth_dt: datetime,
         Dictionary with all Mahadashas and current dasha info.
     """
     if current_date is None:
-        current_date = datetime.now(timezone.utc)
+        current_date = datetime.now(UTC)
 
     nakshatra = get_nakshatra_from_moon_longitude(moon_longitude)
     mahadashas = calculate_mahadashas(birth_dt, moon_longitude)
@@ -440,7 +437,7 @@ def get_current_yogini(birth_dt: datetime, moon_longitude: float,
                        current_date: datetime = None) -> dict | None:
     """Current Yogini period for a date."""
     if current_date is None:
-        current_date = datetime.now(timezone.utc)
+        current_date = datetime.now(UTC)
     data = calculate_yogini_dasha(birth_dt, moon_longitude)
     for p in data["periods"]:
         if p["start"] <= current_date <= p["end"]:
@@ -499,7 +496,7 @@ def get_current_chara(lagna_sign: int, birth_dt: datetime,
                       current_date: datetime = None) -> dict | None:
     """Current Chara sign period for a date."""
     if current_date is None:
-        current_date = datetime.now(timezone.utc)
+        current_date = datetime.now(UTC)
     current = birth_dt
     for p in calculate_chara_dasha(lagna_sign):
         end = current + timedelta(days=p["duration_years"] * 365.25)

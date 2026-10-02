@@ -33,10 +33,8 @@ dates and sunrise/sunset/muhurat times that apply there.
 """
 
 from datetime import date, datetime, timedelta
-import calendar
 
 from .panchang import (
-    TITHI_NAMES,
     calculate_nakshatra,
     calculate_rahu_kaal,
     calculate_sunrise_sunset,
@@ -709,7 +707,7 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
     probe_longs = get_sun_moon_longitudes_batch(probe_instants)
 
     samples: dict[tuple[str, date], dict] = {}
-    for (key, plan), slots in zip(plans.items(), probe_slots):
+    for (key, plan), slots in zip(plans.items(), probe_slots, strict=True):
         d = key[1]
         probes = [
             (calculate_tithi(sun_l, moon_l), moon_l)
@@ -789,6 +787,7 @@ def _compute_year(year, latitude, longitude, timezone_offset, month=None) -> lis
                             for dd in days
                         ]
                     ),
+                    strict=True,
                 )
             }
         return _evening_cache[d]

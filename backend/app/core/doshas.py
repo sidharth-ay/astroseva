@@ -4,7 +4,6 @@ import calendar
 import datetime
 from bisect import bisect_right
 from functools import lru_cache
-from typing import Optional
 
 _SIGN_NAMES = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
                "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]

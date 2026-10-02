@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request
 from ..core.rate_limit import limiter
 import logging
 
-from ..models.birth_data import PredictionRequest, BirthData
+from ..models.birth_data import PredictionRequest
 from ..models.response import PredictionResponse
 from ..core.planets import get_planetary_positions
 from ..core.rashis import RASHI_NAMES
@@ -125,7 +125,7 @@ async def generate_ai_prediction(request: Request, payload: PredictionRequest):
         raise HTTPException(
             status_code=500,
             detail="Error generating prediction. Please try again."
-        )
+        ) from e
 
 
 @router.get("/types")

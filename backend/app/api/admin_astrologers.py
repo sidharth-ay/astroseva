@@ -6,7 +6,7 @@ queues, so an application can only be in one place at a time and there is no way
 to skip a stage.
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -15,14 +15,9 @@ from sqlalchemy.orm import Session
 from ..core.rate_limit import limiter
 from ..db.database import get_db
 from ..db.models import (
-    STATUS_APPLIED,
-    STATUS_ASSESSMENT_PENDING,
     STATUS_DRAFT,
     STATUS_MOCK_PENDING,
-    STATUS_REJECTED,
     STATUS_SUSPENDED,
-    STATUS_UNDER_REVIEW,
-    STATUS_VERIFIED,
     Astrologer,
     AstrologerAssessment,
     AstrologerDocument,
@@ -220,7 +215,7 @@ async def change_status(astrologer_id: int, payload: StatusChange, request: Requ
             status_code=409,
             detail=f"{e}. From '{p.status}' the legal targets are: "
                    f"{', '.join(sorted(svc.LEGAL_TRANSITIONS.get(p.status, set()))) or 'none'}",
-        )
+        ) from e
 
     svc.recompute_accuracy(db, p)
     db.commit()
@@ -247,7 +242,7 @@ async def review_document(document_id: int, payload: DocumentReview, request: Re
     profile = _load(db, doc.astrologer_id)
     doc.identity_status = payload.identity_status
     doc.reviewer_note = payload.reviewer_note
-    doc.reviewed_at = datetime.now(timezone.utc)
+    doc.reviewed_at = datetime.now(UTC)
     doc.reviewed_by = reviewer.id
     svc.record_event(db, profile, "document_reviewed", profile.status, profile.status,
                      reviewer.id,
@@ -272,7 +267,7 @@ async def document_content(document_id: int, request: Request,
     try:
         data = open_file(doc.storage_key)
     except StorageError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     from fastapi.responses import Response
     return Response(content=data, media_type=doc.content_type or "application/octet-stream",
                     headers={"Content-Disposition":

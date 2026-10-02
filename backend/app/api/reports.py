@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from ..core.rate_limit import limiter
 from pydantic import BaseModel
-from typing import Optional
 import logging
 
 from ..models.birth_data import BirthData
@@ -132,4 +131,4 @@ async def generate_report(
             return response
     except Exception as e:
         logger.error(f"Report generation error: {e}")
-        raise HTTPException(status_code=500, detail="Error generating report.")
+        raise HTTPException(status_code=500, detail="Error generating report.") from e

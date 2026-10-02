@@ -11,7 +11,7 @@ from ..models.response import DoshaResponse
 from ..core.planets import get_planetary_positions
 from ..core.houses import DEFAULT_HOUSE_SYSTEM, get_house_from_longitude
 from ..services.settings_service import house_system_setting
-from ..core.doshas import detect_all_doshas, detect_manglik, detect_sade_sati, detect_pitru_dosha, get_transit_saturn_sign, get_sade_sati_periods
+from ..core.doshas import detect_all_doshas, get_transit_saturn_sign, get_sade_sati_periods
 from ..services.remedy_service import build_remedies
 from ..services.cache_service import cache_service
 
@@ -115,7 +115,7 @@ async def detect_doshas(
         raise HTTPException(
             status_code=500,
             detail="Error detecting doshas. Please try again."
-        )
+        ) from e
 
 
 @router.post("/remedies")
@@ -179,7 +179,7 @@ async def get_remedies(
         raise HTTPException(
               status_code=500,
               detail="Error generating remedies. Please try again."
-          )
+          ) from e
 
 
 @router.post("/sade-sati-periods")
@@ -219,4 +219,4 @@ async def get_sade_periods(request: Request, birth_data: BirthData):
         return response
     except Exception as e:
         logger.error(f"Sade periods error: {e}")
-        raise HTTPException(status_code=500, detail="Error calculating Sade Sati periods.")
+        raise HTTPException(status_code=500, detail="Error calculating Sade Sati periods.") from e

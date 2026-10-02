@@ -1,7 +1,6 @@
 """Panchang (Five Limbs) calculation for Vedic Astrology."""
 
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 import math
 
 # Tithi names

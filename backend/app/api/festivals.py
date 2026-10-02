@@ -77,7 +77,7 @@ async def list_festivals(
         logger.error(f"Festival calculation error: {e}")
         raise HTTPException(
             status_code=500, detail="Error calculating festivals. Please try again."
-        )
+        ) from e
 
     if category:
         festivals = [f for f in festivals if f["category"] == category]

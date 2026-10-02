@@ -1,6 +1,5 @@
 """Numerology calculations for Vedic Astrology."""
 
-from typing import Optional
 
 # Number meanings
 NUMBER_MEANINGS = {

@@ -5,7 +5,7 @@ they run, or `running` if it dies while handling them. Without a sweep, a
 marketplace onboarding status change is lost forever.
 """
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 import pytest
 from sqlalchemy.orm import Session
@@ -18,7 +18,6 @@ from app.services import jobs
 def clean_jobs(db_session: Session, monkeypatch):
     """The tests here count runs, so the table must be empty."""
     import app.services.jobs as jobs_mod
-    from app.db.database import SessionLocal
 
     # Bind the background worker to the isolated test database.
     monkeypatch.setattr(jobs_mod, "SessionLocal", lambda: db_session)
@@ -61,7 +60,7 @@ def test_reclaim_resets_a_stale_running_row(db_session: Session):
     def _handle(db, payload):
         pass
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     old = now - timedelta(seconds=jobs.STALE_RUNNING_SECONDS + 5)
     fresh = now - timedelta(seconds=jobs.STALE_RUNNING_SECONDS - 5)
 
@@ -89,7 +88,7 @@ def test_a_poison_job_is_abandoned_rather_than_reclaimed_forever(db_session: Ses
     def _handle(db, payload):
         pass
 
-    old = datetime.now(timezone.utc) - timedelta(seconds=jobs.STALE_RUNNING_SECONDS + 5)
+    old = datetime.now(UTC) - timedelta(seconds=jobs.STALE_RUNNING_SECONDS + 5)
 
     # It has already exhausted its retries.
     db_session.add(JobRun(

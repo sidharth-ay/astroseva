@@ -1,9 +1,7 @@
 """Test auth completeness: reset, verify, refresh tokens, sessions, export/delete."""
 import pytest
-from fastapi.testclient import TestClient
-from datetime import datetime, timedelta, timezone
 from app.db.models import User, AuthToken, UserSession
-from app.services.auth_service import hash_password, hash_secure_token
+from app.services.auth_service import hash_password
 
 # Clean up before testing
 @pytest.fixture(autouse=True)

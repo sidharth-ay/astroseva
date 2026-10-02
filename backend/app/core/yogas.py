@@ -175,7 +175,7 @@ def detect_yogas(planets: list, asc_sign: int, moon_sign: int) -> list:
             add("Adhi Yoga", f"Benefics ({', '.join(adhi)}) in 6/7/8 from Moon — command and scholarship.")
 
     # Vasumathi: benefics in 3rd/6th/10th/11th from Lagna or Moon
-    for ref, ref_sign, ref_name in (("lagna", asc_sign, "Lagna"), ("moon", moon_sign, "Moon")):
+    for _ref, ref_sign, ref_name in (("lagna", asc_sign, "Lagna"), ("moon", moon_sign, "Moon")):
         if ref_sign is None:
             continue
         vasu = [n for n in BENEFICS

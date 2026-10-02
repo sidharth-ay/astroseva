@@ -1,6 +1,5 @@
 """House (Bhava) system and calculations for Vedic Astrology."""
 
-from typing import Optional
 
 # The house systems this app can compute, and the default used when a user
 # has not chosen one. "whole-sign" follows the North-Indian Rasi convention;

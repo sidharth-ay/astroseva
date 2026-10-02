@@ -5,7 +5,6 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Request
 from ..core.rate_limit import limiter
 from fastapi.responses import StreamingResponse
-from datetime import datetime
 import logging
 
 from ..models.birth_data import BirthData, MatchingData, LoveMatchData
@@ -13,10 +12,8 @@ from ..models.response import LoveMatchResponse, MatchingResponse
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
 from ..services.settings_service import house_system_setting
-from ..core.rashis import RASHI_NAMES
 from ..core.matching import analyze_matching
 from ..core.doshas import detect_manglik
-from ..services.cache_service import cache_service
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +102,7 @@ async def analyze_marriage_matching(request: Request, matching_data: MatchingDat
         raise HTTPException(
             status_code=500,
             detail="Error analyzing matching. Please try again."
-        )
+        ) from e
 
 
 @router.get("/sample")
@@ -202,7 +199,7 @@ async def export_matching_pdf(
         raise
     except Exception as e:
         logger.error(f"Matching PDF export error: {e}")
-        raise HTTPException(status_code=500, detail="Error generating PDF. Please try again.")
+        raise HTTPException(status_code=500, detail="Error generating PDF. Please try again.") from e
 
 
 # ---------------------------------------------------------------------------
@@ -295,4 +292,4 @@ async def analyze_love_match(request: Request, data: LoveMatchData):
         raise
     except Exception as e:
         logger.error(f"Love match error: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail="Error analyzing love match. Please try again.")
+        raise HTTPException(status_code=500, detail="Error analyzing love match. Please try again.") from e

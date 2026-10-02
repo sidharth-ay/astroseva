@@ -6,7 +6,6 @@ administrator whatever its role said, which meant the environment -- not the
 database -- could grant the highest privilege in the application.
 """
 
-import os
 from pathlib import Path
 
 import pytest

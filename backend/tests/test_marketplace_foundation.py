@@ -5,7 +5,6 @@ dependency and cannot be forgotten: every marketplace route must refuse a client
 account, and a reviewer must not be able to reach admin-only work.
 """
 
-import os
 import pathlib
 import tempfile
 from pathlib import Path
@@ -14,9 +13,7 @@ import pytest
 
 from app.db.models import (
     ROLE_ADMIN,
-    ROLE_ASTROLOGER,
     ROLE_CLIENT,
-    ROLE_REVIEWER,
     User,
 )
 from app.services import storage_service

@@ -95,7 +95,7 @@ def test_lalkitab_ascendant_matches_the_requested_place(client):
             year=1990, month=5, day=15, hour=1, minute=0, **coords
         )
         # The endpoint reports the sign NAME.
-        expected_sign = RASHI = [
+        expected_sign = [
             "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
             "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
         ][expected["asc_sign"]]

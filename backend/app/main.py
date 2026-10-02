@@ -3,18 +3,15 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import asyncio
 import logging
 import os
 import re
-import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from .core.rate_limit import HEALTH_LIMIT, limiter
@@ -275,7 +272,7 @@ async def health_check(request: Request):
             "status": overall,
             "service": "AstroSeva API",
             "checks": checks,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
     )
 

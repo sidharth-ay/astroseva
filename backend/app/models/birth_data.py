@@ -1,7 +1,6 @@
 """Birth data models for Vedic Astrology calculations."""
 
 from pydantic import BaseModel, Field, model_validator
-from typing import Optional
 from datetime import date, time
 
 from ..services.timezone_service import resolve_offset
@@ -32,7 +31,7 @@ class BirthData(BaseModel):
         le=14,
         description="UTC offset in force now at the birth place (e.g., 5.5 for IST)"
     )
-    timezone_iana: Optional[str] = Field(
+    timezone_iana: str | None = Field(
         default=None,
         max_length=64,
         description=(
@@ -41,10 +40,10 @@ class BirthData(BaseModel):
             "it and `timezone_offset` is only the fallback."
         ),
     )
-    gender: Optional[str] = Field(default=None, description="Gender (male/female)")
+    gender: str | None = Field(default=None, description="Gender (male/female)")
 
     @model_validator(mode="after")
-    def _resolve_timezone(self) -> "BirthData":
+    def _resolve_timezone(self) -> BirthData:
         if self.timezone_iana:
             self.timezone_offset = resolve_offset(
                 self.timezone_iana,

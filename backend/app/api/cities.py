@@ -50,7 +50,7 @@ def _load_cities() -> tuple:
             f"{_CITIES_PATH} (regenerate with data/build_cities.py)"
         )
     try:
-        with open(_CITIES_PATH, "r", encoding="utf-8") as handle:
+        with open(_CITIES_PATH, encoding="utf-8") as handle:
             data = json.load(handle)
     except (OSError, json.JSONDecodeError) as exc:
         raise RuntimeError(
@@ -75,7 +75,7 @@ def _load_aliases() -> dict:
     at a name that does not exist would silently break that lookup, so it is a
     loud startup failure instead.
     """
-    with open(_ALIASES_PATH, "r", encoding="utf-8") as handle:
+    with open(_ALIASES_PATH, encoding="utf-8") as handle:
         aliases = json.load(handle)
     known = {city.get("name") for city in _load_cities()}
     dangling = {a: t for a, t in aliases.items() if t not in known}
@@ -99,7 +99,7 @@ def _load_prominence() -> dict:
     scores are equal, so a major city with a worse textual match still loses to
     an exact one.
     """
-    with open(_PROMINENCE_PATH, "r", encoding="utf-8") as handle:
+    with open(_PROMINENCE_PATH, encoding="utf-8") as handle:
         return json.load(handle)
 
 

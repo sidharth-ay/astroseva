@@ -2,7 +2,7 @@
 
 from fastapi import Request
 from fastapi import APIRouter, HTTPException, Query
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 import logging
 
 from ..models.response import PanchangResponse
@@ -198,8 +198,6 @@ def _calculate_ghati_muhurat(sunrise_hour: float, sunset_hour: float) -> list:
     read as the classical muhurtas, which is stated in the response as well.
     """
     # Left to the caller to interpret; kept explicit so the length is not a
-    # magic number buried in the loop below.
-    muhurat_hours = MUHURAT_HOURS
     # Walk the day placing back-to-back windows. The old code computed how many
     # 48-minute windows fit in the day and then spaced their STARTS evenly
     # across it, which produced 15 windows on a 12-hour day spaced 45 minutes
@@ -256,11 +254,11 @@ async def get_daily_panchang(
 
     try:
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as e:
         raise HTTPException(
             status_code=400,
             detail="Invalid date format. Use YYYY-MM-DD.",
-        )
+        ) from e
 
     timezone_offset = _zone_offset_for(date_str, timezone_offset, timezone_iana)
 
@@ -338,13 +336,13 @@ async def get_daily_panchang(
         raise HTTPException(
             status_code=400,
             detail="Invalid date format. Use YYYY-MM-DD."
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Panchang error: {e}")
         raise HTTPException(
             status_code=500,
             detail="Error calculating Panchang. Please try again."
-        )
+        ) from e
 
 
 @router.get("/muhurat")
@@ -360,12 +358,13 @@ async def get_muhurat(
         date_str = date.today().isoformat()
 
     try:
-        target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-    except (ValueError, TypeError):
+        # Validated, not read: the endpoint forwards date_str itself downstream.
+        _ = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except (ValueError, TypeError) as e:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid date '{date_str}'. Expected YYYY-MM-DD.",
-        )
+        ) from e
 
     try:
         # Get Panchang first
@@ -400,7 +399,7 @@ async def get_muhurat(
         raise HTTPException(
             status_code=500,
             detail="Error calculating Muhurat. Please try again."
-        )
+        ) from e
 
 
 @router.get("/choghadiya")
@@ -464,11 +463,11 @@ async def get_choghadiya(
     except HTTPException:
         # The polar-day guard raises a 400 explaining why; do not relabel it.
         raise
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.") from e
     except Exception as e:
         logger.error(f"Choghadiya error: {e}")
-        raise HTTPException(status_code=500, detail="Error calculating Choghadiya.")
+        raise HTTPException(status_code=500, detail="Error calculating Choghadiya.") from e
 
 
 @router.get("/hora")
@@ -536,11 +535,11 @@ async def get_hora(
         # The polar-day guard above raises a 400 with a specific explanation.
         # `except Exception` would otherwise catch it and relabel it 500.
         raise
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.") from e
     except Exception as e:
         logger.error(f"Hora error: {e}")
-        raise HTTPException(status_code=500, detail="Error calculating Hora.")
+        raise HTTPException(status_code=500, detail="Error calculating Hora.") from e
 
 
 @router.get("/gowri")
@@ -598,11 +597,11 @@ async def get_gowri(
     except HTTPException:
         # The polar-day guard raises a 400 explaining why; do not relabel it.
         raise
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.") from e
     except Exception as e:
         logger.error(f"Gowri error: {e}")
-        raise HTTPException(status_code=500, detail="Error calculating Gowri Panchangam.")
+        raise HTTPException(status_code=500, detail="Error calculating Gowri Panchangam.") from e
 
 
 @router.get("/ghati")
@@ -672,11 +671,11 @@ async def get_ghati_muhurat(
     except HTTPException:
         # The polar-day guard raises a 400 explaining why; do not relabel it.
         raise
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.") from e
     except Exception as e:
         logger.error(f"Ghati muhurat error: {e}")
-        raise HTTPException(status_code=500, detail="Error calculating Do Ghati Muhurat.")
+        raise HTTPException(status_code=500, detail="Error calculating Do Ghati Muhurat.") from e
 
 
 @router.get("/monthly")
@@ -799,4 +798,4 @@ async def get_monthly_panchang(
 
     except Exception as e:
         logger.error(f"Monthly panchang error: {e}")
-        raise HTTPException(status_code=500, detail="Error calculating monthly Panchang.")
+        raise HTTPException(status_code=500, detail="Error calculating monthly Panchang.") from e

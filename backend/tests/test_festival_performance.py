@@ -50,7 +50,7 @@ def test_batched_longitudes_match_scalar_exactly():
     scalar = [get_sun_moon_longitudes(*i) for i in instants]
     batched = get_sun_moon_longitudes_batch(instants)
     assert len(batched) == len(instants)
-    for (want_sun, want_moon), (got_sun, got_moon) in zip(scalar, batched):
+    for (want_sun, want_moon), (got_sun, got_moon) in zip(scalar, batched, strict=True):
         assert abs(float(want_sun) - got_sun) < 1e-9
         assert abs(float(want_moon) - got_moon) < 1e-9
 
@@ -229,7 +229,9 @@ def test_a_year_computes_without_blocking_the_event_loop():
 
     async def main():
         start = time.perf_counter()
-        slow = asyncio.create_task(slow_scan())
+        # The reference must be kept: an unreferenced task can be garbage
+        # collected mid-run, which would silently stop measuring concurrency.
+        slow = asyncio.create_task(slow_scan())  # noqa: F841
         done: dict = {}
         quick_task = asyncio.create_task(
             _timed(quick(), done)

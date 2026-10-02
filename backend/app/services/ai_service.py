@@ -4,13 +4,12 @@ import os
 import random
 import logging
 import asyncio
-from typing import Optional
+import time as _time
+from ..core.doshas import active_doshas
 
 logger = logging.getLogger(__name__)
 
-import time as _time
 
-from ..core.doshas import active_doshas
 
 # Quota exhaustion tracking — skip Gemini calls when we know they'll fail
 _gemini_quota_exhausted = False
@@ -368,7 +367,7 @@ Respond as AstroSeva AI."""
             "model": get_model_name(),
             "tokens_used": response.usage_metadata.total_token_count if hasattr(response, 'usage_metadata') else None,
         }
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("Gemini prediction timed out after 45s — using local fallback")
         content = generate_fallback_prediction(birth_details, prediction_type)
         return {
@@ -542,7 +541,7 @@ Respond as AstroSeva AI."""
             timeout=45,
         )
         return response.text
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("Gemini remedies timed out after 45s — using local fallback")
         return generate_local_remedies(dosha_list)
     except Exception as e:

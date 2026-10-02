@@ -1,8 +1,6 @@
 """Ashtakoot Marriage Matching (Gun Milan) for Vedic Astrology."""
 
-from typing import Optional
-from .nakshatras import NAKSHATRAS, get_nakshatra_from_longitude
-from .rashis import RASHI_NAMES, get_gender, get_enemy_signs
+from .nakshatras import get_nakshatra_from_longitude
 
 # Maximum points for each Koota
 MAX_POINTS = {

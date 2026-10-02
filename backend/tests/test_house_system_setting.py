@@ -147,7 +147,7 @@ def test_the_two_systems_disagree_for_the_same_chart():
 
     # And each matches the function it names.
     asc = whole["positions"]["ascendant"]
-    for planet, ws, eq in zip(whole["planets"], whole_houses, equal_houses):
+    for planet, ws, eq in zip(whole["planets"], whole_houses, equal_houses, strict=True):
         assert ws == get_house_from_longitude(planet.longitude, asc, WHOLE_SIGN)
         assert eq == get_house_from_longitude(planet.longitude, asc, EQUAL)
 
@@ -166,7 +166,9 @@ def test_the_kundli_endpoint_follows_the_stored_setting(client, db_session):
     set_house_system(db_session, 1, WHOLE_SIGN)
     third = client.post("/api/v1/kundli/generate", json=payload)
 
-    by_house = lambda body: [(p["planet"], p["house"]) for p in body["planets"]]
+    def by_house(body):
+        return [(p["planet"], p["house"]) for p in body["planets"]]
+
     # The cache must not hand back the answer from the other system.
     assert by_house(second.json()) != by_house(third.json())
     assert by_house(first.json()) == by_house(third.json())

@@ -4,7 +4,6 @@ from fastapi import Request
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import List
 
 from ..db.database import get_db
 from ..db.models import User, SavedChart

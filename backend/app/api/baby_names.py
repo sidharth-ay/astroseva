@@ -32,9 +32,9 @@ from ..core.numerology import (
     calculate_life_path_number,
     get_number_compatibility,
 )
+from ..core.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
-from ..core.rate_limit import limiter
 router = APIRouter(prefix="/api/v1/baby-names", tags=["baby-names"])
 
 # The page and any external caller have used different spellings; accept both.
@@ -172,7 +172,7 @@ async def suggest_baby_names(
         resolved = _normalise_gender(gender)
     except ValueError as e:
         from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     names = BOY_NAMES if resolved == "male" else GIRL_NAMES
 

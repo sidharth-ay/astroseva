@@ -8,7 +8,6 @@ changes, which are fixed by the ephemeris rather than by convention.
 
 import datetime as dt
 
-import pytest
 
 from app.core.doshas import get_sade_sati_periods
 from app.core.planets import get_sidereal_longitude
@@ -72,7 +71,7 @@ def test_phases_are_contiguous_and_ordered():
     for moon_sign in range(12):
         periods = get_sade_sati_periods(moon_sign, 1950, 2053)
         real = [p for p in periods if not p["partial"]]
-        for earlier, later in zip(real, real[1:]):
+        for earlier, later in zip(real, real[1:], strict=False):
             assert dt.date.fromisoformat(later["start"]) > \
                 dt.date.fromisoformat(earlier["end"])
         for period in real:

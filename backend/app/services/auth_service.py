@@ -5,8 +5,7 @@ import uuid
 import secrets
 import hashlib
 from functools import lru_cache
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import datetime, timedelta, UTC
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -95,10 +94,10 @@ def hash_secure_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Create a JWT access token with jti/iat/iss claims."""
     to_encode = data.copy()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({
         "exp": expire,
@@ -114,15 +113,15 @@ def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], issuer=ISSUER)
         return payload
-    except JWTError:
+    except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
-        )
+        ) from e
 
 
 async def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
     """Get the current authenticated user from the JWT token."""
@@ -132,8 +131,8 @@ async def get_current_user(
     raw_sub = payload.get("sub")
     try:
         user_id = int(raw_sub)
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except (TypeError, ValueError) as e:
+        raise HTTPException(status_code=401, detail="Invalid token") from e
     if user_id is None:
         raise HTTPException(status_code=401, detail="Invalid token")
 

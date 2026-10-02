@@ -3,8 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from ..core.rate_limit import limiter
 from fastapi.responses import StreamingResponse
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime, UTC
 import io
 import re
 import logging
@@ -15,7 +14,6 @@ from ..core.planets import get_planetary_positions, get_retrograde_planets, get_
 from ..core.rashis import RASHI_NAMES
 from ..core.houses import DEFAULT_HOUSE_SYSTEM, get_kundli_chart, get_planets_in_houses
 from ..services.settings_service import house_system_setting
-from ..core.nakshatras import get_nakshatra_from_longitude
 from ..core.dasha import get_dasha_for_birth
 from ..services.cache_service import cache_service
 
@@ -107,7 +105,7 @@ def _generate_kundli_data(
     birth_dt = datetime(
         birth_data.birth_date.year, birth_data.birth_date.month, birth_data.birth_date.day,
         birth_data.birth_time.hour, birth_data.birth_time.minute,
-        tzinfo=timezone.utc
+        tzinfo=UTC
     ) - __import__("datetime").timedelta(hours=birth_data.timezone_offset)
 
     dasha_info = get_dasha_for_birth(moon_longitude, birth_dt)
@@ -295,7 +293,7 @@ async def generate_kundli(
         raise HTTPException(
             status_code=500,
             detail="Error generating kundli. Please try again."
-        )
+        ) from e
 
 
 @router.get("/sample")
@@ -377,4 +375,4 @@ async def export_kundli_pdf(
         raise HTTPException(
             status_code=500,
             detail="Error generating PDF. Please try again."
-        )
+        ) from e

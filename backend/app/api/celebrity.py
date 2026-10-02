@@ -1,8 +1,7 @@
 """Celebrity horoscope analysis API endpoints."""
 
 import logging
-from datetime import date, datetime
-from typing import Optional
+from datetime import datetime
 
 from fastapi import Request
 from fastapi import APIRouter, HTTPException
@@ -530,7 +529,7 @@ async def get_celebrities_by_zodiac(request: Request, sign: str):
     ]:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid zodiac sign. Must be one of: aries, taurus, gemini, cancer, leo, virgo, libra, scorpio, sagittarius, capricorn, aquarius, pisces",
+            detail="Invalid zodiac sign. Must be one of: aries, taurus, gemini, cancer, leo, virgo, libra, scorpio, sagittarius, capricorn, aquarius, pisces",
         )
 
     matched = []
@@ -579,6 +578,6 @@ async def get_celebrity_detail(request: Request, celebrity_id: str):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to compute astrological chart for {celebrity['name']}. Please try again.",
-        )
+        ) from e
 
     return _build_celebrity_response(celebrity, chart)

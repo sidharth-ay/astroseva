@@ -8,7 +8,7 @@ import asyncio
 import hashlib
 import logging
 import threading
-from typing import Optional, Any
+from typing import Any
 from datetime import timedelta
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class SQLiteCache:
         self.conn.commit()
         self._lock = threading.Lock()
 
-    def _get_sync(self, key: str) -> Optional[Any]:
+    def _get_sync(self, key: str) -> Any | None:
         with self._lock:
             row = self.conn.execute("SELECT value, expires_at FROM cache WHERE key = ?", (key,)).fetchone()
             if row is None:
@@ -87,7 +87,7 @@ class CacheService:
     def __init__(self):
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.client = None
-        self.fallback: Optional[SQLiteCache] = None
+        self.fallback: SQLiteCache | None = None
         self._connect()
 
     def _connect(self):
@@ -109,7 +109,7 @@ class CacheService:
             self.client = None
             self.fallback = SQLiteCache()
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         key = _safe_key(key)
         if self.client:
             try:

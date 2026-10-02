@@ -19,7 +19,6 @@ never disagree again, and cover the list/detail endpoints that make a category
 reachable in the first place.
 """
 
-import pytest
 
 from app.api.mantra import DAILY_MANTRAS, MANTRA_CATEGORIES, _members, _categories
 

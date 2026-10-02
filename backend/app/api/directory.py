@@ -17,7 +17,6 @@ from ..db.models import (
     STATUS_PROBATION,
     Astrologer,
     AstrologerAvailability,
-    AstrologerMockConsult,
     User,
 )
 from ..services.auth_service import get_current_user
@@ -116,9 +115,6 @@ async def get_profile(slug: str, request: Request, db: Session = Depends(get_db)
         # one that never existed.
         raise HTTPException(status_code=404, detail="Astrologer not found")
 
-    mocks = db.query(AstrologerMockConsult).filter(
-        AstrologerMockConsult.astrologer_id == p.id
-    ).all()
     avail = db.query(AstrologerAvailability).filter(
         AstrologerAvailability.astrologer_id == p.id,
         AstrologerAvailability.is_active.is_(True),

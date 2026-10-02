@@ -19,8 +19,8 @@ wrong.
 import asyncio
 import logging
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from datetime import datetime, timedelta, UTC
+from collections.abc import Callable
 
 from sqlalchemy.orm import Session
 
@@ -86,7 +86,7 @@ async def _execute(job_id: int, job_type: str, payload: dict) -> None:
                 )
                 job.status = "succeeded"
                 job.last_error = None
-                job.finished_at = datetime.now(timezone.utc)
+                job.finished_at = datetime.now(UTC)
                 db.commit()
                 return
             except Exception as e:  # noqa: BLE001 - recorded, not swallowed
@@ -124,7 +124,7 @@ def run_now(job_id: int) -> bool:
         except Exception as e:  # noqa: BLE001
             job.status = "failed"
             job.last_error = f"{type(e).__name__}: {e}"[:2000]
-        job.finished_at = datetime.now(timezone.utc)
+        job.finished_at = datetime.now(UTC)
         db.commit()
         return True
     finally:
@@ -167,7 +167,7 @@ def reclaim_stale(db: Session) -> int:
     a job that reliably kills the worker still converges on `failed` rather than
     looping forever.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=STALE_RUNNING_SECONDS)
+    cutoff = datetime.now(UTC) - timedelta(seconds=STALE_RUNNING_SECONDS)
     stale = (
         db.query(JobRun)
         .filter(JobRun.status == "running", JobRun.run_at < cutoff)
@@ -177,7 +177,7 @@ def reclaim_stale(db: Session) -> int:
         job.status = "failed" if job.attempts >= MAX_ATTEMPTS else "pending"
         if job.status == "failed":
             job.last_error = "abandoned: worker stopped while the job was running"
-            job.finished_at = datetime.now(timezone.utc)
+            job.finished_at = datetime.now(UTC)
     if stale:
         db.commit()
         logger.warning("Reclaimed %s stale job(s) left running by a restart", len(stale))
@@ -228,7 +228,7 @@ async def sweep_forever(stop: asyncio.Event, interval: float = SWEEP_INTERVAL_SE
             # instead of blocked until the next tick.
             await asyncio.wait_for(stop.wait(), timeout=interval)
             return  # stop was set
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
         try:
             await sweep_pending()

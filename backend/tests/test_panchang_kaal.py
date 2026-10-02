@@ -4,8 +4,7 @@ Three defects in the kaal and sun-time code, each of which produced plausible
 output rather than an error.
 """
 
-import math
-from datetime import date, datetime
+from datetime import date
 
 import pytest
 

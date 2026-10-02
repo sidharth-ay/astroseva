@@ -107,4 +107,4 @@ async def get_today_transit(request: Request):
     except Exception as e:
         logger.error(f"Transit error: {e}")
         from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail="Error calculating transits.")
+        raise HTTPException(status_code=500, detail="Error calculating transits.") from e

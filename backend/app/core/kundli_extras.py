@@ -86,7 +86,7 @@ def chara_karakas(planets: list) -> list:
         reverse=True,
     )
     return [{"role": role, "planet": p["planet"]}
-            for role, p in zip(KARAKA_ROLES, cands)]
+            for role, p in zip(KARAKA_ROLES, cands, strict=False)]
 
 
 def ishta_devata(planets: list) -> dict:

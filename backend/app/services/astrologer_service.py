@@ -22,7 +22,7 @@ self-declared and approved by eye. That is recorded honestly in
 """
 
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, UTC
 
 from sqlalchemy.orm import Session
 
@@ -173,7 +173,7 @@ def apply_status(
         raise TransitionError(f"Cannot move an astrologer from {current} to {target}")
 
     profile.status = target
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if target in (STATUS_VERIFIED, STATUS_PROBATION):
         profile.verified_at = now
         profile.rejection_reason = None
@@ -265,7 +265,7 @@ def recompute_accuracy(db: Session, profile: Astrologer) -> dict:
     profile.assessment_pass_rate = round(pass_rate * 100, 2)
     profile.mock_consultation_count = len(mocks)
     profile.accuracy_score = score
-    profile.score_computed_at = datetime.now(timezone.utc)
+    profile.score_computed_at = datetime.now(UTC)
 
     return {
         "accuracy_score": score,

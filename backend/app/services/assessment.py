@@ -11,7 +11,6 @@ a textbook.
 """
 
 from dataclasses import dataclass, asdict
-from typing import Optional
 
 PASS_MARK = 8  # out of 10
 
@@ -185,7 +184,7 @@ def _chosen_index(value) -> int | None:
     return None
 
 
-def grade(answers: dict[str, int], question_set: Optional[list[dict]] = None) -> dict:
+def grade(answers: dict[str, int], question_set: list[dict] | None = None) -> dict:
     """Score answers against a question set. Returns score and per-question detail.
 
     `answers` maps question id to the index the applicant chose. Unanswered,

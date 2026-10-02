@@ -21,7 +21,6 @@ from app.api.cities import (
     _load_aliases,
     _load_prominence,
     _prominence_bonus,
-    _score,
     search_cities,
 )
 

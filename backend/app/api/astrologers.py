@@ -5,9 +5,8 @@ that takes an astrologer id from the client for reads or writes, so one
 practitioner cannot read or edit another's application.
 """
 
-from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -18,7 +17,6 @@ from ..db.models import (
     STATUS_APPLIED,
     STATUS_ASSESSMENT_PENDING,
     STATUS_DRAFT,
-    STATUS_UNDER_REVIEW,
     Astrologer,
     AstrologerAssessment,
     AstrologerAvailability,
@@ -205,7 +203,7 @@ async def submit_application(request: Request, db: Session = Depends(get_db),
         svc.apply_status(db, profile, STATUS_APPLIED, user.id)
     except svc.TransitionError as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     user.role = ROLE_ASTROLOGER
     db.commit()
@@ -245,7 +243,7 @@ async def upload_document(
             f"astrologers/{profile.id}", content_type, file.filename or "", data
         )
     except StorageError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     doc = AstrologerDocument(
         astrologer_id=profile.id,

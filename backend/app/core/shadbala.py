@@ -67,7 +67,6 @@ def _chedus_ahead(planet_lon: float, sun_lon: float, planet_motion: float) -> fl
     retrograde phase of the slow grahas is estimated from their elongation
     from the Sun. Both are normalised to 60.
     """
-    elong = (planet_lon - sun_lon) % 360
     if planet_motion > 0:
         # Direct: full strength at max elongation, zero when stationary.
         return max(0.0, min(60.0, 60.0 * (1.0 - planet_motion)))
@@ -232,8 +231,6 @@ def build_bhavabala(planets: list, asc_sign: int) -> dict:
     from .rashis import RASHI_NAMES
     from .grahayukti import ASPECT_NATURE
 
-    by_name = {p.get("planet"): p for p in planets}
-
     # Every graha strengthens the houses it aspects, per its aspect table.
     additions: dict[int, float] = {h: 0.0 for h in range(1, 13)}
     for p in planets:
@@ -300,7 +297,7 @@ def build_bhavabala(planets: list, asc_sign: int) -> dict:
                     give = min(-drift, room)
                     scaled[i] = round(scaled[i] + give, 2)
                     drift = round(drift + give, 2)
-        for r, v in zip(rows, scaled):
+        for r, v in zip(rows, scaled, strict=True):
             r["rava"] = v
 
     return {
