@@ -1,31 +1,22 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "motion/react";
-import { Calculator, Monitor, Save, CheckCircle, AlertTriangle } from "lucide-react";
+import { Calculator, Monitor, Save, CheckCircle, AlertTriangle, ShieldCheck, LifeBuoy, Scale, LogOut, ChevronRight } from "lucide-react";
 import { api, type SettingsResponse } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import { useReducedMotion, slideUp } from "@/lib/motion";
-import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
-
-const LANGUAGE_IDS = ["en", "hi"] as const;
-type LanguageChoice = (typeof LANGUAGE_IDS)[number];
-
-const LANGUAGES: { id: LanguageChoice; label: string }[] = [
-  { id: "en", label: "English" },
-  { id: "hi", label: "हिन्दी" },
-];
 
 const HOUSE_BLURBS: Record<string, string> = {
   "whole-sign": "Each sign is one whole house counted from the Lagna. The traditional Parashari default.",
   equal: "Each house spans exactly 30° measured from the Lagna degree.",
 };
 
-function readStored<T extends string>(key: (typeof LocalKeys)[keyof typeof LocalKeys], fallback: T, allowed: readonly T[]): T {
-  const raw = readLocal<string | null>(key, null);
-  return raw && (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
-}
-
 export default function SettingsPage() {
+  const { logout } = useAuth();
+  const router = useRouter();
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [houseSystem, setHouseSystem] = useState("");
   const [loading, setLoading] = useState(true);
@@ -33,11 +24,6 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saved, setSaved] = useState(false);
-  // Device preferences are read lazily so no effect has to write state back
-  // after mount (`react-hooks/set-state-in-effect`). On the server the guard
-  // inside `readStored` yields the fallback; on the client the first render
-  // already shows the saved choice.
-  const [language, setLanguage] = useState<LanguageChoice>(() => readStored(LocalKeys.language, "en", LANGUAGE_IDS));
   const reduced = useReducedMotion();
 
   const fetchSettings = useCallback(async () => {
@@ -80,12 +66,12 @@ export default function SettingsPage() {
     }
   };
 
-  const chooseLanguage = (choice: LanguageChoice) => {
-    setLanguage(choice);
-    writeLocal(LocalKeys.language, choice);
-  };
-
   const dirty = settings !== null && houseSystem !== "" && houseSystem !== settings.house_system;
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/");
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
@@ -116,6 +102,12 @@ export default function SettingsPage() {
         <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
           The house system is used by Kundli, Doshas, Matching, Gemstones, Lal Kitab, and
           Reports. Charts you already generated keep the system they were drawn with.
+        </p>
+        <p className="text-xs mb-4 p-3 rounded-lg" style={{ color: "var(--text-tertiary)", background: "var(--surface-2)", lineHeight: 1.6 }}>
+          Ayanamsa is fixed at Lahiri for every chart. A selector is deliberately not
+          offered until the calculation engine can honour other values. The North/South
+          display style is a cosmetic choice you make on the Kundli page, remembered on
+          this device only.
         </p>
 
         {loading && <p style={{ color: "var(--text-secondary)" }}>Loading your settings…</p>}
@@ -195,43 +187,66 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* Display preferences */}
-      <div className="glass-card p-5">
+      {/* Device & preferences — honest static states only */}
+      <div className="glass-card p-5 mb-8">
         <h2 className="font-semibold mb-1 flex items-center gap-2">
           <Monitor size={16} /> This device
         </h2>
         <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
           Stored only in this browser — signing in elsewhere will not carry them over.
         </p>
-
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <span className="input-label" id="settings-theme-label">Theme</span>
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              Dark — the only theme. There is no light palette, so no light
-              option is offered; a control promising one would be lying about
-              what it does.
-            </p>
+        <dl className="text-sm space-y-2">
+          <div className="flex justify-between gap-4">
+            <dt style={{ color: "var(--text-tertiary)" }}>Theme</dt>
+            <dd style={{ color: "var(--text-secondary)" }}>Dark — the only theme that exists</dd>
           </div>
-
-          <div>
-            <label className="input-label" htmlFor="settings-language">
-              Language
-            </label>
-            <select
-              id="settings-language"
-              className="input-field"
-              value={language}
-              onChange={(e) => chooseLanguage(e.target.value as LanguageChoice)}
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
+          <div className="flex justify-between gap-4">
+            <dt style={{ color: "var(--text-tertiary)" }}>Language</dt>
+            <dd style={{ color: "var(--text-secondary)" }}>English — no translation exists yet</dd>
           </div>
+        </dl>
+      </div>
+
+      {/* Account & security */}
+      <div className="glass-card p-5 mb-8">
+        <h2 className="font-semibold mb-1 flex items-center gap-2">
+          <ShieldCheck size={16} /> Account &amp; security
+        </h2>
+        <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+          Sessions, password, data export, and account deletion live on your profile page.
+        </p>
+        <Link href="/profile" className="btn-secondary text-sm inline-flex items-center gap-2">
+          Manage account <ChevronRight size={14} />
+        </Link>
+      </div>
+
+      {/* Help & legal */}
+      <div className="glass-card p-5 mb-8">
+        <h2 className="font-semibold mb-3 flex items-center gap-2">
+          <LifeBuoy size={16} /> Help &amp; legal
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/grievance" className="btn-secondary text-sm inline-flex items-center gap-2">
+            Grievance redressal <ChevronRight size={14} />
+          </Link>
+          <Link href="/terms" className="btn-secondary text-sm inline-flex items-center gap-2">
+            <Scale size={14} /> Terms of service
+          </Link>
+          <Link href="/privacy" className="btn-secondary text-sm inline-flex items-center gap-2">
+            Privacy policy
+          </Link>
         </div>
+      </div>
+
+      {/* Session */}
+      <div className="glass-card p-5">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="btn-secondary text-sm inline-flex items-center gap-2"
+        >
+          <LogOut size={14} /> Sign out of AstroSeva
+        </button>
       </div>
     </div>
   );

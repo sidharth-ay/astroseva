@@ -1397,7 +1397,7 @@ export const api = {
     }),
 
   listCharts: () =>
-    fetchAuth<{ charts: { id: number; name: string; birth_date: string; birth_time: string; birth_place: string; created_at: string }[]; total: number }>("/api/v1/charts/list"),
+    fetchAuth<{ charts: { id: number; name: string; birth_date: string; birth_time: string; birth_place: string; created_at: string; chart_data?: KundliResponse }[]; total: number }>("/api/v1/charts/list"),
 
   getChart: (id: number) =>
     fetchAuth<Record<string, unknown>>(`/api/v1/charts/${id}`),
@@ -1618,7 +1618,8 @@ export const api = {
       body: JSON.stringify({ email }),
     }),
 
-  getSessions: () => fetchAPI<{ sessions: Record<string, unknown>[] }>("/api/v1/auth/sessions"),
+  getSessions: () =>
+    fetchAPI<{ sessions: { id: number; user_agent: string | null; ip_address: string | null; created_at: string; last_used_at: string | null }[] }>("/api/v1/auth/sessions"),
 
   deleteSession: (id: number) => fetchAPI<{ message: string }>(`/api/v1/auth/sessions/${id}`, { method: "DELETE" }),
 
