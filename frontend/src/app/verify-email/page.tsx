@@ -14,9 +14,7 @@ function VerifyEmailLogic() {
   useEffect(() => {
     document.title = "Verify Email | AstroSeva";
     if (!token) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus("error");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setErrorMsg("Verification token is missing.");
       return;
     }

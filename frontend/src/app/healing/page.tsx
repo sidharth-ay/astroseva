@@ -18,11 +18,8 @@ import {
   Filter,
   Play,
   Pause,
-  ChevronDown,
   Star,
-  Heart,
-  Shield,
-} from "lucide-react";
+  Heart} from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 import { api, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 import {
@@ -35,9 +32,7 @@ import {
   useReducedMotion,
   staggerContainer,
   staggerItem,
-  slideUp,
-  fadeIn,
-} from "@/lib/motion";
+  fadeIn} from "@/lib/motion";
 
 // ---------------------------------------------------------------------------
 // Data
@@ -390,7 +385,25 @@ export default function HealingPage() {
     timezone_offset: 5.5,
     gender: "",
   });
-  const [result, setResult] = useState<any>(null);
+  /**
+ * What this page renders. Built locally in the submit handler from the API's
+ * recommendation, so the shape is declared here rather than asserted per line
+ * with \: any\. Optional fields are ones the render reads defensively
+ * (e.g. \c.name || c.gemstone\) for entries that may not carry them.
+ */
+interface HealingCrystal { name?: string; gemstone?: string; properties?: string[]; reason?: string }
+interface HealingChakra { name: string; recommendation?: string }
+interface HealingAroma { name?: string; reason?: string }
+interface HealingSound { frequency?: string; name?: string; reason?: string }
+interface HealingDisplayResult {
+  recommendations: string;
+  crystals: HealingCrystal[];
+  chakras: HealingChakra[];
+  aromatherapy: HealingAroma[];
+  sound_healing: HealingSound[];
+}
+
+  const [result, setResult] = useState<HealingDisplayResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const reduced = useReducedMotion();
@@ -1160,7 +1173,7 @@ export default function HealingPage() {
                 Recommended Crystals
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {result.crystals.map((c: any, i: number) => (
+                {result.crystals.map((c, i) => (
                   <motion.div key={i} className="glass-card p-4" variants={staggerItem} whileHover={{ y: -2 }}>
                     <div className="text-sm font-semibold mb-1" style={{ color: "#E8B88A" }}>
                       <Gem size={13} className="inline mr-1.5 -mt-0.5" />
@@ -1193,7 +1206,7 @@ export default function HealingPage() {
                 Chakra Focus Areas
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {result.chakras.map((ch: any, i: number) => (
+                {result.chakras.map((ch, i) => (
                   <motion.div key={i} className="glass-card p-4" variants={staggerItem} whileHover={{ y: -2 }}>
                     <div className="text-sm font-semibold mb-1" style={{ color: "#E8B88A" }}>
                       <CircleDot size={13} className="inline mr-1.5 -mt-0.5" />
@@ -1217,7 +1230,7 @@ export default function HealingPage() {
                 Recommended Essential Oils
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {result.aromatherapy.map((oil: any, i: number) => (
+                {result.aromatherapy.map((oil, i) => (
                   <motion.div key={i} className="glass-card p-4" variants={staggerItem} whileHover={{ y: -2 }}>
                     <div className="text-sm font-semibold mb-1" style={{ color: "#E8B88A" }}>
                       <Flower2 size={13} className="inline mr-1.5 -mt-0.5" />
@@ -1241,7 +1254,7 @@ export default function HealingPage() {
                 Recommended Frequencies
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {result.sound_healing.map((s: any, i: number) => {
+                {result.sound_healing.map((s, i) => {
                   const hz = parseHz(s.frequency || s.name || "");
                   const isPlaying = hz !== null && playingHz === hz;
                   return (

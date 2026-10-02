@@ -14,10 +14,7 @@ import {
 import {
   useReducedMotion,
   staggerContainer,
-  staggerItem,
-  slideUp,
-  fadeIn,
-} from "@/lib/motion";
+  staggerItem} from "@/lib/motion";
 
 /** One graha's standing in the chart, whether or not a stone is suggested. */
 export default function GemstonesPage() {

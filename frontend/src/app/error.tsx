@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 export default function Error({
   error,
   reset,
@@ -7,6 +9,13 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // The only error boundary in the app. The error object is accepted and never
+  // rendered, so without this it would vanish entirely -- no message, no log,
+  // nothing to diagnose with. Reporting it here is what makes the boundary
+  // more than a generic page.
+  useEffect(() => {
+    console.error(error);
+  }, [error]);
   return (
     <div className="max-w-4xl mx-auto px-4 py-20 text-center">
       <h2 className="text-2xl font-display font-bold mb-4" style={{ color: "var(--text-primary)" }}>Something went wrong</h2>

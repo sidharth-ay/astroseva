@@ -122,6 +122,7 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
           role="combobox"
           aria-expanded={open}
           aria-autocomplete="list"
+          aria-controls={`${id}-listbox`}
         />
         {query && (
           <button
@@ -139,6 +140,7 @@ export default function CitySearch({ id, value, onChange, placeholder = "Search 
 
       {open && (
         <div
+          id={`${id}-listbox`}
           className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto"
           style={{
             background: "var(--deep-indigo)",

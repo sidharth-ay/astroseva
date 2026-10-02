@@ -132,7 +132,7 @@ export default function PitruDoshaPage() {
                 <li className="flex items-start gap-2"><span style={{ color: "var(--champagne)" }}>&#x2022;</span>Perform Pitru Tarpanam (ancestor offering) on Amavasya (new moon) days</li>
                 <li className="flex items-start gap-2"><span style={{ color: "var(--champagne)" }}>&#x2022;</span>Feed crows and cows regularly as acts of ancestral merit</li>
                 <li className="flex items-start gap-2"><span style={{ color: "var(--champagne)" }}>&#x2022;</span>Visit Gaya or any sacred river for Pitru Karya rituals</li>
-                <li className="flex items-start gap-2"><span style={{ color: "var(--champagne)" }}>&#x2022;</span>Chant "Om Pitru Devaya Namaha" 108 times daily</li>
+                <li className="flex items-start gap-2"><span style={{ color: "var(--champagne)" }}>&#x2022;</span>Chant &ldquo;Om Pitru Devaya Namaha&rdquo; 108 times daily</li>
                 <li className="flex items-start gap-2"><span style={{ color: "var(--champagne)" }}>&#x2022;</span>Donate food, clothes, or sesame seeds on Saturdays</li>
                 <li className="flex items-start gap-2"><span style={{ color: "var(--champagne)" }}>&#x2022;</span>Perform Shraddha ceremony during Pitru Paksha (fortnight of ancestors)</li>
               </ul>

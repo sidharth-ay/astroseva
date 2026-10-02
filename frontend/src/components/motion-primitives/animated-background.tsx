@@ -4,8 +4,9 @@ import { AnimatePresence, Transition, motion } from 'motion/react';
 import {
   Children,
   cloneElement,
+  isValidElement,
   ReactElement,
-  useEffect,
+  type ReactNode,
   useState,
   useId,
 } from 'react';
@@ -29,7 +30,7 @@ export function AnimatedBackground({
   transition,
   enableHover = false,
 }: AnimatedBackgroundProps) {
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(defaultValue ?? null);
   const uniqueId = useId();
 
   const handleSetActiveId = (id: string | null) => {
@@ -40,14 +41,34 @@ export function AnimatedBackground({
     }
   };
 
-  useEffect(() => {
-    if (defaultValue !== undefined) {
-      setActiveId(defaultValue);
-    }
-  }, [defaultValue]);
+  // Syncs the controlled value into state during render rather than in an
+  // effect: the previous version called setState unconditionally inside
+  // useEffect, which the linter flags and which costs an extra render.
+  const [prevDefault, setPrevDefault] = useState(defaultValue);
+  if (prevDefault !== defaultValue) {
+    setPrevDefault(defaultValue);
+    if (defaultValue !== undefined) setActiveId(defaultValue);
+  }
 
-  return Children.map(children, (child: any, index) => {
-    const id = child.props['data-id'];
+  // Every prop this component reads from or writes onto a child, in one
+  // place. The public `children` type stays narrow (callers only promise
+  // `data-id`); internally the element is viewed through this wider lens
+  // because the component also reads `className`/`children` and writes
+  // `data-checked` plus the interaction handlers.
+  type ChildProps = {
+    "data-id"?: string;
+    className?: string;
+    children?: ReactNode;
+    "data-checked"?: string;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
+    onClick?: () => void;
+  };
+
+  return Children.map(children, (child, index) => {
+    if (!isValidElement(child)) return child;
+    const element = child as ReactElement<ChildProps>;
+    const id = element.props["data-id"] ?? null;
 
     const interactionProps = enableHover
       ? {
@@ -58,33 +79,33 @@ export function AnimatedBackground({
           onClick: () => handleSetActiveId(id),
         };
 
-    return cloneElement(
-      child,
-      {
-        key: index,
-        className: cn('relative inline-flex', child.props.className),
-        'data-checked': activeId === id ? 'true' : 'false',
-        ...interactionProps,
-      },
-      <>
-        <AnimatePresence initial={false}>
-          {activeId === id && (
-            <motion.div
-              layoutId={`background-${uniqueId}`}
-              className={cn('absolute inset-0', className)}
-              transition={transition}
-              initial={{ opacity: defaultValue ? 1 : 0 }}
-              animate={{
-                opacity: 1,
-              }}
-              exit={{
-                opacity: 0,
-              }}
-            />
-          )}
-        </AnimatePresence>
-        <div className='z-10'>{child.props.children}</div>
-      </>
-    );
-  });
+  return cloneElement(
+    element,
+    {
+      key: index,
+      className: cn('relative inline-flex', element.props.className),
+      'data-checked': activeId === id ? 'true' : 'false',
+      ...interactionProps,
+    },
+    <>
+      <AnimatePresence initial={false}>
+        {activeId === id && (
+          <motion.div
+            layoutId={`background-${uniqueId}`}
+            className={cn('absolute inset-0', className)}
+            transition={transition}
+            initial={{ opacity: defaultValue ? 1 : 0 }}
+            animate={{
+              opacity: 1,
+            }}
+            exit={{
+              opacity: 0,
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <div className='z-10'>{element.props.children}</div>
+    </>
+  );
+});
 }

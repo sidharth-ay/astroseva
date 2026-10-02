@@ -8,11 +8,7 @@ import { api, type BirthData, type CityEntry, locationFromCity, type LalKitabRes
 import {
   useReducedMotion,
   staggerContainer,
-  staggerItem,
-  slideUp,
-  duration,
-  ease,
-} from "@/lib/motion";
+  staggerItem} from "@/lib/motion";
 
 const HOUSE_LABELS = [
   "1st House", "2nd House", "3rd House", "4th House", "5th House", "6th House",

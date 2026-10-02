@@ -123,7 +123,7 @@ export default function MatchingPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div initial={reduced ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl md:text-3xl heading-display font-bold mb-1">
           Marriage <span className="text-gradient-gold">Matching</span>
         </h1>
@@ -131,7 +131,7 @@ export default function MatchingPage() {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <motion.div className="glass-card p-5" variants={slideInLeft} initial="hidden" animate="visible">
+        <motion.div className="glass-card p-5" variants={slideInLeft} initial={reduced ? false : "hidden"} animate="visible">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(200, 149, 109, 0.1)", color: "#C8956D" }}>
               <Heart size={14} />
@@ -140,7 +140,7 @@ export default function MatchingPage() {
           </div>
           <FormFields data={boy} update={updateBoy} prefix="boy" />
         </motion.div>
-        <motion.div className="glass-card p-5" variants={slideInRight} initial="hidden" animate="visible">
+        <motion.div className="glass-card p-5" variants={slideInRight} initial={reduced ? false : "hidden"} animate="visible">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(200, 149, 109, 0.08)", color: "#E8B88A" }}>
               <Heart size={14} />
@@ -163,7 +163,7 @@ export default function MatchingPage() {
       )}
 
       {result && (
-        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-6">
+        <motion.div variants={staggerContainer} initial={reduced ? false : "hidden"} animate="visible" className="space-y-6">
           {/* Score Card */}
           <motion.div variants={staggerItem} className="glass-card p-6 text-center">
             <div className="flex items-center justify-center gap-2 mb-3">
@@ -219,7 +219,7 @@ export default function MatchingPage() {
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
                       <motion.div
                         className="h-full rounded-full"
-                        initial={{ width: 0 }}
+                        initial={reduced ? false : { width: 0 }}
                         animate={{ width: `${pct}%` }}
                         transition={{ duration: duration.slow, ease: ease.decelerate }}
                         style={{ background: scoreColor(k.score, k.max_points) }}

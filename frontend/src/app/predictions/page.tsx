@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useReducedMotion, staggerContainer, staggerItem, slideUp } from "@/lib/motion";
+import { useReducedMotion, slideUp } from "@/lib/motion";
 import { Brain, ChevronRight, User, Calendar, Clock, MapPin } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 import { api, pickLocationFields, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
@@ -68,8 +68,8 @@ export default function PredictionsPage() {
     try {
       const resp = await api.generatePrediction(bd, category === "all" ? "general" : category);
       setPredictions((prev) => ({ ...prev, [category]: resp.content }));
-    } catch (e: unknown) {
-      setPredictions((prev) => ({ ...prev, [category]: "Prediction unavailable. Please try again." }));
+  } catch {
+    setPredictions((prev) => ({ ...prev, [category]: "Prediction unavailable. Please try again." }));
     }
   };
 

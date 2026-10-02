@@ -171,7 +171,7 @@ export default function LoveMatchPage() {
   return (
     <div className="max-w-5xl mx-auto px-5 py-10">
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={reduced ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center mb-8"
       >
@@ -187,7 +187,7 @@ export default function LoveMatchPage() {
         <motion.div
           className="glass-card p-5"
           variants={slideInLeft}
-          initial="hidden"
+          initial={reduced ? false : "hidden"}
           animate="visible"
         >
           <div className="flex items-center gap-2 mb-4">
@@ -207,7 +207,7 @@ export default function LoveMatchPage() {
         <motion.div
           className="glass-card p-5"
           variants={slideInRight}
-          initial="hidden"
+          initial={reduced ? false : "hidden"}
           animate="visible"
         >
           <div className="flex items-center gap-2 mb-4">
@@ -239,7 +239,7 @@ export default function LoveMatchPage() {
       {result && (
         <motion.div
           variants={staggerContainerCustom(stagger.normal, 0.1)}
-          initial="hidden"
+          initial={reduced ? false : "hidden"}
           animate="visible"
           className="space-y-6"
         >
@@ -305,7 +305,7 @@ export default function LoveMatchPage() {
                     >
                       <motion.div
                         className="h-full rounded-full"
-                        initial={{ width: 0 }}
+                        initial={reduced ? false : { width: 0 }}
                         animate={{ width: `${val}%` }}
                         transition={{
                           duration: duration.slow,

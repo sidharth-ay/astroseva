@@ -9,9 +9,7 @@ import {
   useReducedMotion,
   staggerContainerCustom,
   staggerItem,
-  slideUp,
-  stagger,
-} from "@/lib/motion";
+  stagger} from "@/lib/motion";
 
 interface TransitEntry {
   planet: string;

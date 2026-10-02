@@ -180,7 +180,11 @@ const createVariantsWithTransition = (
 ): Variants => {
   if (!transition) return baseVariants;
 
-  const { exit: _, ...mainTransition } = transition;
+  // `exit` is dropped on purpose: these variants define their own exit
+  // behaviour through `baseVariants`, and forwarding the caller's would
+  // override it.
+  const mainTransition = { ...transition };
+  delete mainTransition.exit;
 
   return {
     ...baseVariants,

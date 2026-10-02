@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Variants, Transition } from "motion/react";
+import type { Variants } from "motion/react";
 
 // ---------------------------------------------------------------------------
 // Hooks

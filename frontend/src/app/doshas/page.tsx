@@ -112,9 +112,7 @@ export default function DoshasPage() {
   const totalDoshas = result?.total_doshas ?? 0;
   const manglikMitigated =
     !result?.manglik?.is_manglik && !!result?.manglik?.has_placement;
-  const needsRemedies = totalDoshas > 0 || manglikMitigated;
-
-  const cards = result
+    const cards = result
     ? [
         {
           title: "Manglik Dosha",

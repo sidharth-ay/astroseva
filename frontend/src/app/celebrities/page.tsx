@@ -16,10 +16,7 @@ import { api } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
-  staggerItem,
-  slideUp,
-  fadeIn,
-} from "@/lib/motion";
+  staggerItem} from "@/lib/motion";
 
 interface Celebrity {
   id: string;
@@ -128,7 +125,6 @@ export default function CelebritiesPage() {
     } else {
       fetchCelebrities();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedZodiac]);
 
   const fetchCelebrities = async () => {
@@ -282,7 +278,6 @@ export default function CelebritiesPage() {
         loadDetail(id);
       }
     } catch { /* ignore */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

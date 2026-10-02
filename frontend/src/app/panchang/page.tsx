@@ -10,7 +10,14 @@ import {
   slideUp,
 } from "@/lib/motion";
 import { MapPin } from "lucide-react";
-import { api } from "@/lib/api";
+import {
+  api,
+  type ChoghadiyaResponse,
+  type GhatiMuhuratResponse,
+  type GowriResponse,
+  type HoraResponse,
+  type PanchangResponse,
+} from "@/lib/api";
 import CitySearch from "@/components/CitySearch";
 
 type TabId = "daily" | "choghadiya" | "hora" | "gowri" | "ghati";
@@ -73,16 +80,11 @@ export default function PanchangPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [dailyData, setDailyData] = useState<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [chogData, setChogData] = useState<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [horaData, setHoraData] = useState<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [gowriData, setGowriData] = useState<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [ghatiData, setGhatiData] = useState<any>(null);
+  const [dailyData, setDailyData] = useState<PanchangResponse | null>(null);
+  const [chogData, setChogData] = useState<ChoghadiyaResponse | null>(null);
+  const [horaData, setHoraData] = useState<HoraResponse | null>(null);
+  const [gowriData, setGowriData] = useState<GowriResponse | null>(null);
+  const [ghatiData, setGhatiData] = useState<GhatiMuhuratResponse | null>(null);
 
   const reduced = useReducedMotion();
   const seqRef = useRef(0);
@@ -245,11 +247,11 @@ export default function PanchangPage() {
           initial={reduced ? false : "hidden"}
           animate="visible"
         >
-          {activeTab === "daily" && dailyData && <DailyTab data={dailyData as any} />}
-          {activeTab === "choghadiya" && chogData && <ChoghadiyaTab data={chogData as any} />}
-          {activeTab === "hora" && horaData && <HoraTab data={horaData as any} />}
-          {activeTab === "gowri" && gowriData && <GowriTab data={gowriData as any} />}
-          {activeTab === "ghati" && ghatiData && <GhatiTab data={ghatiData as any} />}
+          {activeTab === "daily" && dailyData && <DailyTab data={dailyData} />}
+          {activeTab === "choghadiya" && chogData && <ChoghadiyaTab data={chogData} />}
+          {activeTab === "hora" && horaData && <HoraTab data={horaData} />}
+          {activeTab === "gowri" && gowriData && <GowriTab data={gowriData} />}
+          {activeTab === "ghati" && ghatiData && <GhatiTab data={ghatiData} />}
           {!error && !tabDataLoaded(activeTab) && (
             <div className="glass-card p-10 text-center">
               <p className="text-sm mb-1" style={{ color: "var(--text-secondary)" }}>
@@ -272,7 +274,7 @@ export default function PanchangPage() {
 
 /* ─── Daily ──────────────────────────────────────────────── */
 
-function DailyTab({ data }: { data: any }) {
+function DailyTab({ data }: { data: PanchangResponse }) {
   const items = [
     { label: "Tithi", value: data.tithi.tithi_name, sub: `${data.tithi.paksha}` },
     { label: "Nakshatra", value: data.nakshatra.nakshatra_name, sub: `Pada ${data.nakshatra.pada}` },
@@ -369,7 +371,7 @@ function DailyTab({ data }: { data: any }) {
 
 /* ─── Choghadiya ─────────────────────────────────────────── */
 
-function ChoghadiyaTab({ data }: { data: any }) {
+function ChoghadiyaTab({ data }: { data: ChoghadiyaResponse }) {
   return (
     <div className="space-y-6">
       <motion.div variants={staggerItem} className="glass-card p-5 text-center">
@@ -438,7 +440,7 @@ function ChoghadiyaTab({ data }: { data: any }) {
 
 /* ─── Hora ───────────────────────────────────────────────── */
 
-function HoraTab({ data }: { data: any }) {
+function HoraTab({ data }: { data: HoraResponse }) {
   return (
     <div className="space-y-6">
       <motion.div variants={staggerItem} className="glass-card p-5 text-center">
@@ -504,7 +506,7 @@ function HoraTab({ data }: { data: any }) {
 
 /* ─── Gowri ──────────────────────────────────────────────── */
 
-function GowriTab({ data }: { data: any }) {
+function GowriTab({ data }: { data: GowriResponse }) {
   return (
     <div className="space-y-6">
       <motion.div variants={staggerItem} className="glass-card p-5 text-center">
@@ -542,7 +544,7 @@ function GowriTab({ data }: { data: any }) {
 
 /* ─── Ghati Muhurat ──────────────────────────────────────── */
 
-function GhatiTab({ data }: { data: any }) {
+function GhatiTab({ data }: { data: GhatiMuhuratResponse }) {
   return (
     <div className="space-y-6">
       <motion.div variants={staggerItem} className="glass-card p-5 text-center">

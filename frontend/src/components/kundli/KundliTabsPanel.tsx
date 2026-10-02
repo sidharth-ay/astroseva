@@ -717,7 +717,7 @@ function NavataraArudhaTabs({ result }: { result: KundliResponse }) {
         <div className="glass-card p-4">
           <SubHeading count={nav.grahas.length}>Navatara</SubHeading>
           <p className="text-[10px] mb-3" style={{ color: "var(--text-tertiary)" }}>
-            Nine-fold gem suitability, from the graha's base score adjusted by
+            Nine-fold gem suitability, from the graha&rsquo;s base score adjusted by
             its sign. Most suitable: {nav.most_suitable ?? "—"} · least: {nav.least_suitable ?? "—"}.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

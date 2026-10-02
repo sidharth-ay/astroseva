@@ -15,17 +15,15 @@ import {
 } from "lucide-react";
 import HoroscopePopup from "@/components/HoroscopePopup";
 import StatsStrip from "@/components/StatsStrip";
-import { zodiacSymbols } from "@/components/icons/ZodiacIcons";
+import { } from "@/components/icons/ZodiacIcons";
 import {
   useReducedMotion,
   staggerContainer,
   staggerContainerCustom,
   staggerItem,
   slideUp,
-  slideInLeft,
   slideInRight,
-  stagger,
-} from "@/lib/motion";
+  stagger} from "@/lib/motion";
 import { TextScramble } from "@/components/motion-primitives/text-scramble";
 import { TextEffect } from "@/components/motion-primitives/text-effect";
 import { Spotlight } from "@/components/motion-primitives/spotlight";

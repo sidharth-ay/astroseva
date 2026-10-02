@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger, ease } from "@/lib/motion";
+import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger } from "@/lib/motion";
 import { api, type NumerologyResponse } from "@/lib/api";
 
 const lifePathExplanations: Record<number, string> = {

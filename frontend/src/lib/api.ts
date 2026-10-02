@@ -563,10 +563,39 @@ export interface ReportResponse {
   ai_model: string;
 }
 
+/**
+ * The panchang tab responses, named so the page can type its state with them
+ * instead of `useState<any>`. Each mirrors the backend response for one tab;
+ * they were previously written inline in the `fetchAPI<...>` calls, which left
+ * the page holding untyped state and asserting its way through with `as any`.
+ */
+export interface ChoghadiyaResponse {
+  date: string;
+  sunrise: string;
+  sunset: string;
+  day_choghadiya: { name: string; start: string; end: string; type: string }[];
+  night_choghadiya: { name: string; start: string; end: string; type: string }[];
+}
+
+export interface HoraResponse {
+  date: string;
+  day_hora: { planet: string; start: string; end: string; type: string }[];
+  night_hora: { planet: string; start: string; end: string; type: string }[];
+}
+
+export interface GowriResponse {
+  date: string;
+  periods: { name: string; start: string; end: string; nature: string }[];
+}
+
+export interface GhatiMuhuratResponse {
+  date: string;
+  muhurats: { start: string; end: string; name: string }[];
+}
+
 export interface PanchangResponse {
   date: string;
-  tithi: { tithi_number: number; tithi_name: string; paksha: string };
-  nakshatra: { nakshatra_name: string; pada: number };
+  tithi: { tithi_number: number; tithi_name: string; paksha: string };  nakshatra: { nakshatra_name: string; pada: number };
   yoga: { yoga_name: string };
   karana: { karana_name: string };
   vara: { vara_name: string; vara_lord: string };
@@ -1119,16 +1148,16 @@ export const api = {
     fetchAPI<PanchangResponse>(`/api/v1/panchang/daily?${panchangQuery(lat, lng, tz, tzIana)}`),
 
   getChoghadiya: (lat = 28.6139, lng = 77.209, tz = 5.5, tzIana?: string) =>
-    fetchAPI<{ date: string; sunrise: string; sunset: string; day_choghadiya: { name: string; start: string; end: string; type: string }[]; night_choghadiya: { name: string; start: string; end: string; type: string }[] }>(`/api/v1/panchang/choghadiya?${panchangQuery(lat, lng, tz, tzIana)}`),
+    fetchAPI<ChoghadiyaResponse>(`/api/v1/panchang/choghadiya?${panchangQuery(lat, lng, tz, tzIana)}`),
 
   getHora: (lat = 28.6139, lng = 77.209, tz = 5.5, tzIana?: string) =>
-    fetchAPI<{ date: string; day_hora: { planet: string; start: string; end: string; type: string }[]; night_hora: { planet: string; start: string; end: string; type: string }[] }>(`/api/v1/panchang/hora?${panchangQuery(lat, lng, tz, tzIana)}`),
+    fetchAPI<HoraResponse>(`/api/v1/panchang/hora?${panchangQuery(lat, lng, tz, tzIana)}`),
 
   getGowri: (lat = 28.6139, lng = 77.209, tz = 5.5, tzIana?: string) =>
-    fetchAPI<{ date: string; periods: { name: string; start: string; end: string; nature: string }[] }>(`/api/v1/panchang/gowri?${panchangQuery(lat, lng, tz, tzIana)}`),
+    fetchAPI<GowriResponse>(`/api/v1/panchang/gowri?${panchangQuery(lat, lng, tz, tzIana)}`),
 
   getGhatiMuhurat: (lat = 28.6139, lng = 77.209, tz = 5.5, tzIana?: string) =>
-    fetchAPI<{ date: string; muhurats: { start: string; end: string; name: string }[] }>(`/api/v1/panchang/ghati?${panchangQuery(lat, lng, tz, tzIana)}`),
+    fetchAPI<GhatiMuhuratResponse>(`/api/v1/panchang/ghati?${panchangQuery(lat, lng, tz, tzIana)}`),
 
   generatePrediction: (data: BirthData, prediction_type: string) =>
     fetchAPI<{ content: string; ai_model: string }>("/api/v1/predictions/generate", {

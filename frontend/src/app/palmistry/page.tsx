@@ -2,17 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Calendar, Clock, MapPin, User, ChevronRight, Send } from "lucide-react";
+import { Calendar, Clock, MapPin, User, Send } from "lucide-react";
 import CitySearch from "@/components/CitySearch";
 import { api, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 import {
   useReducedMotion,
   staggerContainer,
-  staggerItem,
-  slideUp,
-  duration,
-  ease,
-} from "@/lib/motion";
+  staggerItem} from "@/lib/motion";
 
 export default function PalmistryPage() {
   const [form, setForm] = useState<BirthData>({
