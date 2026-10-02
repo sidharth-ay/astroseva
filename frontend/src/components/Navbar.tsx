@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, Sparkles, LogOut } from "lucide-react";
+import { Menu, X, Sparkles, User as UserIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -93,15 +93,21 @@ export default function Navbar() {
               Get Kundli
             </Link>
             {user && (
-              <button
-                onClick={handleLogout}
-                disabled={busy}
-                className="btn-ghost inline-flex items-center gap-1.5"
-                title={user.email}
-              >
-                <LogOut size={14} />
-                {busy ? "..." : "Logout"}
-              </button>
+              <div className="flex items-center gap-2">
+                <Link href="/profile" className="btn-ghost inline-flex items-center gap-1.5" title="My Profile">
+                  <UserIcon size={14} />
+                  Profile
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  disabled={busy}
+                  className="text-xs transition-colors hover:text-white"
+                  style={{ color: "var(--text-tertiary)" }}
+                  title="Logout"
+                >
+                  {busy ? "..." : "Logout"}
+                </button>
+              </div>
             )}
           </div>
 
@@ -157,13 +163,22 @@ export default function Navbar() {
                   Get Kundli
                 </Link>
                 {user && (
-                  <button
-                    onClick={handleLogout}
-                    disabled={busy}
-                    className="btn-ghost block text-center mt-2 w-full"
-                  >
-                    {busy ? "Logging out…" : `Logout (${user.name || user.email})`}
-                  </button>
+                  <div className="pt-2 pb-1 space-y-2">
+                    <Link
+                      href="/profile"
+                      onClick={() => setOpen(false)}
+                      className="btn-secondary block text-center w-full"
+                    >
+                      My Profile
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      disabled={busy}
+                      className="btn-ghost block text-center w-full"
+                    >
+                      {busy ? "Logging out…" : `Logout (${user.name || user.email})`}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
