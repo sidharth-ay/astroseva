@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
           # Warns while resolving rather than failing on a resolution change,
           # so a new patch release cannot silently break the build.
           cache: pip
@@ -40,12 +40,17 @@ jobs:
       # app/core/planets.py calls skyfield's load(), which downloads de421.bsp
       # (~16 MB) on first use. It is gitignored, so without this cache every
       # single run re-downloads it from JPL.
+      - name: Fetch the JPL ephemeris
+        run: |
+          mkdir -p backend
+          curl -fSL --retry 3 --retry-delay 5 -o backend/de421.bsp \
+            https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de421.bsp
+
       - name: Cache the JPL ephemeris
         uses: actions/cache@v4
         with:
           path: backend/de421.bsp
           key: ephemeris-${{ runner.os }}-de421
-          # Re-download at most weekly even if the file is never written.
           restore-keys: |
             ephemeris-${{ runner.os }}-de421
 
@@ -83,7 +88,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
@@ -187,7 +192,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
@@ -197,6 +202,9 @@ jobs:
       # is installed here instead and selected through this variable.
       - name: Install the browser
         run: npx playwright install --with-deps chromium
+
+      - name: Install frontend dependencies
+        run: npm ci
 
       - name: Install backend dependencies
         working-directory: backend
