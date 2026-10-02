@@ -16,8 +16,6 @@ interface ConsultRequest {
 }
 
 const TOPICS = ["Palm Reading", "Face Reading", "Career Guidance", "Marriage & Compatibility", "Health Overview", "General Life Reading"];
-const KEY = "astroseva_photo_consults";
-
 function load(): ConsultRequest[] {
   return readLocal<ConsultRequest[]>(LocalKeys.photoConsults, []);
 }

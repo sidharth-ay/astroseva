@@ -25,8 +25,6 @@ const PREFS: Pref[] = [
   { id: "learning", title: "Learning Progress", description: "Encouragement to continue academy lessons and finish exams.", link: "/academy", linkLabel: "Open Academy" },
 ];
 
-const KEY = "astroseva_notif_prefs";
-
 function load(): Record<string, boolean> {
   return readLocal<Record<string, boolean>>(LocalKeys.notifPrefs, {});
 }

@@ -50,8 +50,6 @@ const SEED: Question[] = [
   },
 ];
 
-const KEY = "astroseva_community";
-
 function load(): Question[] {
   try {
     const extra = readLocal<Question[]>(LocalKeys.community, []);

@@ -37,8 +37,6 @@ const REMEDIES: Remedy[] = [
 ];
 
 const CONCERNS = ["manglik", "sade-sati", "pitru", "marriage", "career", "wealth", "health", "peace", "love"];
-const KEY = "astroseva_remedy_done";
-
 function weekKey(): string {
   const d = new Date();
   const onejan = new Date(d.getFullYear(), 0, 1);
