@@ -1,5 +1,13 @@
 """Birth data models for Vedic Astrology calculations."""
 
+# `_resolve_timezone` annotates its own return type with this class. On Python
+# 3.13 and earlier, annotations are evaluated the moment a function is defined,
+# so that self-reference raised NameError while the module was still importing
+# -- which is every process that touches the API, not just the tests. Python
+# 3.14 evaluates them lazily and hid the bug locally; CI runs 3.12 and caught
+# it. Postponing evaluation is the portable fix.
+from __future__ import annotations
+
 from pydantic import BaseModel, Field, model_validator
 from datetime import date, time
 
