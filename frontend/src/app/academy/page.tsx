@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { BookOpen, Award, ChevronRight } from "lucide-react";
 import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger } from "@/lib/motion";
+import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
 interface Quiz {
   q: string;
@@ -82,19 +83,13 @@ const COURSES: Course[] = [
   },
 ];
 
-const KEY = "astroseva_academy";
-
 interface Progress {
   lessonsDone: Record<string, string[]>;
   quizPassed: Record<string, boolean>;
 }
 
 function loadProgress(): Progress {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) || '{"lessonsDone":{},"quizPassed":{}}');
-  } catch {
-    return { lessonsDone: {}, quizPassed: {} };
-  }
+  return readLocal<Progress>(LocalKeys.academy, { lessonsDone: {}, quizPassed: {} });
 }
 
 export default function AcademyPage() {
@@ -122,9 +117,7 @@ export default function AcademyPage() {
 
   const persist = (p: Progress) => {
     setProgress(p);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(p));
-    } catch { /* ignore */ }
+    writeLocal(LocalKeys.academy, p);
   };
 
   const course = COURSES.find((c) => c.id === courseId) || null;

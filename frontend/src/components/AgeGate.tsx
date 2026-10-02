@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-
-const KEY = "astroseva_age_ok";
+import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
 export default function AgeGate() {
   const [show, setShow] = useState(false);
@@ -15,18 +14,12 @@ export default function AgeGate() {
   // the stored choice after mount -- assuming no gate until proven otherwise
   // -- is the correct progressive enhancement here.
   useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (!localStorage.getItem(KEY)) setShow(true);
-    } catch {
-      setShow(true);
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!readLocal<string | null>(LocalKeys.ageOk, null)) setShow(true);
   }, []);
 
   const confirm = () => {
-    try {
-      localStorage.setItem(KEY, "1");
-    } catch { /* ignore */ }
+    writeLocal(LocalKeys.ageOk, "1");
     setShow(false);
   };
 

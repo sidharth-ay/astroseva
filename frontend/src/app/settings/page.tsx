@@ -5,20 +5,10 @@ import { motion } from "motion/react";
 import { Calculator, Monitor, Save, CheckCircle, AlertTriangle } from "lucide-react";
 import { api, type SettingsResponse } from "@/lib/api";
 import { useReducedMotion, slideUp } from "@/lib/motion";
+import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
-const THEME_KEY = "astroseva-theme";
-const LANGUAGE_KEY = "astroseva-language";
-
-const THEME_IDS = ["dark", "light", "system"] as const;
-type ThemeChoice = (typeof THEME_IDS)[number];
 const LANGUAGE_IDS = ["en", "hi"] as const;
 type LanguageChoice = (typeof LANGUAGE_IDS)[number];
-
-const THEMES: { id: ThemeChoice; label: string; hint: string }[] = [
-  { id: "dark", label: "Dark", hint: "The chart-room default" },
-  { id: "light", label: "Light", hint: "Native controls follow this" },
-  { id: "system", label: "System", hint: "Follow the OS setting" },
-];
 
 const LANGUAGES: { id: LanguageChoice; label: string }[] = [
   { id: "en", label: "English" },
@@ -30,25 +20,9 @@ const HOUSE_BLURBS: Record<string, string> = {
   equal: "Each house spans exactly 30° measured from the Lagna degree.",
 };
 
-/** Apply the theme choice where the browser honours it (native controls, scrollbars). */
-function applyTheme(choice: ThemeChoice) {
-  if (typeof document === "undefined") return;
-  const dark =
-    choice === "dark" ||
-    (choice === "system" &&
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-color-scheme: dark)").matches);
-  document.documentElement.style.colorScheme = dark ? "dark" : "light";
-}
-
-function readStored<T extends string>(key: string, fallback: T, allowed: readonly T[]): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw && (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
-  } catch {
-    return fallback;
-  }
+function readStored<T extends string>(key: (typeof LocalKeys)[keyof typeof LocalKeys], fallback: T, allowed: readonly T[]): T {
+  const raw = readLocal<string | null>(key, null);
+  return raw && (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
 }
 
 export default function SettingsPage() {
@@ -63,8 +37,7 @@ export default function SettingsPage() {
   // after mount (`react-hooks/set-state-in-effect`). On the server the guard
   // inside `readStored` yields the fallback; on the client the first render
   // already shows the saved choice.
-  const [theme, setTheme] = useState<ThemeChoice>(() => readStored(THEME_KEY, "dark", THEME_IDS));
-  const [language, setLanguage] = useState<LanguageChoice>(() => readStored(LANGUAGE_KEY, "en", LANGUAGE_IDS));
+  const [language, setLanguage] = useState<LanguageChoice>(() => readStored(LocalKeys.language, "en", LANGUAGE_IDS));
   const reduced = useReducedMotion();
 
   const fetchSettings = useCallback(async () => {
@@ -83,7 +56,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     document.title = "Settings | AstroSeva";
-    applyTheme(readStored(THEME_KEY, "dark", THEME_IDS));
     // Loading the saved setting on mount is exactly what effects are for;
     // the loading flag is set rather than derived so a slow first paint
     // still shows a skeleton instead of an empty form.
@@ -108,23 +80,9 @@ export default function SettingsPage() {
     }
   };
 
-  const chooseTheme = (choice: ThemeChoice) => {
-    setTheme(choice);
-    applyTheme(choice);
-    try {
-      window.localStorage.setItem(THEME_KEY, choice);
-    } catch {
-      /* Private browsing: the choice applies for this session. */
-    }
-  };
-
   const chooseLanguage = (choice: LanguageChoice) => {
     setLanguage(choice);
-    try {
-      window.localStorage.setItem(LANGUAGE_KEY, choice);
-    } catch {
-      /* Private browsing: the choice applies for this session. */
-    }
+    writeLocal(LocalKeys.language, choice);
   };
 
   const dirty = settings !== null && houseSystem !== "" && houseSystem !== settings.house_system;
@@ -249,27 +207,11 @@ export default function SettingsPage() {
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <span className="input-label" id="settings-theme-label">Theme</span>
-            <div className="flex gap-2 flex-wrap" role="radiogroup" aria-labelledby="settings-theme-label">
-              {THEMES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === t.id}
-                  title={t.hint}
-                  onClick={() => chooseTheme(t.id)}
-                  className={`px-4 py-2 rounded-lg border transition-colors ${
-                    theme === t.id ? "border-amber-400" : "border-transparent"
-                  }`}
-                  style={{
-                    background: "var(--surface-2)",
-                    outline: theme === t.id ? "1px solid var(--color-gold, #d4a017)" : "none",
-                  }}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              Dark — the only theme. There is no light palette, so no light
+              option is offered; a control promising one would be lying about
+              what it does.
+            </p>
           </div>
 
           <div>

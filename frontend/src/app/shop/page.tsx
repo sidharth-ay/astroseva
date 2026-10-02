@@ -21,6 +21,7 @@ import {
   slideUp,
   stagger,
 } from "@/lib/motion";
+import HonestyNote from "@/components/HonestyNote";
 
 type ProductCategory =
   | "Gemstones & Rudraksha"
@@ -352,6 +353,7 @@ export default function ShopPage() {
             Authentic Vedic Astrology Products — Gemstones, Puja Items, Books,
             Ritual Kits, Software & Consultations.
           </p>
+          <HonestyNote>Catalog preview — checkout is not available yet, so nothing here can be purchased.</HonestyNote>
         </motion.div>
 
         {/* Cart icon. There is no cart, no checkout and no payment, so this is

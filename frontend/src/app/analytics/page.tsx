@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { BarChart3 } from "lucide-react";
 import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger } from "@/lib/motion";
+import { LocalKeys, readLocal } from "@/lib/local";
 
 interface Stat {
   label: string;
@@ -11,12 +12,10 @@ interface Stat {
   hint: string;
 }
 
+// Storage keys live in lib/local; this keeps the literal strings here so the
+// mapping from key to expected shape stays next to the code that consumes it.
 function read(key: string): unknown {
-  try {
-    return JSON.parse(localStorage.getItem(key) || "null");
-  } catch {
-    return null;
-  }
+  return readLocal<unknown>(key, null);
 }
 
 interface AnalyticsSnapshot {
@@ -27,11 +26,11 @@ interface AnalyticsSnapshot {
 
 /** Everything the page shows, computed from this device's stored data. */
 function computeAnalytics(): AnalyticsSnapshot {
-  const visits = (read("astroseva_visits") || {}) as { total?: number; pages?: Record<string, number>; days?: Record<string, number> };
-  const academy = (read("astroseva_academy") || { lessonsDone: {}, quizPassed: {} }) as { lessonsDone: Record<string, string[]>; quizPassed: Record<string, boolean> };
-  const remedyAll = (read("astroseva_remedy_done") || {}) as Record<string, Record<string, boolean>>;
-  const moles = (read("astroseva_moles") || []) as unknown[];
-  const consults = (read("astroseva_photo_consults") || []) as unknown[];
+  const visits = (read(LocalKeys.visits) || {}) as { total?: number; pages?: Record<string, number>; days?: Record<string, number> };
+  const academy = (read(LocalKeys.academy) || { lessonsDone: {}, quizPassed: {} }) as { lessonsDone: Record<string, string[]>; quizPassed: Record<string, boolean> };
+  const remedyAll = (read(LocalKeys.remedyDone) || {}) as Record<string, Record<string, boolean>>;
+  const moles = (read(LocalKeys.moles) || []) as unknown[];
+  const consults = (read(LocalKeys.photoConsults) || []) as unknown[];
 
   const lessonsDone = Object.values(academy.lessonsDone || {}).flat().length;
   const certs = Object.keys(academy.quizPassed || {}).length;

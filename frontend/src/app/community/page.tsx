@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { ArrowBigUp, MessageCircle } from "lucide-react";
 import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger } from "@/lib/motion";
+import HonestyNote from "@/components/HonestyNote";
+import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
 interface Answer {
   id: string;
@@ -52,7 +54,7 @@ const KEY = "astroseva_community";
 
 function load(): Question[] {
   try {
-    const extra = JSON.parse(localStorage.getItem(KEY) || "[]");
+    const extra = readLocal<Question[]>(LocalKeys.community, []);
     const seen = new Set(extra.map((q: Question) => q.id));
     return [...extra, ...SEED.filter((s) => !seen.has(s.id))];
   } catch {
@@ -83,9 +85,7 @@ export default function CommunityPage() {
 
   const persistUser = (list: Question[]) => {
     setQuestions(list);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(list.filter((q) => !q.id.startsWith("seed-"))));
-    } catch { /* ignore */ }
+    writeLocal(LocalKeys.community, list.filter((q) => !q.id.startsWith("seed-")));
   };
 
   const ask = () => {
@@ -155,6 +155,7 @@ export default function CommunityPage() {
         <p className="max-w-lg mx-auto text-sm" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
           Ask astrology questions, share knowledge, and upvote helpful answers. Be kind — no medical, legal, or financial advice.
         </p>
+          <HonestyNote>Sample discussions below are illustrative. Your own posts are stored only in this browser.</HonestyNote>
       </motion.div>
 
       {/* Ask */}

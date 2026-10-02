@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { useReducedMotion } from "@/lib/motion";
 import { Send, Trash2, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
+import { LocalKeys, readLocal } from "@/lib/local";
 
 interface Message {
   role: "user" | "assistant";
@@ -31,12 +32,8 @@ interface KundliProfile {
 /** Saved chart profiles, newest first. Reads the same key the kundli page
  * writes; a corrupt entry yields no profiles rather than a broken page. */
 function loadProfiles(): KundliProfile[] {
-  try {
-    const saved = JSON.parse(localStorage.getItem("kundli_history") || "[]");
-    return Array.isArray(saved) ? saved.slice(0, 10) : [];
-  } catch {
-    return [];
-  }
+  const saved = readLocal<unknown>(LocalKeys.kundliHistory, []);
+  return Array.isArray(saved) ? (saved as KundliProfile[]).slice(0, 10) : [];
 }
 
 export default function ChatPage() {

@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Plus, Trash2 } from "lucide-react";
 import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger } from "@/lib/motion";
+import HonestyNote from "@/components/HonestyNote";
+import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
 interface MoleEntry {
   id: string;
@@ -35,24 +37,12 @@ const ZONE_MEANINGS: Record<string, string> = {
   Back: "Hidden burdens or secret strengths carried quietly.",
 };
 
-const KEY = "astroseva_moles";
-
 function load(): MoleEntry[] {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
-  } catch {
-    return [];
-  }
+  return readLocal<MoleEntry[]>(LocalKeys.moles, []);
 }
 
 export default function MolesPage() {
-  const [entries, setEntries] = useState<MoleEntry[]>(() => {
-    try {
-      return load();
-    } catch {
-      return [];
-    }
-  });
+  const [entries, setEntries] = useState<MoleEntry[]>(() => load());
   const [zone, setZone] = useState(ZONES[0]);
   const [side, setSide] = useState("Right");
   const [size, setSize] = useState("Small");
@@ -67,9 +57,7 @@ export default function MolesPage() {
 
   const persist = (list: MoleEntry[]) => {
     setEntries(list);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(list));
-    } catch { /* ignore */ }
+    writeLocal(LocalKeys.moles, list);
   };
 
   const add = () => {
@@ -116,6 +104,7 @@ export default function MolesPage() {
           Record mole positions on an interactive body map and keep a change diary.
           Moles that change shape, size, or color should be shown to a doctor first.
         </p>
+          <HonestyNote>Records are stored on this device only and never leave your browser.</HonestyNote>
       </motion.div>
 
       {/* Add form */}

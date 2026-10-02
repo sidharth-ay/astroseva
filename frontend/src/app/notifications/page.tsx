@@ -5,6 +5,8 @@ import { motion } from "motion/react";
 import { Bell } from "lucide-react";
 import Link from "next/link";
 import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger } from "@/lib/motion";
+import HonestyNote from "@/components/HonestyNote";
+import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
 interface Pref {
   id: string;
@@ -26,21 +28,11 @@ const PREFS: Pref[] = [
 const KEY = "astroseva_notif_prefs";
 
 function load(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) || "{}");
-  } catch {
-    return {};
-  }
+  return readLocal<Record<string, boolean>>(LocalKeys.notifPrefs, {});
 }
 
 export default function NotificationsPage() {
-  const [prefs, setPrefs] = useState<Record<string, boolean>>(() => {
-    try {
-      return load();
-    } catch {
-      return {};
-    }
-  });
+  const [prefs, setPrefs] = useState<Record<string, boolean>>(() => load());
   const reduced = useReducedMotion();
 
   useEffect(() => {
@@ -50,9 +42,7 @@ export default function NotificationsPage() {
   const toggle = (id: string) => {
     const next = { ...prefs, [id]: !prefs[id] };
     setPrefs(next);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-    } catch { /* ignore */ }
+    writeLocal(LocalKeys.notifPrefs, next);
   };
 
   const enabled = PREFS.filter((p) => prefs[p.id]).length;
@@ -67,6 +57,7 @@ export default function NotificationsPage() {
         <p className="max-w-lg mx-auto text-sm" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
           {enabled} of {PREFS.length} reminder types enabled. Preferences are stored on this device.
         </p>
+          <HonestyNote>These toggles record intent on this device. No messages are delivered anywhere yet.</HonestyNote>
       </motion.div>
 
       <motion.div

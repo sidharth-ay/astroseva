@@ -5,6 +5,8 @@ import { motion } from "motion/react";
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger } from "@/lib/motion";
+import HonestyNote from "@/components/HonestyNote";
+import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
 interface Remedy {
   id: string;
@@ -45,23 +47,13 @@ function weekKey(): string {
 }
 
 function loadDone(): Record<string, boolean> {
-  try {
-    const all = JSON.parse(localStorage.getItem(KEY) || "{}");
-    return all[weekKey()] || {};
-  } catch {
-    return {};
-  }
+  const all = readLocal<Record<string, Record<string, boolean>>>(LocalKeys.remedyDone, {});
+  return all[weekKey()] || {};
 }
 
 export default function RemediesPage() {
   const [selected, setSelected] = useState<string[]>(["peace"]);
-  const [done, setDone] = useState<Record<string, boolean>>(() => {
-    try {
-      return loadDone();
-    } catch {
-      return {};
-    }
-  });
+  const [done, setDone] = useState<Record<string, boolean>>(() => loadDone());
   const reduced = useReducedMotion();
 
   useEffect(() => {
@@ -79,11 +71,9 @@ export default function RemediesPage() {
   const toggleDone = (id: string) => {
     const next = { ...done, [id]: !done[id] };
     setDone(next);
-    try {
-      const all = JSON.parse(localStorage.getItem(KEY) || "{}");
-      all[weekKey()] = next;
-      localStorage.setItem(KEY, JSON.stringify(all));
-    } catch { /* ignore */ }
+    const all = readLocal<Record<string, Record<string, boolean>>>(LocalKeys.remedyDone, {});
+    all[weekKey()] = next;
+    writeLocal(LocalKeys.remedyDone, all);
   };
 
   const doneCount = plan.filter((r) => done[r.id]).length;
@@ -99,6 +89,7 @@ export default function RemediesPage() {
           Pick your concerns — get a weekly remedy schedule with day-wise actions and progress tracking.
           For a personal dosha check, visit <Link href="/doshas" style={{ color: "#C8956D" }}>Dosha Analysis</Link>.
         </p>
+          <HonestyNote>A static offline reference. For remedies computed from your own chart, see Dosha Analysis.</HonestyNote>
       </motion.div>
 
       <div className="flex gap-2 flex-wrap justify-center mb-6">

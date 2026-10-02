@@ -22,6 +22,7 @@ import {
   slideUp,
   stagger,
 } from "@/lib/motion";
+import HonestyNote from "@/components/HonestyNote";
 
 const features = [
   {
@@ -207,6 +208,7 @@ export default function MatrimonyPage() {
             >
               Find Your Perfect Match Through the Stars
             </p>
+          <HonestyNote>An informational page. The working compatibility feature is Marriage Matching.</HonestyNote>
 
             <div className="flex flex-wrap justify-center gap-3">
               <Link

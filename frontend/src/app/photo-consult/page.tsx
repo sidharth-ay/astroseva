@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Camera, User } from "lucide-react";
 import { useReducedMotion, staggerContainerCustom, staggerItem, slideUp, stagger } from "@/lib/motion";
+import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
 interface ConsultRequest {
   id: string;
@@ -18,11 +19,7 @@ const TOPICS = ["Palm Reading", "Face Reading", "Career Guidance", "Marriage & C
 const KEY = "astroseva_photo_consults";
 
 function load(): ConsultRequest[] {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
-  } catch {
-    return [];
-  }
+  return readLocal<ConsultRequest[]>(LocalKeys.photoConsults, []);
 }
 
 export default function PhotoConsultPage() {
@@ -30,13 +27,7 @@ export default function PhotoConsultPage() {
   const [topic, setTopic] = useState(TOPICS[0]);
   const [question, setQuestion] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
-  const [requests, setRequests] = useState<ConsultRequest[]>(() => {
-    try {
-      return load();
-    } catch {
-      return [];
-    }
-  });
+  const [requests, setRequests] = useState<ConsultRequest[]>(() => load());
   const [msg, setMsg] = useState("");
   const reduced = useReducedMotion();
 
@@ -75,9 +66,7 @@ export default function PhotoConsultPage() {
     };
     const next = [entry, ...requests];
     setRequests(next);
-    try {
-      localStorage.setItem(KEY, JSON.stringify(next));
-    } catch { /* ignore */ }
+    writeLocal(LocalKeys.photoConsults, next);
     setName("");
     setQuestion("");
     setPhoto(null);
