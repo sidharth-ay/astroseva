@@ -1,10 +1,12 @@
 """Panchang API endpoints."""
 
+from fastapi import Request
 from fastapi import APIRouter, HTTPException, Query
 from datetime import date, datetime, timedelta
 import logging
 
 from ..models.response import PanchangResponse
+from ..core.rate_limit import limiter
 from ..core.planets import get_planetary_positions
 from ..core.panchang import calculate_sunrise_sunset, get_panchang
 from ..services.cache_service import cache_service
@@ -228,7 +230,9 @@ def _ghati_unused_minutes(sunrise_hour: float, sunset_hour: float) -> float:
 
 
 @router.get("/daily", response_model=PanchangResponse)
+@limiter.limit("60/minute")
 async def get_daily_panchang(
+    request: Request,
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
@@ -344,7 +348,9 @@ async def get_daily_panchang(
 
 
 @router.get("/muhurat")
+@limiter.limit("60/minute")
 async def get_muhurat(
+    request: Request,
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
@@ -398,7 +404,9 @@ async def get_muhurat(
 
 
 @router.get("/choghadiya")
+@limiter.limit("60/minute")
 async def get_choghadiya(
+    request: Request,
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
@@ -464,7 +472,9 @@ async def get_choghadiya(
 
 
 @router.get("/hora")
+@limiter.limit("60/minute")
 async def get_hora(
+    request: Request,
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
@@ -534,7 +544,9 @@ async def get_hora(
 
 
 @router.get("/gowri")
+@limiter.limit("60/minute")
 async def get_gowri(
+    request: Request,
     date_str: str = None,
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
@@ -594,7 +606,9 @@ async def get_gowri(
 
 
 @router.get("/ghati")
+@limiter.limit("60/minute")
 async def get_ghati_muhurat(
+    request: Request,
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     date_str: str = None,
@@ -666,7 +680,9 @@ async def get_ghati_muhurat(
 
 
 @router.get("/monthly")
+@limiter.limit("60/minute")
 async def get_monthly_panchang(
+    request: Request,
     latitude: float = Query(28.6139, ge=-90, le=90),
     longitude: float = Query(77.2090, ge=-180, le=180),
     # An explicit out-of-range value is rejected by validation here (422); the

@@ -841,7 +841,8 @@ async def send_chat_message(
 
 
 @router.get("/suggestions")
-async def get_chat_suggestions():
+@limiter.limit("20/minute")
+async def get_chat_suggestions(request: Request, ):
     """Get suggested questions for the chat."""
     return {
         "suggestions": [

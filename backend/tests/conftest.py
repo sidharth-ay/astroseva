@@ -177,6 +177,42 @@ def applicant_client(applicant_user, test_sessionmaker):
         _clear_overrides()
 
 
+def build_test_request():
+    """A minimal starlette Request, for tests that call an endpoint *function*
+    directly instead of going through TestClient.
+
+    `@limiter.limit` reads the request off the handler's signature rather than
+    the ASGI scope, so a decorated endpoint called directly has to be handed a
+    real `Request`. Without one such a test fails with "parameter `request` must
+    be an instance of starlette.requests.Request", which is a confusing way to
+    learn that the endpoint became rate limited.
+    """
+    from starlette.requests import Request
+
+    from app.main import app
+
+    return Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/",
+            "raw_path": b"/",
+            "query_string": b"",
+            "root_path": "",
+            "scheme": "http",
+            "headers": [],
+            "client": ("testclient", 50000),
+            "server": ("testserver", 80),
+            "app": app,
+        }
+    )
+
+
+@pytest.fixture
+def http_request():
+    return build_test_request()
+
+
 @pytest.fixture
 def db_session(isolated_db):
     """A real database session for service-level tests.

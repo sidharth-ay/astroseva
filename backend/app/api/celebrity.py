@@ -4,8 +4,10 @@ import logging
 from datetime import date, datetime
 from typing import Optional
 
+from fastapi import Request
 from fastapi import APIRouter, HTTPException
 
+from ..core.rate_limit import limiter
 from ..core.planets import (
     SIGN_NAMES,
     get_planetary_positions,
@@ -493,7 +495,8 @@ def _build_celebrity_response(celebrity: dict, chart: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 @router.get("/list")
-async def get_celebrity_list():
+@limiter.limit("60/minute")
+async def get_celebrity_list(request: Request, ):
     """Return list of famous Indian celebrities with birth details."""
     items = []
     for c in CELEBRITIES:
@@ -517,7 +520,8 @@ async def get_celebrity_list():
 
 
 @router.get("/zodiac/{sign}")
-async def get_celebrities_by_zodiac(sign: str):
+@limiter.limit("60/minute")
+async def get_celebrities_by_zodiac(request: Request, sign: str):
     """Return celebrities matching a Western zodiac sign."""
     sign = sign.lower()
     if sign not in SIGN_NAMES and sign not in [
@@ -557,7 +561,8 @@ async def get_celebrities_by_zodiac(sign: str):
 
 
 @router.get("/{celebrity_id}")
-async def get_celebrity_detail(celebrity_id: str):
+@limiter.limit("60/minute")
+async def get_celebrity_detail(request: Request, celebrity_id: str):
     """Return detailed horoscope analysis for a specific celebrity."""
     celebrity = next((c for c in CELEBRITIES if c["id"] == celebrity_id), None)
     if not celebrity:

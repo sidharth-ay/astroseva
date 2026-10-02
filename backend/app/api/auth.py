@@ -127,7 +127,8 @@ async def login(request: Request, login_data: LoginRequest, db: Session = Depend
 
 
 @router.post("/logout")
-async def logout(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+async def logout(request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Revoke all sessions for the current user (bumps token version)."""
     user.token_version = (getattr(user, "token_version", 0) or 0) + 1
     db.add(user)
@@ -162,7 +163,8 @@ async def change_password(request: Request, data: ChangePasswordRequest, user: U
 
 
 @router.get("/me")
-async def get_me(user: User = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def get_me(request: Request, user: User = Depends(get_current_user)):
     return {
         "id": user.id,
         "email": user.email,

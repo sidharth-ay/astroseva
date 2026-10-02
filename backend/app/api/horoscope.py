@@ -583,7 +583,8 @@ async def warm_all_horoscopes() -> None:
 
 
 @router.get("/signs")
-async def get_zodiac_signs():
+@limiter.limit("60/minute")
+async def get_zodiac_signs(request: Request, ):
     """Get all available zodiac signs."""
     return {
         "signs": [

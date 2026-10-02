@@ -53,7 +53,17 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Proxy headers are trusted only from the loopback default, which is correct
+    # when nginx or a load balancer runs on the same host. Behind a CDN whose
+    # addresses are not loopback, set FORWARDED_ALLOW_IPS to that network or the
+    # API will see the proxy's address for every request -- and since the rate
+    # limiter keys on the client address, one caller could exhaust everyone's
+    # quota. Do not set it to "*": then any client can forge X-Forwarded-For and
+    # mint itself a fresh rate-limit bucket.
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      --proxy-headers
+      --forwarded-allow-ips ${FORWARDED_ALLOW_IPS:-127.0.0.1,::1}
 
 volumes:
   postgres_data:

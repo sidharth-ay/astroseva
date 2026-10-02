@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from .core.rate_limit import limiter
+from .core.rate_limit import HEALTH_LIMIT, limiter
 from .services.auth_service import get_current_user, require_admin
 
 from .api import kundli, matching, predictions, horoscope, panchang, numerology, doshas, auth, charts, chat, cities, transit, gemstones, varshphal, baby_names, festivals, lalkitab, reports, celebrity, mantra, healing, settings
@@ -155,6 +155,12 @@ app.add_middleware(
     # Exposed so a browser can read them. Without this the client cannot see the
     # rate-limit headers, which is part of why a 429 used to arrive as an
     # unexplained failure with nothing to act on.
+    #
+    # In practice only `Retry-After` is ever sent: it comes from our own 429
+    # handler, and the client reads it. The X-RateLimit-* trio is listed because
+    # they are the conventional set and cost nothing to allow for, but slowapi
+    # only emits them when a route declares `response: Response`, which none
+    # currently do -- see `app/core/rate_limit.py` for why that is not changed.
     expose_headers=["Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining",
                     "X-RateLimit-Reset"],
     # Ten minutes, so a browser is not re-preflighting on every navigation.
@@ -224,7 +230,8 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
+@limiter.limit(HEALTH_LIMIT)
+async def health_check(request: Request):
     """Real health check — verifies DB, Redis, and reports status."""
     from .services.cache_service import cache_service
     from .db.database import SessionLocal

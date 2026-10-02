@@ -1,9 +1,11 @@
 """Lal Kitab chart and remedies API."""
 
+from fastapi import Request
 from fastapi import APIRouter, Depends, HTTPException
 import logging
 
 from ..models.birth_data import BirthData
+from ..core.rate_limit import limiter
 from ..core.planets import get_planetary_positions
 from ..core.houses import get_house_from_longitude
 from ..services.settings_service import house_system_setting
@@ -137,7 +139,9 @@ RASHI_NAMES = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
                "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"]
 
 @router.post("/chart")
+@limiter.limit("30/minute")
 async def get_lalkitab_chart(
+    request: Request,
     birth_data: BirthData,
     house_system: str = Depends(house_system_setting),
 ):

@@ -129,7 +129,8 @@ async def generate_ai_prediction(request: Request, payload: PredictionRequest):
 
 
 @router.get("/types")
-async def get_prediction_types():
+@limiter.limit("20/minute")
+async def get_prediction_types(request: Request, ):
     """Get available prediction types."""
     return {
         "types": [

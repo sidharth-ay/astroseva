@@ -9,6 +9,7 @@ from ..db.database import get_db
 from ..services.auth_service import get_current_user
 from ..services.settings_service import get_house_system, set_house_system
 
+from ..core.rate_limit import limiter
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
 
@@ -33,6 +34,7 @@ def _response(house_system: str) -> SettingsResponse:
 
 
 @router.get("", response_model=SettingsResponse)
+@limiter.limit("60/minute")
 async def read_settings(
     request: Request,
     db: Session = Depends(get_db),
@@ -43,6 +45,7 @@ async def read_settings(
 
 
 @router.put("", response_model=SettingsResponse)
+@limiter.limit("60/minute")
 async def update_settings(
     request: Request,
     payload: SettingsUpdate,

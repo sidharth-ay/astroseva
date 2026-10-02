@@ -22,6 +22,7 @@ Names are ranked by how well the two numbers match, and every suggestion
 carries the numbers and the verdict so the page can explain itself.
 """
 
+from fastapi import Request
 from fastapi import APIRouter, Query
 from datetime import date
 import logging
@@ -33,6 +34,7 @@ from ..core.numerology import (
 )
 
 logger = logging.getLogger(__name__)
+from ..core.rate_limit import limiter
 router = APIRouter(prefix="/api/v1/baby-names", tags=["baby-names"])
 
 # The page and any external caller have used different spellings; accept both.
@@ -159,7 +161,9 @@ def _rank_names(names: list[dict], life_path: int | None) -> list[dict]:
 
 
 @router.get("/suggest")
+@limiter.limit("30/minute")
 async def suggest_baby_names(
+    request: Request,
     gender: str = Query("boy", pattern="^(boy|girl|male|female|m|f)$"),
     birth_date: str = Query(None, description="YYYY-MM-DD, optional"),
 ):

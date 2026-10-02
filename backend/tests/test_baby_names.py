@@ -15,43 +15,48 @@ from app.api.baby_names import (
     suggest_baby_names,
 )
 from app.core.numerology import calculate_life_path_number
+from tests.conftest import build_test_request
 
 
 @pytest.mark.parametrize("gender", ["boy", "male", "m"])
-def test_male_spellings_work(gender):
-    result = await_suggest(gender=gender)
+def test_male_spellings_work(gender, http_request):
+    result = await_suggest(gender=gender, request=http_request)
     assert result["gender"] == "male"
     assert result["count"] > 0
     assert result["names"]
 
 
 @pytest.mark.parametrize("gender", ["girl", "female", "f"])
-def test_female_spellings_work(gender):
-    result = await_suggest(gender=gender)
+def test_female_spellings_work(gender, http_request):
+    result = await_suggest(gender=gender, request=http_request)
     assert result["gender"] == "female"
     assert result["count"] > 0
     assert result["names"]
 
 
-def test_gender_values_the_page_sends_all_work():
+def test_gender_values_the_page_sends_all_work(http_request):
     """The exact values the Boy/Girl buttons send. This was a hard 422."""
     import asyncio
 
     async def run():
         for gender in ("boy", "girl"):
-            res = await suggest_baby_names(gender=gender, birth_date=None)
+            res = await suggest_baby_names(
+                request=http_request, gender=gender, birth_date=None
+            )
             assert res["count"] > 0, gender
             assert all(n["name"] for n in res["names"]), gender
 
     asyncio.run(run())
 
 
-def test_unknown_gender_is_rejected():
+def test_unknown_gender_is_rejected(http_request):
     import asyncio
     from fastapi import HTTPException
 
     with pytest.raises(HTTPException) as exc:
-        asyncio.run(suggest_baby_names(gender="other", birth_date=None))
+        asyncio.run(
+            suggest_baby_names(request=http_request, gender="other", birth_date=None)
+        )
     assert exc.value.status_code == 400
 
 
@@ -146,6 +151,10 @@ def await_suggest(**kwargs) -> dict:
     """Call the coroutine endpoint directly with its defaults filled in."""
     import asyncio
 
-    params = {"gender": "boy", "birth_date": None}
+    # `request` is required by the rate-limit decorator, which reads it off the
+    # handler signature rather than the ASGI scope. Supplied here so every
+    # caller of this helper does not have to.
+    params = {"request": kwargs.pop("request", None) or build_test_request(),
+              "gender": "boy", "birth_date": None}
     params.update(kwargs)
     return asyncio.run(suggest_baby_names(**params))

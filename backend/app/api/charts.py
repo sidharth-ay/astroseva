@@ -1,5 +1,6 @@
 """Saved Charts API endpoints."""
 
+from fastapi import Request
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from ..db.database import get_db
 from ..db.models import User, SavedChart
 from ..services.auth_service import get_current_user
 
+from ..core.rate_limit import limiter
 router = APIRouter(prefix="/api/v1/charts", tags=["charts"])
 
 
@@ -33,22 +35,24 @@ class ChartResponse(BaseModel):
 
 
 @router.post("/save")
+@limiter.limit("60/minute")
 async def save_chart(
-    request: SaveChartRequest,
+    request: Request,
+    payload: SaveChartRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Save a birth chart to user's profile."""
     chart = SavedChart(
         user_id=user.id,
-        name=request.name,
-        birth_date=request.birth_date,
-        birth_time=request.birth_time,
-        birth_place=request.birth_place,
-        latitude=request.latitude,
-        longitude=request.longitude,
-        timezone_offset=request.timezone_offset,
-        chart_data=request.chart_data,
+        name=payload.name,
+        birth_date=payload.birth_date,
+        birth_time=payload.birth_time,
+        birth_place=payload.birth_place,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
+        timezone_offset=payload.timezone_offset,
+        chart_data=payload.chart_data,
     )
     db.add(chart)
     db.commit()
@@ -61,7 +65,9 @@ async def save_chart(
 
 
 @router.get("/list")
+@limiter.limit("60/minute")
 async def list_charts(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     user: User = Depends(get_current_user),
@@ -88,7 +94,9 @@ async def list_charts(
 
 
 @router.get("/{chart_id}")
+@limiter.limit("60/minute")
 async def get_chart(
+    request: Request,
     chart_id: int,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -117,7 +125,9 @@ async def get_chart(
 
 
 @router.delete("/{chart_id}")
+@limiter.limit("60/minute")
 async def delete_chart(
+    request: Request,
     chart_id: int,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

@@ -1,12 +1,14 @@
 """Healing API endpoints — crystals, chakras, aromatherapy, sound healing, and personalised recommendations."""
 
 import logging
+from fastapi import Request
 from fastapi import APIRouter, HTTPException
 
 from ..models.birth_data import BirthData
 
 logger = logging.getLogger(__name__)
 
+from ..core.rate_limit import limiter
 router = APIRouter(prefix="/api/v1/healing", tags=["healing"])
 
 
@@ -756,31 +758,36 @@ def _build_recommendation(data: BirthData) -> dict:
 # ---------------------------------------------------------------------------
 
 @router.get("/crystals")
-async def get_crystals():
+@limiter.limit("30/minute")
+async def get_crystals(request: Request, ):
     """Return a list of healing crystals with their properties and associations."""
     return {"crystals": CRYSTALS}
 
 
 @router.get("/chakras")
-async def get_chakras():
+@limiter.limit("30/minute")
+async def get_chakras(request: Request, ):
     """Return the seven chakras with descriptions, planets, stones, mantras, and healing methods."""
     return {"chakras": CHAKRAS}
 
 
 @router.get("/aromatherapy")
-async def get_aromatherapy():
+@limiter.limit("30/minute")
+async def get_aromatherapy(request: Request, ):
     """Return aromatherapy oils with planetary/zodiac associations and benefits."""
     return {"aromatherapy": AROMATHERAPY}
 
 
 @router.get("/sound-healing")
-async def get_sound_healing():
+@limiter.limit("30/minute")
+async def get_sound_healing(request: Request, ):
     """Return sound healing frequencies with associated planets, benefits, and recommended raga/time."""
     return {"sound_healing": SOUND_HEALING}
 
 
 @router.post("/recommend")
-async def get_healing_recommendation(data: BirthData):
+@limiter.limit("30/minute")
+async def get_healing_recommendation(request: Request, data: BirthData):
     """Recommend crystals, chakras, aromatherapy, and sound healing based on birth details."""
     try:
         recommendation = _build_recommendation(data)

@@ -299,6 +299,7 @@ async def generate_kundli(
 
 
 @router.get("/sample")
+@limiter.limit("30/minute")
 async def get_sample_kundli(
     request: Request,
     ayanamsa_type: str = Query("lahiri", alias="ayanamsa_type"),

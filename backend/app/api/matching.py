@@ -109,6 +109,7 @@ async def analyze_marriage_matching(request: Request, matching_data: MatchingDat
 
 
 @router.get("/sample")
+@limiter.limit("30/minute")
 async def get_sample_matching(request: Request):
     """Get a sample matching analysis for testing."""
     from ..models.birth_data import BirthData

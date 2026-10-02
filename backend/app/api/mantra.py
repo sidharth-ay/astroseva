@@ -2,8 +2,10 @@
 
 import random
 from datetime import date
+from fastapi import Request
 from fastapi import APIRouter, HTTPException, Query
 
+from ..core.rate_limit import limiter
 router = APIRouter(prefix="/api/v1/mantra", tags=["mantra"])
 
 
@@ -1120,7 +1122,8 @@ MANTRA_CATEGORIES = {
 # ---------------------------------------------------------------------------
 
 @router.get("/daily")
-async def get_daily_mantra():
+@limiter.limit("60/minute")
+async def get_daily_mantra(request: Request, ):
     """Returns a random daily mantra with meaning, benefits, and deity."""
     mantra = random.choice(DAILY_MANTRAS)
     return {
@@ -1130,7 +1133,8 @@ async def get_daily_mantra():
 
 
 @router.get("/chalisa")
-async def get_chalisas():
+@limiter.limit("60/minute")
+async def get_chalisas(request: Request, ):
     """Returns a list of Hindu chalisas with full text."""
     return {
         "total": len(CHALISAS),
@@ -1139,7 +1143,8 @@ async def get_chalisas():
 
 
 @router.get("/aarti")
-async def get_aartis():
+@limiter.limit("60/minute")
+async def get_aartis(request: Request, ):
     """Returns a list of popular aartis with full text."""
     return {
         "total": len(AARTIS),
@@ -1148,7 +1153,8 @@ async def get_aartis():
 
 
 @router.get("/categories")
-async def get_mantra_categories():
+@limiter.limit("60/minute")
+async def get_mantra_categories(request: Request, ):
     """Returns mantra categories: deity, purpose, and planet-based.
 
     Counts and member ids are derived from `DAILY_MANTRAS`; see `_members`.
@@ -1157,7 +1163,9 @@ async def get_mantra_categories():
 
 
 @router.get("")
+@limiter.limit("60/minute")
 async def list_mantras(
+    request: Request,
     purpose: str | None = Query(None, description="Purpose category id"),
     planet: str | None = Query(None, description="Planet category id"),
     deity: str | None = Query(None, description="Deity category id"),
@@ -1189,7 +1197,8 @@ async def list_mantras(
 
 
 @router.get("/{mantra_id}")
-async def get_mantra(mantra_id: str):
+@limiter.limit("60/minute")
+async def get_mantra(request: Request, mantra_id: str):
     """One mantra by id. Declared last so `/daily` and friends still match."""
     for mantra in DAILY_MANTRAS:
         if mantra["id"] == mantra_id:

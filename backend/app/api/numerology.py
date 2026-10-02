@@ -41,7 +41,8 @@ async def analyze_numerology(request: Request, payload: NumerologyRequest):
 
 
 @router.get("/life-path/{birth_date}")
-async def get_life_path_number(birth_date: str):
+@limiter.limit("60/minute")
+async def get_life_path_number(request: Request, birth_date: str):
     """Calculate Life Path Number from birth date."""
     from ..core.numerology import calculate_life_path_number
 
@@ -57,7 +58,8 @@ async def get_life_path_number(birth_date: str):
 
 
 @router.get("/destiny/{name}")
-async def get_destiny_number(name: str):
+@limiter.limit("60/minute")
+async def get_destiny_number(request: Request, name: str):
     """Calculate Destiny Number from name."""
     from ..core.numerology import calculate_destiny_number
 
