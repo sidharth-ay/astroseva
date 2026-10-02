@@ -18,7 +18,8 @@ wrong.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from sqlalchemy.orm import Session
@@ -128,3 +129,108 @@ def run_now(job_id: int) -> bool:
         return True
     finally:
         db.close()
+
+
+# ---------------------------------------------------------------------------
+# Recovery
+#
+# `enqueue` schedules the work as an asyncio task on the request's event loop.
+# That works, but it is not durable in two ways, and both were reachable in
+# production code:
+#
+#  * a task is lost if the process restarts before it runs, and
+#  * a row stays `running` forever if the process dies *inside* the handler.
+#
+# The module docstring already claimed the row "can be swept later", and
+# `pending_count`/`run_now` existed for exactly that -- but nothing ever called
+# them, so `onboarding_submitted` and `onboarding_status_changed` could be lost
+# silently with no way to find out. The functions below are that missing caller.
+# ---------------------------------------------------------------------------
+
+# A `running` row older than this cannot still be running: the handler is
+# abandoned after JOB_TIMEOUT_SECONDS, so twice that is generous.
+STALE_RUNNING_SECONDS = JOB_TIMEOUT_SECONDS * 2
+
+# How often the background sweep runs.
+SWEEP_INTERVAL_SECONDS = int(os.getenv("JOB_SWEEP_INTERVAL_SECONDS", "60"))
+
+# How many pending jobs one sweep will run, so a large backlog cannot starve the
+# event loop in a single pass.
+SWEEP_BATCH = int(os.getenv("JOB_SWEEP_BATCH", "25"))
+
+
+def reclaim_stale(db: Session) -> int:
+    """Return rows stuck in `running` to `pending` and report how many.
+
+    Without this a crash mid-handler leaves a row that no sweep will ever
+    collect, because a sweep looks for `pending`. The attempts counter is kept so
+    a job that reliably kills the worker still converges on `failed` rather than
+    looping forever.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=STALE_RUNNING_SECONDS)
+    stale = (
+        db.query(JobRun)
+        .filter(JobRun.status == "running", JobRun.run_at < cutoff)
+        .all()
+    )
+    for job in stale:
+        job.status = "failed" if job.attempts >= MAX_ATTEMPTS else "pending"
+        if job.status == "failed":
+            job.last_error = "abandoned: worker stopped while the job was running"
+            job.finished_at = datetime.now(timezone.utc)
+    if stale:
+        db.commit()
+        logger.warning("Reclaimed %s stale job(s) left running by a restart", len(stale))
+    return len(stale)
+
+
+async def sweep_pending(limit: int = SWEEP_BATCH) -> int:
+    """Run jobs that are pending but were never scheduled. Returns the count.
+
+    Called on startup and then on an interval. Handlers run in a thread so a
+    slow one cannot stall the API's event loop -- which is the same defect that
+    made the whole application feel frozen during a festival scan.
+    """
+    db = SessionLocal()
+    try:
+        reclaim_stale(db)
+        pending = (
+            db.query(JobRun)
+            .filter(JobRun.status == "pending")
+            .order_by(JobRun.id)
+            .limit(limit)
+            .all()
+        )
+        ids = [job.id for job in pending]
+    finally:
+        db.close()
+
+    if not ids:
+        return 0
+
+    executed = 0
+    for job_id in ids:
+        try:
+            if await asyncio.to_thread(run_now, job_id):
+                executed += 1
+        except Exception:  # noqa: BLE001
+            # One bad job must not stop the rest of the batch.
+            logger.exception("Job sweep failed on job %s", job_id)
+    logger.info("Job sweep ran %s of %s pending job(s)", executed, len(ids))
+    return executed
+
+
+async def sweep_forever(stop: asyncio.Event, interval: float = SWEEP_INTERVAL_SECONDS) -> None:
+    """Run `sweep_pending` until `stop` is set."""
+    while not stop.is_set():
+        try:
+            # Waiting on the event rather than sleeping means shutdown is prompt
+            # instead of blocked until the next tick.
+            await asyncio.wait_for(stop.wait(), timeout=interval)
+            return  # stop was set
+        except asyncio.TimeoutError:
+            pass
+        try:
+            await sweep_pending()
+        except Exception:  # noqa: BLE001
+            logger.exception("Job sweep pass failed")

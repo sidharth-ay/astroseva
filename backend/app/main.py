@@ -66,6 +66,12 @@ ENABLE_DOCS = os.getenv("ENABLE_DOCS", "false").lower() == "true"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("AstroSeva API starting up...")
+    import asyncio
+    from .services.jobs import sweep_forever, sweep_pending
+    # Sweep anything left pending by a previous crash before starting the loop.
+    await sweep_pending(limit=100)
+    sweep_stop = asyncio.Event()
+    sweep_task = asyncio.create_task(sweep_forever(sweep_stop))
     # Clear any stale horoscope cache entries on startup
     try:
         from .services.cache_service import cache_service
@@ -76,6 +82,8 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Cache clear on startup failed: {e}")
     yield
     logger.info("AstroSeva API shutting down...")
+    sweep_stop.set()
+    await sweep_task
 
 
 async def _warm_horoscopes():
