@@ -8,6 +8,7 @@ import CitySearch from "@/components/CitySearch";
 import KundliTabsPanel from "@/components/kundli/KundliTabsPanel";
 
 import { api, downloadBlob, getToken, clearSession, type KundliResponse, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
+import { prepareChartSvg } from "@/lib/chart-image";
 
 export default function KundliPage() {
   const [form, setForm] = useState<BirthData>({
@@ -78,7 +79,7 @@ export default function KundliPage() {
     setSavedMsg("");
     let svgUrl: string | null = null;
     try {
-      const xml = new XMLSerializer().serializeToString(svg);
+      const { xml, width, height } = prepareChartSvg(svg);
       svgUrl = URL.createObjectURL(
         new Blob([xml], { type: "image/svg+xml;charset=utf-8" }),
       );
@@ -92,13 +93,13 @@ export default function KundliPage() {
       });
 
       const canvas = document.createElement("canvas");
-      canvas.width = 800;
-      canvas.height = 800;
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("This browser cannot render the chart as an image.");
       ctx.fillStyle = "#060610";
-      ctx.fillRect(0, 0, 800, 800);
-      ctx.drawImage(img, 0, 0, 800, 800);
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
 
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, "image/png"),
@@ -224,8 +225,8 @@ export default function KundliPage() {
       {result && (
         <KundliTabsPanel
           result={result}
-          chartStyle={chartStyle}
-          setChartStyle={setChartStyle}
+      chartStyle={chartStyle}
+      setChartStyle={setChartStyle}
         />
       )}
     </div>
