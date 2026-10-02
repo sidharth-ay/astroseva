@@ -36,6 +36,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install ruff
+
+      - name: Lint (ruff)
+        run: python -m ruff check app tests
 
       # app/core/planets.py calls skyfield's load(), which downloads de421.bsp
       # (~16 MB) on first use. It is gitignored, so without this cache every
@@ -166,11 +170,10 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      # Fails only when the count rises above the recorded baseline: 59 errors
-      # and 35 warnings pre-date this workflow. `npm run lint:baseline:update`
-      # re-records after an intentional change.
-      - name: Lint (regression gate)
-        run: npm run lint:baseline
+      # Zero problems is the bar: the backlog that used to need a baseline is
+      # gone, so any finding fails the run.
+      - name: Lint
+        run: npm run lint
 
       - name: Build
         run: npm run build
