@@ -27,6 +27,8 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _BACKEND_ROOT = os.path.abspath(os.path.join(_HERE, "..", ".."))
 
 _CITIES_PATH = os.path.join(_BACKEND_ROOT, "data", "cities.json")
+_ALIASES_PATH = os.path.join(_BACKEND_ROOT, "data", "city_aliases.json")
+_PROMINENCE_PATH = os.path.join(_BACKEND_ROOT, "data", "city_prominence.json")
 
 # How many suggestions to return. Ten was enough to hide the real answer: the
 # matching was an unranked substring scan, so `pur` returned the first ten names
@@ -61,6 +63,64 @@ def _load_cities() -> tuple:
     return tuple(data)
 
 
+@lru_cache(maxsize=1)
+def _load_aliases() -> dict:
+    """Common alternative names mapped to the name the dataset uses.
+
+    Users type what they know: Banaras, Bombay, Calcutta, Madras. The dataset
+    stores the official name, so without this layer those queries return nothing
+    and the user concludes the town is unsupported.
+
+    Every target is checked against the dataset at load time. An alias pointing
+    at a name that does not exist would silently break that lookup, so it is a
+    loud startup failure instead.
+    """
+    with open(_ALIASES_PATH, "r", encoding="utf-8") as handle:
+        aliases = json.load(handle)
+    known = {city.get("name") for city in _load_cities()}
+    dangling = {a: t for a, t in aliases.items() if t not in known}
+    if dangling:
+        raise RuntimeError(
+            f"city_aliases.json points at names absent from the dataset: {dangling}"
+        )
+    return aliases
+
+
+@lru_cache(maxsize=1)
+def _load_prominence() -> dict:
+    """A curated importance tier per city, used to break ranking ties.
+
+    The dataset carries no population or feature-class field and there is no
+    population source available to this project, so no figure is invented. Instead
+    a tier is assigned by hand: 3 for the metros, 2 for state capitals and other
+    major cities, and an implicit 1 for everything else.
+
+    This is a tiebreaker, not an override -- it only orders cities whose text
+    scores are equal, so a major city with a worse textual match still loses to
+    an exact one.
+    """
+    with open(_PROMINENCE_PATH, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _prominence_bonus(name: str) -> int:
+    """How much a city's tier lifts it within an equal text-score band."""
+    return {3: 50, 2: 25}.get(_load_prominence().get(name), 0)
+
+
+def _canonical_query(query: str) -> str:
+    """Resolve a query through the alias layer.
+
+    "banaras" becomes "varanasi", so the canonical name is what gets scored and
+    the user's own spelling is not what has to match the dataset. Matching is
+    case-insensitive and the result is lowercase, because `_score` compares
+    against lowercased names -- returning "Varanasi" with a capital would miss
+    the exact-match tier entirely.
+    """
+    key = query.strip().lower()
+    return _load_aliases().get(key, key).lower()
+
+
 def _score(city_name: str, query: str) -> int:
     """Rank a match. Higher is better; 0 means no match.
 
@@ -69,11 +129,15 @@ def _score(city_name: str, query: str) -> int:
     places, `kot` matched 83 names and `pur` matched 641, so the place the user
     actually meant was almost never among the first ten.
 
-    Known limitation: ranking is by text shape, not prominence, because the
-    dataset carries no population or feature-class field. `pur` therefore ranks
-    "Puri" above "Purnia" only by length, not by importance. Adding an alias
-    layer (Banaras -> Varanasi) is the honest fix; guessing prominence is not.
-    "Banaras" is not in the dataset at all — the city is stored as "Varanasi".
+    Ranking is by text shape first, then by a curated prominence tier to break
+    ties. The dataset carries no population or feature-class field and there is no
+    population source available to this project, so no figure is invented: a tier
+    is assigned by hand (3 for metros, 2 for state capitals and major cities) and
+    applied only where the text scores are equal. `pur` therefore ranks "Puri"
+    above "Purnia" by importance rather than by length alone.
+
+    Queries are resolved through an alias layer first, so "banaras" is scored as
+    "varanasi" and finds the city the user meant.
 
     Scored in tiers, most specific first:
       exact name              the user typed the full name
@@ -83,6 +147,7 @@ def _score(city_name: str, query: str) -> int:
       all query letters in order, as a subsequence
     """
     name = city_name.lower()
+    query = query.lower()
     if name == query:
         return 1000
     if name.startswith(query):
@@ -130,7 +195,7 @@ def search_cities(
         limit = DEFAULT_LIMIT
     limit = max(1, min(limit, MAX_LIMIT))
 
-    query = q.strip().lower()
+    query = _canonical_query(q.strip().lower())
     if not query:
         return {"cities": [], "total": 0}
 
@@ -139,9 +204,11 @@ def search_cities(
         name = city.get("name")
         if not name:
             continue
+        # The bonus applies only on top of a real text match. Adding it to a
+        # zero score would make every tiered city match every query.
         score = _score(name, query)
         if score:
-            scored.append((score, name, city))
+            scored.append((score + _prominence_bonus(name), name, city))
 
     # Sorted by score, then by name so equal-scoring results are stable and
     # alphabetical rather than dependent on file order.
