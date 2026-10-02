@@ -27,6 +27,7 @@ class User(Base):
     # client | astrologer | reviewer | admin
     role = Column(String(32), nullable=False, default=ROLE_CLIENT, index=True)
     token_version = Column(Integer, nullable=False, default=0)
+    email_verified = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -268,6 +269,31 @@ class JobRun(Base):
     run_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 finished_at = Column(DateTime, nullable=True)
 
+
+class AuthToken(Base):
+    """Single-use tokens for password resets and email verification."""
+    __tablename__ = "auth_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    purpose = Column(String(32), nullable=False, index=True)
+    token_hash = Column(String(255), nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class UserSession(Base):
+    """Active sessions for refresh token rotation and device tracking."""
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    refresh_token_hash = Column(String(255), nullable=False, unique=True, index=True)
+    user_agent = Column(String(255), nullable=True)
+    ip_address = Column(String(64), nullable=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_used_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class UserSettings(Base):
     """Per-user calculation settings.

@@ -2,6 +2,8 @@
 
 import os
 import uuid
+import secrets
+import hashlib
 from functools import lru_cache
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -80,6 +82,17 @@ def _dummy_hash() -> str:
     import uuid
 
     return pwd_context.hash(uuid.uuid4().hex + uuid.uuid4().hex)
+
+
+def generate_secure_token() -> tuple[str, str]:
+    """Return (raw_token, token_hash) for single-use flows or refresh tokens."""
+    raw = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    return raw, token_hash
+
+
+def hash_secure_token(raw_token: str) -> str:
+    return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

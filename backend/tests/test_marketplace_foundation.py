@@ -102,8 +102,15 @@ def test_path_traversal_is_rejected(temp_storage, key):
 
 
 def test_delete_file_and_namespace(temp_storage):
-    a = storage_service.store_file("astrologers/7", "application/pdf", "a.pdf", b"a")
-    b = storage_service.store_file("astrologers/7", "image/png", "b.png", b"b")
+    # Real magic bytes, not arbitrary ones: `store_file` validates the declared
+    # content type against the file's signature, so a test that only cares about
+    # deletion still has to hand it something that passes.
+    a = storage_service.store_file(
+        "astrologers/7", "application/pdf", "a.pdf", b"%PDF-1.4\n%fake"
+    )
+    b = storage_service.store_file(
+        "astrologers/7", "image/png", "b.png", b"\x89PNG\r\n\x1a\n\x00\x00"
+    )
     assert storage_service.delete_file(a.key) is True
     assert storage_service.delete_file(a.key) is False
     with pytest.raises(StorageError):

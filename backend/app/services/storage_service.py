@@ -101,6 +101,15 @@ def read_upload(stream, max_bytes: int | None = None) -> bytes:
 
 def store_file(namespace: str, content_type: str, filename: str, data: bytes) -> StoredFile:
     """Persist `data`, returning its key and metadata."""
+    # Enforce magic bytes based on content type to block spoofed files
+    if content_type == "application/pdf" and not data.startswith(b"%PDF"):
+        raise StorageError("Invalid PDF signature")
+    elif content_type == "image/jpeg" and not data.startswith(b"\xff\xd8\xff"):
+        raise StorageError("Invalid JPEG signature")
+    elif content_type == "image/png" and not data.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise StorageError("Invalid PNG signature")
+    elif content_type == "image/webp" and not (data.startswith(b"RIFF") and len(data) >= 12 and data[8:12] == b"WEBP"):
+        raise StorageError("Invalid WebP signature")
     if not data:
         raise StorageError("Refusing to store an empty file")
     # The endpoint now enforces this during the read via `read_upload`; this

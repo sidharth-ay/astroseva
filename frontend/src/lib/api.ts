@@ -28,7 +28,8 @@ async function fetchWithTimeout(url: string, init?: RequestInit, timeout = REQUE
     }
   }
   try {
-    const { signal: _externalSignal, ...rest } = init || {};
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { signal: _ignore, ...rest } = init || {};
     return await fetch(url, { ...rest, signal: controller.signal });
   } finally {
     clearTimeout(id);
@@ -62,6 +63,26 @@ export async function fetchBlob(endpoint: string, options?: RequestInit): Promis
   });
   if (!res.ok) {
     if (res.status === 401 && !NO_REDIRECT_ON_401.some((p) => endpoint.startsWith(p))) {
+      const refresh = typeof window !== "undefined" ? localStorage.getItem(REFRESH_TOKEN_KEY) : null;
+      if (refresh && !(options as RequestInit & { _isRetry?: boolean })?._isRetry) {
+        try {
+          const refreshRes = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: refresh })
+          });
+          if (refreshRes.ok) {
+            const data = await refreshRes.json();
+            if (typeof window !== "undefined") {
+              localStorage.setItem(TOKEN_KEY, data.token);
+              localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+            }
+            return fetchAPI(endpoint, { ...options, _isRetry: true } as RequestInit & { _isRetry?: boolean });
+          }
+        } catch {
+          // fallthrough to logout
+        }
+      }
       handleExpiredSession();
     }
     const error = await res.json().catch(() => ({ detail: res.statusText }));
@@ -729,6 +750,7 @@ export interface BabyNamesResponse {
 
 const TOKEN_KEY = "astroseva_token";
 const USER_KEY = "astroseva_user";
+const REFRESH_TOKEN_KEY = "astroseva_refresh_token";
 
 /** Mirrors the backend `users.role` column. Unknown/legacy values read as client. */
 export type UserRole = "client" | "astrologer" | "reviewer" | "admin";
@@ -959,15 +981,17 @@ function notifyAuthChange() {
   window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
 }
 
-export function setSession(token: string, user: AuthUser) {
+export function setSession(token: string, user: AuthUser, refreshToken?: string) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   notifyAuthChange();
 }
 
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   notifyAuthChange();
 }
 
@@ -1132,7 +1156,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  chatSend: (message: string, history: { role: string; content: string }[], language: string = "en", birthDetails?: Record<string, any>) =>
+  chatSend: (message: string, history: { role: string; content: string }[], language: string = "en", birthDetails?: Record<string, unknown>) =>
     fetchAPI<{ response: string; model: string }>("/api/v1/chat/send", {
       method: "POST",
       body: JSON.stringify({ message, history, language, birth_details: birthDetails || null }),
@@ -1256,7 +1280,7 @@ export const api = {
     }),
 
   login: (email: string, password: string) =>
-    fetchAPI<{ message: string; token: string; user: AuthUser }>("/api/v1/auth/login", {
+    fetchAPI<{ message: string; token: string; refresh_token: string; user: AuthUser }>("/api/v1/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
@@ -1473,6 +1497,43 @@ export const api = {
         (note ? `&note=${encodeURIComponent(note)}` : ""),
       { method: "POST" }
     ),
+
+
+
+  forgotPassword: (email: string) =>
+    fetchAPI<{ message: string }>("/api/v1/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, new_password: string) =>
+    fetchAPI<{ message: string }>("/api/v1/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, new_password }),
+    }),
+
+  verifyEmail: (token: string) =>
+    fetchAPI<{ message: string }>("/api/v1/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  resendVerification: (email: string) =>
+    fetchAPI<{ message: string }>("/api/v1/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  getSessions: () => fetchAPI<{ sessions: Record<string, unknown>[] }>("/api/v1/auth/sessions"),
+
+  deleteSession: (id: number) => fetchAPI<{ message: string }>(`/api/v1/auth/sessions/${id}`, { method: "DELETE" }),
+
+  deleteAccount: (password: string) => fetchAPI<{ message: string }>("/api/v1/auth/account", {
+    method: "DELETE",
+    body: JSON.stringify({ password }),
+  }),
+
+  exportData: () => fetchAPI<Record<string, unknown>>("/api/v1/auth/export"),
 
   getAuditTrail: (id: number) =>
     fetchAuth<{ events: OnboardingEvent[] }>(`/api/v1/admin/astrologers/${id}/audit`),

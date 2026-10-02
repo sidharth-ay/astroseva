@@ -68,7 +68,7 @@ function LoginForm() {
     try {
       if (mode === "login") {
         const res = await api.login(email, password);
-        setSession(res.token, res.user);
+        setSession(res.token, res.user, res.refresh_token);
         router.replace(next);
       } else {
         // Register returns a generic message (anti-enumeration) and no token.
