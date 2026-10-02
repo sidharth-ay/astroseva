@@ -43,6 +43,36 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        {/* Structured data for search engines. Organization and WebSite are
+            the two types every site qualifies for; anything more specific
+            (FAQPage, Article) belongs on the pages that actually carry that
+            content, not here. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  name: "AstroSeva",
+                  url:
+                    process.env.NEXT_PUBLIC_SITE_URL ||
+                    "https://astroseva.com",
+                  description:
+                    "Free Vedic astrology platform: birth charts, horoscope matching, panchang, and remedies.",
+                },
+                {
+                  "@type": "WebSite",
+                  name: "AstroSeva",
+                  url:
+                    process.env.NEXT_PUBLIC_SITE_URL ||
+                    "https://astroseva.com",
+                },
+              ],
+            }),
+          }}
+        />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} min-h-screen flex flex-col relative`}>
         <div className="noise-overlay">
