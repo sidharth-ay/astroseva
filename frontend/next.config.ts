@@ -85,6 +85,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Next 16 blocks cross-origin requests to dev-only assets from any host
+  // other than the one the dev server was initialised with (localhost). The
+  // site is routinely opened as http://127.0.0.1:3000, and Next treated that
+  // as a foreign origin: the HMR socket was refused and the client runtime
+  // never hydrated, so every button on every page was inert while the server
+  // happily returned 200s. Entries are hostnames only — no scheme, no port.
+  allowedDevOrigins: ["127.0.0.1"],
   async headers() {
     return [
       {
