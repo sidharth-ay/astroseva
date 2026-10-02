@@ -189,5 +189,11 @@ def downgrade():
     op.drop_table("astrologer_assessments")
     op.drop_table("astrologer_documents")
     op.drop_table("astrologers")
+    # The index has to go first. SQLite has no DROP COLUMN, so alembic recreates
+    # `users` as a new table and copies the rows across; it reflects the indexes
+    # along with the columns, and an index that still names the dropped column
+    # aborts the rebuild with "no such column: role", leaving `_alembic_tmp_users`
+    # behind and the schema half-migrated.
+    op.drop_index(op.f("ix_users_role"), table_name="users")
     with op.batch_alter_table("users") as batch:
         batch.drop_column("role")
