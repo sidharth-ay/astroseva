@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Calendar,
@@ -21,7 +21,13 @@ import {
   Star,
   Heart} from "lucide-react";
 import CitySearch from "@/components/CitySearch";
-import { api, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
+import {
+  api,
+  type BirthData,
+  type CityEntry,
+  type HealingCrystal,
+  locationFromCity,
+} from "@/lib/api";
 import {
   playHealingTone,
   stopHealingTone,
@@ -38,80 +44,23 @@ import {
 // Data
 // ---------------------------------------------------------------------------
 
-const CRYSTALS = [
-  {
-    name: "Amethyst",
-    color: "#9B59B6",
-    properties: ["Calming", "Intuition", "Spiritual Growth"],
-    zodiac: ["Pisces", "Aquarius", "Capricorn"],
-    chakras: ["third_eye", "crown"],
-    benefits: "Enhances intuition, promotes calm, aids meditation, supports sobriety and sleep.",
-  },
-  {
-    name: "Clear Quartz",
-    color: "#ECF0F1",
-    properties: ["Amplification", "Clarity", "Healing"],
-    zodiac: ["Aries", "Leo", "Gemini"],
-    chakras: ["crown", "all_chakras"],
-    benefits: "Master healer, amplifies energy, thought, and the effects of other crystals.",
-  },
-  {
-    name: "Rose Quartz",
-    color: "#F8B4C8",
-    properties: ["Love", "Compassion", "Self-Care"],
-    zodiac: ["Libra", "Taurus", "Cancer"],
-    chakras: ["heart"],
-    benefits: "Opens the heart chakra, attracts love, deepens self-love and emotional healing.",
-  },
-  {
-    name: "Citrine",
-    color: "#F1C40F",
-    properties: ["Abundance", "Joy", "Creativity"],
-    zodiac: ["Gemini", "Leo", "Virgo"],
-    chakras: ["solar_plexus", "sacral"],
-    benefits: "Manifests prosperity, boosts confidence, stimulates creativity and optimism.",
-  },
-  {
-    name: "Black Tourmaline",
-    color: "#1C1C1C",
-    properties: ["Protection", "Grounding", "EMF Shield"],
-    zodiac: ["Capricorn", "Libra"],
-    chakras: ["root"],
-    benefits: "Powerful protection stone, grounds energy, absorbs negativity and EMF radiation.",
-  },
-  {
-    name: "Lapis Lazuli",
-    color: "#2E4A9E",
-    properties: ["Truth", "Communication", "Wisdom"],
-    zodiac: ["Sagittarius", "Libra"],
-    chakras: ["throat", "third_eye"],
-    benefits: "Activates throat and third eye chakras, enhances communication and inner truth.",
-  },
-  {
-    name: "Tiger's Eye",
-    color: "#B8860B",
-    properties: ["Courage", "Willpower", "Confidence"],
-    zodiac: ["Leo", "Capricorn", "Gemini"],
-    chakras: ["solar_plexus", "sacral"],
-    benefits: "Combines earth and sun energy, boosts willpower, attracts wealth and protection.",
-  },
-  {
-    name: "Moonstone",
-    color: "#D6E6F2",
-    properties: ["Intuition", "New Beginnings", "Feminine Energy"],
-    zodiac: ["Cancer", "Scorpio", "Libra"],
-    chakras: ["crown", "third_eye"],
-    benefits: "Stabilizes emotions, enhances intuition, supports new beginnings and cycles.",
-  },
-  {
-    name: "Sodalite",
-    color: "#2C3E6B",
-    properties: ["Logic", "Communication", "Truth"],
-    zodiac: ["Sagittarius"],
-    chakras: ["throat", "third_eye"],
-    benefits: "Bridges logic and intuition, promotes rational thinking and clear communication.",
-  },
-];
+// Swatch colors for the gem visuals, copied verbatim from the local catalog
+// this replaces so no crystal changes appearance. Presentational only: nothing
+// filters, sorts, or computes on these. Names outside this map (crystals the
+// server serves that the old list never contained) fall back to a neutral tone.
+const CRYSTAL_COLORS: Record<string, string> = {
+  Amethyst: "#9B59B6",
+  "Clear Quartz": "#ECF0F1",
+  "Rose Quartz": "#F8B4C8",
+  Citrine: "#F1C40F",
+  "Black Tourmaline": "#1C1C1C",
+  "Lapis Lazuli": "#2E4A9E",
+  "Tiger's Eye": "#B8860B",
+  Moonstone: "#D6E6F2",
+  Sodalite: "#2C3E6B",
+};
+
+
 
 const CHAKRAS = [
   {
@@ -374,6 +323,37 @@ export default function HealingPage() {
   const [playingHz, setPlayingHz] = useState<number | null>(null);
   const [volume, setVolume] = useState(getHealingVolume());
   const [crystalFilter, setCrystalFilter] = useState({ zodiac: "", chakra: "" });
+  const [catalog, setCatalog] = useState<HealingCrystal[]>([]);
+  const [catalogTotal, setCatalogTotal] = useState(0);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState("");
+
+  // The catalog lives on the server; the page asks instead of computing.
+  // Stable (no inputs) so the effect below can depend on it safely.
+  const fetchCatalog = useCallback(async (filter: { zodiac: string; chakra: string }) => {
+    setCatalogLoading(true);
+    setCatalogError("");
+    try {
+      const res = await api.getCrystals({
+        ...(filter.zodiac ? { zodiac: filter.zodiac } : {}),
+        ...(filter.chakra ? { chakra: filter.chakra } : {}),
+      });
+      setCatalog(res.crystals);
+      setCatalogTotal(res.total);
+    } catch (e) {
+      setCatalogError(e instanceof Error ? e.message : "Failed to load crystals");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }, []);
+
+  // Fetching the catalog for the current filters is what this effect is for.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchCatalog(crystalFilter);
+  }, [crystalFilter, fetchCatalog]);
+
+  const clearCrystalFilter = () => setCrystalFilter({ zodiac: "", chakra: "" });
   const [expandedChakra, setExpandedChakra] = useState<number | null>(null);
   const [form, setForm] = useState<BirthData>({
     name: "",
@@ -391,19 +371,19 @@ export default function HealingPage() {
  * with \: any\. Optional fields are ones the render reads defensively
  * (e.g. \c.name || c.gemstone\) for entries that may not carry them.
  */
-interface HealingCrystal { name?: string; gemstone?: string; properties?: string[]; reason?: string }
-interface HealingChakra { name: string; recommendation?: string }
-interface HealingAroma { name?: string; reason?: string }
-interface HealingSound { frequency?: string; name?: string; reason?: string }
-interface HealingDisplayResult {
+interface DisplayCrystal { name?: string; gemstone?: string; properties?: string[]; reason?: string }
+interface DisplayChakra { name: string; recommendation?: string }
+interface DisplayAroma { name?: string; reason?: string }
+interface DisplaySound { frequency?: string; name?: string; reason?: string }
+interface DisplayResult {
   recommendations: string;
-  crystals: HealingCrystal[];
-  chakras: HealingChakra[];
-  aromatherapy: HealingAroma[];
-  sound_healing: HealingSound[];
+  crystals: DisplayCrystal[];
+  chakras: DisplayChakra[];
+  aromatherapy: DisplayAroma[];
+  sound_healing: DisplaySound[];
 }
 
-  const [result, setResult] = useState<HealingDisplayResult | null>(null);
+  const [result, setResult] = useState<DisplayResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const reduced = useReducedMotion();
@@ -483,11 +463,19 @@ interface HealingDisplayResult {
     }
   };
 
-  const filteredCrystals = CRYSTALS.filter((c) => {
-    if (crystalFilter.zodiac && !c.zodiac.includes(crystalFilter.zodiac)) return false;
-    if (crystalFilter.chakra && !c.chakras.includes(crystalFilter.chakra)) return false;
-    return true;
-  });
+  const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+  const filteredCrystals = catalog.map((b) => ({
+    name: b.name,
+    color: CRYSTAL_COLORS[b.name] ?? "#9B9AB0",
+    properties: b.properties
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    zodiac: b.zodiac_associations.map(capitalize),
+    chakras: b.chakra_associations,
+    benefits: b.benefits.join(" "),
+  }));
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "crystals", label: "Crystals", icon: <Gem size={14} /> },
@@ -584,7 +572,7 @@ interface HealingDisplayResult {
                 {(crystalFilter.zodiac || crystalFilter.chakra) && (
                   <button
                     className="btn-ghost text-xs"
-                    onClick={() => setCrystalFilter({ zodiac: "", chakra: "" })}
+                    onClick={clearCrystalFilter}
                   >
                     <RotateCcw size={11} /> Clear
                   </button>
@@ -593,6 +581,11 @@ interface HealingDisplayResult {
             </div>
 
             {/* Crystal Grid */}
+            {!catalogLoading && !catalogError && (
+              <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>
+                Showing {filteredCrystals.length} of {catalogTotal} crystals.
+              </p>
+            )}
             <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredCrystals.map((c) => (
                 <motion.div
@@ -667,7 +660,26 @@ interface HealingDisplayResult {
               ))}
             </motion.div>
 
-            {filteredCrystals.length === 0 && (
+            {catalogLoading && (
+              <div className="glass-card p-6 text-center text-xs" style={{ color: "var(--text-tertiary)" }}>
+                Loading crystals…
+              </div>
+            )}
+            {catalogError && !catalogLoading && (
+              <div className="glass-card p-6 text-center">
+                <p className="text-xs mb-3" style={{ color: "var(--color-error, #f87171)" }}>
+                  {catalogError}
+                </p>
+                <button
+                  type="button"
+                  className="btn-secondary text-xs"
+                  onClick={() => fetchCatalog(crystalFilter)}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            {!catalogLoading && !catalogError && filteredCrystals.length === 0 && (
               <div className="glass-card p-6 text-center text-xs" style={{ color: "var(--text-tertiary)" }}>
                 No crystals match the selected filters.
               </div>

@@ -2,7 +2,7 @@
 
 import logging
 from fastapi import Request
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from ..models.birth_data import BirthData
 from ..core.rate_limit import limiter
@@ -759,9 +759,40 @@ def _build_recommendation(data: BirthData) -> dict:
 
 @router.get("/crystals")
 @limiter.limit("30/minute")
-async def get_crystals(request: Request, ):
-    """Return a list of healing crystals with their properties and associations."""
-    return {"crystals": CRYSTALS}
+async def get_crystals(
+    request: Request,
+    chakra: str | None = Query(default=None, description="Only crystals for this chakra id"),
+    zodiac: str | None = Query(default=None, description="Only crystals for this sign"),
+    q: str | None = Query(default=None, max_length=80, description="Substring match on name and properties"),
+):
+    """Return healing crystals, optionally filtered server-side.
+
+    Filtering lives here rather than in the client so every consumer sees the
+    same fourteen crystals and the same result for the same filters. The client
+    previously carried its own nine-entry copy that had drifted from this one.
+    """
+    results = CRYSTALS
+    if chakra:
+        want = chakra.strip().lower()
+        results = [
+            c for c in results
+            if want in {a.lower() for a in c.get("chakra_associations", [])}
+        ]
+    if zodiac:
+        want = zodiac.strip().lower()
+        results = [
+            c for c in results
+            if want in {a.lower() for a in c.get("zodiac_associations", [])}
+        ]
+    if q:
+        needle = q.strip().lower()
+        results = [
+            c for c in results
+            if needle in c.get("name", "").lower()
+            or needle in c.get("properties", "").lower()
+            or any(needle in b.lower() for b in c.get("benefits", []))
+        ]
+    return {"crystals": results, "total": len(results)}
 
 
 @router.get("/chakras")

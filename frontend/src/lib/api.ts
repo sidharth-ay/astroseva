@@ -453,6 +453,14 @@ export interface Celebrity {
   zodiac_sign?: string;
 }
 
+export interface HealingCrystal {
+  name: string;
+  properties: string;
+  zodiac_associations: string[];
+  chakra_associations: string[];
+  benefits: string[];
+}
+
 export interface HealingRecommendation {
   name: string;
   birth_date: string;
@@ -1289,6 +1297,22 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  /**
+   * The crystal catalog, filtered server-side. The page used to carry its own
+   * nine-entry copy and filter it locally, while this endpoint served fourteen
+   * -- same question, different answers depending on where it was asked.
+   */
+  getCrystals: (filter: { chakra?: string; zodiac?: string; q?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (filter.chakra) params.set("chakra", filter.chakra);
+    if (filter.zodiac) params.set("zodiac", filter.zodiac);
+    if (filter.q) params.set("q", filter.q);
+    const qs = params.toString();
+    return fetchAPI<{ crystals: HealingCrystal[]; total: number }>(
+      `/api/v1/healing/crystals${qs ? `?${qs}` : ""}`
+    );
+  },
 
   getLalKitabChart: (data: BirthData) =>
     fetchAPI<LalKitabResponse>("/api/v1/lalkitab/chart", {

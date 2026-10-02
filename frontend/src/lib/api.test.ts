@@ -78,6 +78,7 @@ describe("every feature request carries the bearer token", () => {
     ["searchCities", () => api.searchCities("pune"), "GET", "/api/v1/cities?q=pune"],
     ["listMantras", () => api.listMantras(), "GET", "/api/v1/mantra"],
     ["updateSettings", () => api.updateSettings("equal"), "PUT", "/api/v1/settings"],
+    ["getCrystals", () => api.getCrystals(), "GET", "/api/v1/healing/crystals"],
   ])("%s sends Authorization", async (_name, call, method, path) => {
     setSession("token-abc", TEST_USER);
     await call();
@@ -112,6 +113,16 @@ describe("query parameters reach the server", () => {
     expect(url).toContain("planet=Moon");
     expect(url).toContain("deity=Shiva");
     expect(url).toContain("q=om");
+  });
+
+  it("sends only the crystal filters that were set", async () => {
+    await api.getCrystals();
+    expect(lastCall().url).not.toContain("chakra=");
+
+    await api.getCrystals({ chakra: "heart", zodiac: "Leo" });
+    const url = lastCall().url;
+    expect(url).toContain("chakra=heart");
+    expect(url).toContain("zodiac=Leo");
   });
 });
 

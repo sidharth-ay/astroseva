@@ -5,9 +5,6 @@
   (it can serve: database reachable and schema current).
 """
 
-from fastapi.testclient import TestClient
-
-
 def test_every_response_carries_a_request_id(client):
     resp = client.get("/api/v1/mantra/chalisa")
     assert resp.status_code == 200
@@ -45,9 +42,6 @@ def test_ready_fails_when_the_database_is_unreachable(client, monkeypatch):
 
     monkeypatch.setattr(main_module, "SessionLocal", lambda: BrokenSession())
 
-    # Re-import so the endpoint closure sees the patched name.
-    from importlib import reload
-
     resp = client.get("/ready")
     assert resp.status_code == 503
     body = resp.json()
@@ -62,7 +56,6 @@ def test_ready_fails_on_a_stale_schema(client, monkeypatch):
     is behind the running code.
     """
     import app.main as main_module
-    from sqlalchemy import text as sa_text
 
     real_session_local = main_module.SessionLocal
 
