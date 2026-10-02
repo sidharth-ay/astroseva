@@ -9,6 +9,7 @@ import KundliTabsPanel from "@/components/kundli/KundliTabsPanel";
 
 import { api, downloadBlob, getToken, clearSession, type KundliResponse, type BirthData, type CityEntry, locationFromCity } from "@/lib/api";
 import { prepareChartSvg } from "@/lib/chart-image";
+import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
 export default function KundliPage() {
   const [form, setForm] = useState<BirthData>({
@@ -16,7 +17,18 @@ export default function KundliPage() {
     birth_place: "New Delhi", latitude: 28.6139, longitude: 77.209, timezone_offset: 5.5,
   });
   const [result, setResult] = useState<KundliResponse | null>(null);
-  const [chartStyle, setChartStyle] = useState<"north" | "south">("north");
+  // The South-Indian renderer already existed, so persisting the choice needs
+  // no backend -- but it was forgotten on every visit, which read as the toggle
+  // doing nothing. Anything but "south" falls back to north rather than being
+  // trusted blindly.
+  const [chartStyle, setChartStyle] = useState<"north" | "south">(() => {
+    const stored = readLocal<string | null>(LocalKeys.chartStyle, null);
+    return stored === "south" ? "south" : "north";
+  });
+  const changeChartStyle = (style: "north" | "south") => {
+    setChartStyle(style);
+    writeLocal(LocalKeys.chartStyle, style);
+  };
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
@@ -226,7 +238,7 @@ export default function KundliPage() {
         <KundliTabsPanel
           result={result}
       chartStyle={chartStyle}
-      setChartStyle={setChartStyle}
+      setChartStyle={changeChartStyle}
         />
       )}
     </div>

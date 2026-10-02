@@ -23,6 +23,7 @@ export const LocalKeys = {
   kundliHistory: "kundli_history",
   theme: "astroseva-theme",
   language: "astroseva-language",
+  chartStyle: "astroseva-chart-style",
   ageOk: "astroseva_age_ok",
 } as const;
 
