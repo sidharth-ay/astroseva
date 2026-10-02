@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.13'
           # Warns while resolving rather than failing on a resolution change,
           # so a new patch release cannot silently break the build.
           cache: pip
@@ -83,7 +83,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.13'
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
@@ -187,7 +187,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.13'
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
