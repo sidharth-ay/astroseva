@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { Menu, Sun, X, User as UserIcon } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { useCallback, useRef, useState } from "react";
+import { Sun, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import NavDrawer from "@/components/NavDrawer";
 
 // Seven primary destinations. Home is the logo mark itself, which keeps the
 // bar uncrowded at every width; the review queue appends for staff roles.
@@ -47,6 +47,12 @@ export default function Navbar() {
     setBusy(false);
   };
 
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const handleDrawerClose = useCallback((opts?: { refocus?: boolean }) => {
+    setOpen(false);
+    if (opts?.refocus) triggerRef.current?.focus();
+  }, []);
+
   return (
     <nav
       className="navbar-dark sticky top-0 z-50"
@@ -59,7 +65,24 @@ export default function Navbar() {
     >
       <div className="max-w-6xl mx-auto px-5">
         <div className="flex items-center justify-between h-14">
-          <Link href="/" className="flex items-center gap-2 group" aria-label="AstroSeva home">
+          <div className="flex items-center gap-1">
+            {/* Complete astrology index. On desktop this sits beside the
+                inline links; on mobile it is the navigation. */}
+            <button
+              ref={triggerRef}
+              data-drawer-trigger
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              className={`drawer-trigger${open ? " open" : ""}`}
+              aria-expanded={open}
+              aria-controls="site-drawer"
+              aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+            <Link href="/" className="flex items-center gap-2 group" aria-label="AstroSeva home">
             <span
               className="flex items-center justify-center w-7 h-7 rounded-full transition-transform duration-200 group-hover:scale-105"
               style={{ background: "var(--gold)" }}
@@ -70,6 +93,7 @@ export default function Navbar() {
               AstroSeva
             </span>
           </Link>
+          </div>
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-0.5">
@@ -119,90 +143,18 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Mobile toggle */}
-          <button
-            onClick={() => setOpen(!open)}
-            className="md:hidden p-2 rounded-lg transition-colors"
-            style={{ color: "var(--on-dark-dim)" }}
-            aria-label="Toggle navigation"
-          >
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {/* Mobile right side stays empty: the drawer holds every action. */}
+          <div className="md:hidden w-11" aria-hidden="true" />
         </div>
       </div>
 
-      {/* Mobile nav */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="md:hidden overflow-hidden"
-            style={{ borderTop: "1px solid rgba(245, 241, 232, 0.12)" }}
-          >
-            <div className="mobile-panel px-4 py-2 space-y-0.5">
-              {navLinks.map((link) => {
-                const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
-                return (
-                  <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
-                    className={`nav-link block ${active ? "active" : ""}`}>
-                    {link.label}
-                  </Link>
-                );
-              })}
-              {user &&
-                roleLinks(user.role).map((link) => {
-                  const active = pathname.startsWith(link.href);
-                  return (
-                    <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
-                      className={`nav-link block ${active ? "active" : ""}`}>
-                      {link.label}
-                    </Link>
-                  );
-                })}
-              <div className="pt-2 pb-1 space-y-2">
-                {user ? (
-                  <>
-                    <Link
-                      href="/profile"
-                      onClick={() => setOpen(false)}
-                      className="btn-gold-pill block text-center w-full"
-                    >
-                      My Profile
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      disabled={busy}
-                      className="nav-link block text-center w-full"
-                    >
-                      {busy ? "Logging out…" : `Logout (${user.name || user.email})`}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/login"
-                      onClick={() => setOpen(false)}
-                      className="nav-link block text-center"
-                    >
-                      Sign in
-                    </Link>
-                    <Link
-                      href="/kundli"
-                      onClick={() => setOpen(false)}
-                      className="btn-gold-pill block text-center"
-                    >
-                      Get Started
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <NavDrawer
+        open={open}
+        onClose={handleDrawerClose}
+        user={user}
+        onLogout={handleLogout}
+        logoutBusy={busy}
+      />
     </nav>
   );
 }
