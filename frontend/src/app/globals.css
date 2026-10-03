@@ -480,46 +480,39 @@ input[type="file"].input-field::file-selector-button:hover {
   overscroll-behavior: contain;
 }
 
-/* Section toggle: full-width button, label left, chevron right. */
-.drawer-sec-btn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  min-height: 44px;
-  padding: 0.55rem 1.25rem;
-  font-size: 0.72rem;
+/* Group caption above a run of drawer links (Astrology / Account). */
+.drawer-group-label {
+  padding: 0.7rem 1.25rem 0.3rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--text-tertiary);
+}
+
+/* Logout confirmation: two small buttons inside the drawer, so signing out is
+   never one stray tap on a phone. */
+.drawer-confirm-btn {
+  flex: 1;
+  min-height: 40px;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.drawer-sec-btn:hover { color: var(--text-primary); }
+.drawer-confirm-btn:hover:not(:disabled) { background: rgba(201, 162, 39, 0.08); }
 
-.drawer-sec-btn svg {
-  transition: transform 0.22s var(--ease-out);
+.drawer-confirm-btn.danger {
+  border-color: rgba(180, 83, 49, 0.45);
+  color: #b45331;
 }
 
-.drawer-sec-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
-
-/* Accordion body: grid-rows animation, no JS height measurement. */
-.drawer-sub {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition:
-    grid-template-rows 0.25s var(--ease-out),
-    opacity 0.22s var(--ease-out);
-}
-
-.drawer-sub.open {
-  grid-template-rows: 1fr;
-  opacity: 1;
-}
-
-.drawer-sub > div { overflow: hidden; }
+.drawer-confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Links: quiet rows, never pills. The active page gets a cream/indigo wash
    and a gold bar -- identifiable without shouting. */

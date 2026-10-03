@@ -197,6 +197,16 @@ def test_change_phone_rejects_garbage(anon_client, db_session):
     assert user.phone_number is None
 
 
+def test_me_tolerates_ordinary_browsing(anon_client):
+    """AuthGate and the nav bar each read /me on every page load, so a signed-in
+    user browsing must not hit a rate limit. The old 10/minute cap made normal
+    navigation return 429 after a handful of pages."""
+    headers = _auth(anon_client, "acct_browse@example.com")
+    for _ in range(25):
+        resp = anon_client.get("/api/v1/auth/me", headers=headers)
+        assert resp.status_code == 200, resp.text
+
+
 def test_account_routes_require_login(anon_client):
     for method, path, body in [
         ("PUT", "/api/v1/auth/profile", {"name": "X"}),

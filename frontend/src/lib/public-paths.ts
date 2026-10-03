@@ -14,6 +14,10 @@ export const PUBLIC_PATHS: ReadonlySet<string> = new Set([
   "/privacy",
   "/refund",
   "/grievance",
+  // Help & Support has to be readable by the people who need it most: a guest
+  // locked out of an account is exactly who reads FAQs and reports a problem.
+  // Gating it would bounce them to a login form with no explanation.
+  "/help",
 ]);
 
 export function isPublicPath(pathname: string): boolean {

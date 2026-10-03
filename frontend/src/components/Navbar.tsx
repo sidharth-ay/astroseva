@@ -6,6 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import { Sun, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import NavDrawer from "@/components/NavDrawer";
+import { LogoutButton } from "@/components/LogoutButton";
 
 // Seven primary destinations. Home is the logo mark itself, which keeps the
 // bar uncrowded at every width; the review queue appends for staff roles.
@@ -124,14 +125,7 @@ export default function Navbar() {
                   <UserIcon size={14} />
                   Profile
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  disabled={busy}
-                  className="nav-link"
-                  title="Logout"
-                >
-                  {busy ? "..." : "Logout"}
-                </button>
+                <LogoutButton onLogout={handleLogout} busy={busy} className="nav-link" />
               </div>
             ) : (
               <Link href="/login" className="nav-link">

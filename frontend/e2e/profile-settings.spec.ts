@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { registerAndLogin, signInWithToken, type E2EAccount } from "./helpers/session";
 
 /**
  * The Profile and Settings pages were reworked to stop advertising controls
@@ -8,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
  * the sessions panel or the sign-out button fails here rather than in review.
  */
 
-let account: { email: string; password: string };
+let account: E2EAccount;
 
 test.beforeEach(async ({ context }) => {
   // AgeGate overlays the root layout (same rationale as
@@ -20,23 +21,15 @@ test.beforeEach(async ({ context }) => {
 });
 
 test.beforeAll(async ({ request }) => {
-  const email = `e2e_profile_${Date.now()}@example.com`;
-  const password = "E2ePassw0rd!";
-  const res = await request.post("http://127.0.0.1:8010/api/v1/auth/register", {
-    data: { email, name: "E2E Profile User", password },
-  });
-  expect(res.status(), await res.text()).toBe(200);
-  account = { email, password };
+  account = await registerAndLogin(request, "profile");
 });
 
 async function signIn(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(account.email);
-  const password = page.getByLabel("Password");
-  await password.fill(account.password);
-  // Enter submits: the page has both a "Login" mode toggle and a submit button
-  // with the same name, so a click-by-name locator would be ambiguous.
-  await password.press("Enter");
+  // Seeded, not driven through the form: this spec is about the Profile and
+  // Settings pages, and every spec shares the 10/minute login rate limit. See
+  // e2e/helpers/session.ts.
+  await signInWithToken(page, account);
+  await page.goto("/profile");
   await expect(page).not.toHaveURL(/\/login/);
 }
 

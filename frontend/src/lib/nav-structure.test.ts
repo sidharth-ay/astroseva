@@ -3,7 +3,7 @@ import { readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { NAV_SECTIONS } from "../components/NavDrawer";
+import { NAV_SECTIONS, NAV_ITEMS, LOGOUT_LABEL } from "../components/NavDrawer";
 
 /**
  * Every drawer link must resolve to a real page. A menu entry that 404s is a
@@ -43,6 +43,28 @@ function matches(route: string, href: string): boolean {
 }
 
 describe("drawer navigation structure", () => {
+  it("offers exactly the nine account destinations, each once", () => {
+    // The menu is a fixed promise: eight links plus Logout. A duplicate or a
+    // quietly re-added subsection means the decision was undone.
+    expect(NAV_ITEMS).toEqual([
+      "My Kundali",
+      "Profile",
+      "Horoscope",
+      "Dosha Check",
+      "Remedies",
+      "Notifications",
+      "Help & Support",
+      "Settings",
+    ]);
+    expect(LOGOUT_LABEL).toBe("Logout");
+    expect(new Set(NAV_ITEMS).size).toBe(NAV_ITEMS.length);
+    expect(new Set(NAV_SECTIONS.map((s) => s.id)).size).toBe(NAV_SECTIONS.length);
+  });
+
+  it("groups the links under Astrology and Account only", () => {
+    expect(NAV_SECTIONS.map((s) => s.title)).toEqual(["Astrology", "Account"]);
+  });
+
   it("lists only non-empty sections with labeled, iconed links", () => {
     expect(NAV_SECTIONS.length).toBeGreaterThan(0);
     for (const section of NAV_SECTIONS) {

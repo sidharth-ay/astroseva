@@ -356,7 +356,10 @@ async def change_phone(request: Request, data: ChangePhoneRequest, user: User = 
 
 
 @router.get("/me")
-@limiter.limit("10/minute")
+# AuthGate and the nav bar both read this on every navigation, so a 10/minute
+# cap (right for a login endpoint) turns ordinary browsing into 429s within a
+# handful of pages. It is an authenticated, cheap read of the caller's own row.
+@limiter.limit("120/minute")
 async def get_me(request: Request, user: User = Depends(get_current_user)):
     return _profile_shape(user)
 
