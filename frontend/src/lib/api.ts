@@ -1418,6 +1418,36 @@ export const api = {
 
   getMe: () => fetchAuth<{ id: number; email: string; name: string; created_at: string } & BirthProfile>("/api/v1/auth/me"),
 
+  /** Name, gender and birth fields. Email, phone and password have their own
+   * password-verified calls and are ignored if passed here. */
+  updateProfile: (data: {
+    name?: string;
+    gender?: string | null;
+    birth_date?: string | null;
+    birth_time?: string | null;
+    birth_place?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    timezone_offset?: number | null;
+    timezone_iana?: string | null;
+  }) =>
+    fetchAuth<{ id: number; email: string; name: string } & BirthProfile>("/api/v1/auth/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  changeEmail: (currentPassword: string, newEmail: string) =>
+    fetchAuth<{ message: string; email: string }>("/api/v1/auth/change-email", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_email: newEmail }),
+    }),
+
+  changePhone: (currentPassword: string, phone: string) =>
+    fetchAuth<{ message: string; phone_number: string }>("/api/v1/auth/change-phone", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, phone }),
+    }),
+
   saveChart: (data: { name: string; birth_date: string; birth_time: string; birth_place: string; latitude: number; longitude: number; timezone_offset: number; chart_data: Record<string, unknown> }) =>
     fetchAuth<{ message: string; chart_id: number }>("/api/v1/charts/save", {
       method: "POST",

@@ -93,6 +93,43 @@ class DeleteAccountRequest(BaseModel):
     password: str
 
 
+class UpdateProfileRequest(BaseModel):
+    """Name, gender and birth fields only. Email, phone and password each have
+    their own password-verified route; sending them here changes nothing (see
+    the handler: only the fields below are ever assigned). Present-and-null
+    clears a field; absent leaves it untouched."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    gender: str | None = Field(default=None, max_length=32)
+    birth_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    birth_time: str | None = Field(default=None, pattern=r"^\d{2}:\d{2}(:\d{2})?$")
+    birth_place: str | None = Field(default=None, max_length=100)
+    latitude: float | None = None
+    longitude: float | None = None
+    timezone_offset: float | None = None
+    timezone_iana: str | None = Field(default=None, max_length=64)
+
+
+class ChangeEmailRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=1024)
+    new_email: EmailStr
+
+
+PHONE_REGEX = re.compile(r"^\+?[0-9]{7,15}$")
+
+
+def normalize_phone(raw: str) -> str | None:
+    """Strip human formatting, then accept an E.164-shaped number. Returns the
+    canonical digits (always with the caller's own prefix preserved) or None."""
+    cleaned = re.sub(r"[\s\-().]", "", raw)
+    return cleaned if PHONE_REGEX.match(cleaned) else None
+
+
+class ChangePhoneRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=1024)
+    phone: str = Field(..., min_length=7, max_length=32)
+
+
 
 @router.post("/register")
 # Deliberately looser than /login. Registration is not the endpoint worth
@@ -234,9 +271,8 @@ async def change_password(request: Request, data: ChangePasswordRequest, user: U
     return {"message": "Password changed. Please log in again."}
 
 
-@router.get("/me")
-@limiter.limit("10/minute")
-async def get_me(request: Request, user: User = Depends(get_current_user)):
+def _profile_shape(user: User) -> dict:
+    """GET /me and PUT /profile answer the same shape by construction."""
     return {
         "id": user.id,
         "email": user.email,
@@ -253,6 +289,76 @@ async def get_me(request: Request, user: User = Depends(get_current_user)):
         "timezone_offset": user.timezone_offset,
         "timezone_iana": user.timezone_iana,
     }
+
+
+@router.put("/profile")
+@limiter.limit("5/minute")
+async def update_profile(request: Request, data: UpdateProfileRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Update name, gender and birth fields. Email, phone and password are
+    deliberately not assignable here -- each has a password-verified route."""
+    _check_birth_profile(data)
+    provided = data.model_fields_set
+    if "name" in provided and data.name:
+        user.name = data.name
+    for field in (
+        "gender",
+        "birth_date",
+        "birth_time",
+        "birth_place",
+        "latitude",
+        "longitude",
+        "timezone_offset",
+        "timezone_iana",
+    ):
+        if field in provided:
+            setattr(user, field, getattr(data, field))
+    db.add(user)
+    db.commit()
+    return _profile_shape(user)
+
+
+@router.post("/change-email")
+@limiter.limit("5/minute")
+async def change_email(request: Request, data: ChangeEmailRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Change email, verified by current password. The address must be unused;
+    it starts unverified so the existing verification flow re-applies."""
+    if not verify_password(data.current_password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    new_email = str(data.new_email)
+    if new_email == user.email:
+        raise HTTPException(status_code=400, detail="New email is the same as the current email.")
+    taken = db.query(User).filter(User.email == new_email).first()
+    if taken is not None and taken.id != user.id:
+        raise HTTPException(status_code=409, detail="This email is already in use.")
+    user.email = new_email
+    user.email_verified = False
+    db.add(user)
+    db.commit()
+    return {"message": "Email updated. Please verify your new address.", "email": user.email}
+
+
+@router.post("/change-phone")
+@limiter.limit("5/minute")
+async def change_phone(request: Request, data: ChangePhoneRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Change phone number, verified by current password."""
+    if not verify_password(data.current_password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    normalized = normalize_phone(data.phone)
+    if normalized is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Enter a valid phone number, e.g. +919876543210.",
+        )
+    user.phone_number = normalized
+    db.add(user)
+    db.commit()
+    return {"message": "Phone number updated.", "phone_number": user.phone_number}
+
+
+@router.get("/me")
+@limiter.limit("10/minute")
+async def get_me(request: Request, user: User = Depends(get_current_user)):
+    return _profile_shape(user)
 
 
 
