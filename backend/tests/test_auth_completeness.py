@@ -107,7 +107,7 @@ def test_delete_account_and_export(anon_client, auth_user, db_session):
     
     # Delete requires valid password
     d_fail = anon_client.request("DELETE", "/api/v1/auth/account", json={"password": "wrong"}, headers={"Authorization": f"Bearer {token}"})
-    assert d_fail.status_code == 401
+    assert d_fail.status_code == 403
     
     d_ok = anon_client.request("DELETE", "/api/v1/auth/account", json={"password": "ValidPass123!"}, headers={"Authorization": f"Bearer {token}"})
     assert d_ok.status_code == 200

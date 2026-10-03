@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Calendar, Clock, MapPin, User, Download, ChevronRight, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import CitySearch from "@/components/CitySearch";
 import KundliTabsPanel from "@/components/kundli/KundliTabsPanel";
 
@@ -13,8 +14,8 @@ import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 
 export default function KundliPage() {
   const [form, setForm] = useState<BirthData>({
-    name: "", birth_date: "1990-05-15", birth_time: "10:30",
-    birth_place: "New Delhi", latitude: 28.6139, longitude: 77.209, timezone_offset: 5.5,
+    name: "", birth_date: "", birth_time: "", birth_place: "",
+    latitude: 0, longitude: 0, timezone_offset: 0,
   });
   const [result, setResult] = useState<KundliResponse | null>(null);
   // The South-Indian renderer already existed, so persisting the choice needs
@@ -32,21 +33,70 @@ export default function KundliPage() {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
+  // True once we know the account has no usable birth details, so the page can
+  // say so instead of drawing a chart for a stock "New Delhi" profile.
+  const [needsBirth, setNeedsBirth] = useState(false);
+
+  const generateFrom = async (data: BirthData) => {
+    setLoading(true);
+    setError("");
+    try {
+      setResult(await api.generateKundli(data));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to generate kundli.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     document.title = "Kundli Generator | AstroSeva";
+
+    // "My Kundali" is the user's own chart, so it comes from their profile
+    // rather than a form they retype. Prefilling a stock date and place -- as
+    // this page did -- meant the first chart a user ever saw described a
+    // stranger. Where the profile is incomplete we say so plainly instead.
+    let cancelled = false;
+    api.getMe().then(
+      (me) => {
+        if (cancelled) return;
+        if (!me.birth_date || !me.birth_time || me.latitude === null) {
+          setNeedsBirth(true);
+          return;
+        }
+        const fromProfile: BirthData = {
+          name: me.name,
+          birth_date: me.birth_date,
+          birth_time: me.birth_time.length === 5 ? `${me.birth_time}:00` : me.birth_time,
+          birth_place: me.birth_place ?? "",
+          latitude: me.latitude,
+          longitude: me.longitude ?? 0,
+          timezone_offset: me.timezone_offset ?? 0,
+          ...(me.timezone_iana ? { timezone_iana: me.timezone_iana } : {}),
+          ...(me.gender ? { gender: me.gender } : {}),
+        };
+        setForm(fromProfile);
+        void generateFrom(fromProfile);
+      },
+      () => {
+        // A failed profile read is not a reason to invent birth details; the
+        // form stays empty and the user can fill it in.
+        if (!cancelled) setNeedsBirth(true);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleCity = (city: CityEntry) => {
     setForm({ ...form, ...locationFromCity(city) });
+    setNeedsBirth(false);
   };
 
   const generate = async () => {
     if (!form.name.trim()) { setError("Please enter your name."); return; }
-    setLoading(true); setError("");
-    try { setResult(await api.generateKundli(form)); }
-    catch (e) { setError(e instanceof Error ? e.message : "Failed to generate kundli."); }
-    finally { setLoading(false); }
+    await generateFrom(form);
   };
 
   const loadSample = async () => {
@@ -184,8 +234,24 @@ export default function KundliPage() {
         <h1 className="heading-display text-2xl md:text-3xl mb-1">
           Kundli <span className="text-gradient-gold">Generator</span>
         </h1>
-        <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>Enter birth details to generate your Vedic birth chart</p>
+        <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>
+          {needsBirth
+            ? "Add your birth details once — your chart then builds itself from them."
+            : "Your chart is built from the birth details on your profile."}
+        </p>
       </motion.div>
+
+      {needsBirth && (
+        <div className="glass-card p-5 mb-8 flex flex-wrap items-center gap-3">
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            Your profile has no birth details yet, so there is nothing to calculate
+            from. Add them in Settings and your kundli will appear here on its own.
+          </p>
+          <Link href="/settings" className="btn-primary text-sm inline-flex items-center gap-2">
+            Add birth details <ChevronRight size={14} />
+          </Link>
+        </div>
+      )}
 
       {/* Form */}
       <motion.div className="glass-card p-5 mb-8" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>

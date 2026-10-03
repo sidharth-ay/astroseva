@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Calculator, Monitor, Save, CheckCircle, AlertTriangle, ShieldCheck, LifeBuoy, Scale, LogOut, ChevronRight } from "lucide-react";
+import { Calculator, Monitor, Save, CheckCircle, AlertTriangle, ShieldCheck, LifeBuoy, Scale, LogOut, ChevronRight, Sparkles } from "lucide-react";
 import { api, type SettingsResponse } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useReducedMotion, slideUp } from "@/lib/motion";
+import BirthProfileEditor from "@/components/BirthProfileEditor";
+import ContactDetails from "@/components/ContactDetails";
 
 const HOUSE_BLURBS: Record<string, string> = {
   "whole-sign": "Each sign is one whole house counted from the Lagna. The traditional Parashari default.",
@@ -207,15 +209,29 @@ export default function SettingsPage() {
         </dl>
       </div>
 
+      {/* Birth profile — the source every chart reads */}
+      <div className="glass-card p-5 mb-8">
+        <h2 className="font-semibold mb-1 flex items-center gap-2">
+          <Sparkles size={16} /> Birth details
+        </h2>
+        <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+          Asked once, stored once, and read by every tool on the site.
+        </p>
+        <BirthProfileEditor />
+      </div>
+
       {/* Account & security */}
       <div className="glass-card p-5 mb-8">
         <h2 className="font-semibold mb-1 flex items-center gap-2">
           <ShieldCheck size={16} /> Account &amp; security
         </h2>
         <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
-          Sessions, password, data export, and account deletion live on your profile page.
+          Changing your email or phone asks for your current password first.
+          Sessions, password, data export, and account deletion live on your
+          profile page.
         </p>
-        <Link href="/profile" className="btn-secondary text-sm inline-flex items-center gap-2">
+        <ContactDetails />
+        <Link href="/profile" className="btn-secondary text-sm inline-flex items-center gap-2 mt-5">
           Manage account <ChevronRight size={14} />
         </Link>
       </div>

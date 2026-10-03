@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { User, Settings, FolderHeart, Download, Trash2, ChevronRight, Check, MonitorSmartphone, Sparkles, HeartHandshake } from "lucide-react";
 import Link from "next/link";
-import { api, type KundliResponse } from "@/lib/api";
+import { api, type BirthProfile, type KundliResponse } from "@/lib/api";
 import { fetchLatestChart } from "@/lib/latest-chart";
 import { useAuth } from "@/hooks/useAuth";
 import { useReducedMotion, slideUp, staggerContainerCustom, staggerItem } from "@/lib/motion";
@@ -79,6 +79,9 @@ export default function ProfilePage() {
   const [password, setPassword] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  // The birth profile the account carries. Nulls are normal, not an error:
+  // accounts created before this existed, or registered without it, have none.
+  const [birth, setBirth] = useState<BirthProfile | null>(null);
 
   useEffect(() => {
     document.title = "My Profile | AstroSeva";
@@ -115,6 +118,7 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCharts();
     loadSessions();
+    api.getMe().then((me) => setBirth(me), () => setBirth(null));
   }, [user, loadCharts, loadSessions]);
 
   const handleExport = async () => {
@@ -239,6 +243,53 @@ export default function ProfilePage() {
                 </p>
                 <Link href="/kundli" className="btn-secondary text-sm inline-flex items-center gap-2">
                   Generate Kundli <ChevronRight size={14} />
+                </Link>
+              </div>
+            )}
+          </motion.div>
+
+          <motion.div variants={staggerItem} className="glass-card p-5">
+            <h3 className="text-sm font-semibold mb-1 uppercase tracking-wider flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+              <Sparkles size={16} /> Birth Profile
+            </h3>
+            {birth && birth.birth_date ? (
+              <>
+                <dl className="text-sm space-y-2 mt-3">
+                  <div className="flex justify-between gap-3">
+                    <dt style={{ color: "var(--text-tertiary)" }}>Born</dt>
+                    <dd className="font-medium text-right">
+                      {birth.birth_date}
+                      {birth.birth_time ? ` at ${birth.birth_time}` : ""}
+                    </dd>
+                  </div>
+                  {birth.birth_place && (
+                    <div className="flex justify-between gap-3">
+                      <dt style={{ color: "var(--text-tertiary)" }}>Place</dt>
+                      <dd className="font-medium text-right">{birth.birth_place}</dd>
+                    </div>
+                  )}
+                  {birth.gender && (
+                    <div className="flex justify-between gap-3">
+                      <dt style={{ color: "var(--text-tertiary)" }}>Gender</dt>
+                      <dd className="font-medium capitalize">{birth.gender}</dd>
+                    </div>
+                  )}
+                </dl>
+                <p className="text-[11px] mt-3" style={{ color: "var(--text-tertiary)" }}>
+                  Every chart here is calculated from these details.
+                </p>
+                <Link href="/settings" className="btn-secondary text-sm inline-flex items-center gap-2 mt-3">
+                  Edit birth details <ChevronRight size={14} />
+                </Link>
+              </>
+            ) : (
+              <div className="mt-3">
+                <p className="text-sm mb-3" style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                  No birth details on your account yet. Add them once and every
+                  chart, horoscope and dosha reads them from here.
+                </p>
+                <Link href="/settings" className="btn-secondary text-sm inline-flex items-center gap-2">
+                  Add birth details <ChevronRight size={14} />
                 </Link>
               </div>
             )}

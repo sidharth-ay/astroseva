@@ -249,8 +249,13 @@ async def logout(request: Request, user: User = Depends(get_current_user), db: S
 @limiter.limit("5/minute")
 async def change_password(request: Request, data: ChangePasswordRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Change password (requires current password); revokes all sessions."""
+    # 403, not 401: the caller's session is valid -- only the password they
+    # typed for this action is wrong. The browser treats a 401 as an expired
+    # session and signs the user out, so answering 401 here would log someone
+    # out for a typo. Every "current password is incorrect" on this router
+    # answers 403 for the same reason.
     if not verify_password(data.current_password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Current password is incorrect")
+        raise HTTPException(status_code=403, detail="Current password is incorrect")
     if not PASSWORD_REGEX.match(data.new_password):
         raise HTTPException(
             status_code=400,
@@ -323,7 +328,7 @@ async def change_email(request: Request, data: ChangeEmailRequest, user: User = 
     """Change email, verified by current password. The address must be unused;
     it starts unverified so the existing verification flow re-applies."""
     if not verify_password(data.current_password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Current password is incorrect")
+        raise HTTPException(status_code=403, detail="Current password is incorrect")
     new_email = str(data.new_email)
     if new_email == user.email:
         raise HTTPException(status_code=400, detail="New email is the same as the current email.")
@@ -342,7 +347,7 @@ async def change_email(request: Request, data: ChangeEmailRequest, user: User = 
 async def change_phone(request: Request, data: ChangePhoneRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Change phone number, verified by current password."""
     if not verify_password(data.current_password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Current password is incorrect")
+        raise HTTPException(status_code=403, detail="Current password is incorrect")
     normalized = normalize_phone(data.phone)
     if normalized is None:
         raise HTTPException(
@@ -505,7 +510,7 @@ async def delete_session(request: Request, session_id: int, user: User = Depends
 @limiter.limit("5/minute")
 async def delete_account(request: Request, data: DeleteAccountRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not verify_password(data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Current password is incorrect")
+        raise HTTPException(status_code=403, detail="Current password is incorrect")
     # Soft or hard delete? The plan asks for account deletion. 
     # For a clean slate, hard delete, but due to FKs it could be tricky. 
     # Let's delete user; SQLAlchemy cascade deletes usually handle it, or we delete children manually.

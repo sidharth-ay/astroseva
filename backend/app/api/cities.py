@@ -18,8 +18,9 @@ unreachable.
 import json
 import os
 from functools import lru_cache
+from fastapi import APIRouter, Query, Request
 
-from fastapi import APIRouter, Query
+from ..core.rate_limit import limiter
 
 router = APIRouter(tags=["cities"])
 
@@ -176,21 +177,17 @@ def _score(city_name: str, query: str) -> int:
     return 300 - min(gaps, 200)
 
 
-@router.get("/api/v1/cities")
-def search_cities(
-    q: str = Query(..., min_length=1, max_length=100, description="City or town name"),
-    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Maximum suggestions"),
-):
+def search_cities(q, limit=DEFAULT_LIMIT):
     """Search cities and towns by name, best match first.
 
     `total` is the number of matches found before `limit` is applied, so the
     client can tell "three places match" from "thirteen places match, here are
     the best twelve".
+
+    Kept free of request plumbing so tests can call it directly; the HTTP route
+    below wraps this rather than decorating it, because the rate limiter needs a
+    real `Request` and raises without one.
     """
-    # Called directly (from tests, or from any non-HTTP caller) rather than
-    # through FastAPI, the `Query(...)` defaults arrive as `Query` objects
-    # rather than values. Normalising them here keeps the function usable both
-    # ways instead of only inside a request.
     if not isinstance(limit, int):
         limit = DEFAULT_LIMIT
     limit = max(1, min(limit, MAX_LIMIT))
@@ -217,3 +214,16 @@ def search_cities(
         "cities": [city for _, _, city in scored[:limit]],
         "total": len(scored),
     }
+
+
+@router.get("/api/v1/cities")
+# Public route (see main.py): registration needs a birth city before there is
+# an account. Rate limited because it is now reachable without a session --
+# a city name search is cheap, but "cheap" is not "free" at volume.
+@limiter.limit("60/minute")
+def search_cities_endpoint(
+    request: Request,
+    q: str = Query(..., min_length=1, max_length=100, description="City or town name"),
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Maximum suggestions"),
+):
+    return search_cities(q=q, limit=limit)

@@ -126,7 +126,9 @@ def test_change_email_wrong_password_changes_nothing(anon_client, db_session):
         json={"current_password": "WrongPass123!", "new_email": "acct2_evil@example.com"},
         headers=headers,
     )
-    assert resp.status_code == 401, resp.text
+    # 403, not 401: the session is valid, only the supplied proof is wrong. A 401
+    # here would read as an expired session and log the user out.
+    assert resp.status_code == 403, resp.text
     assert db_session.query(User).filter(User.email == "acct_emailbad@example.com").count() == 1
     assert db_session.query(User).filter(User.email == "acct2_evil@example.com").count() == 0
 
@@ -168,7 +170,7 @@ def test_change_phone_wrong_password_changes_nothing(anon_client, db_session):
         json={"current_password": "WrongPass123!", "phone": "+911111111111"},
         headers=headers,
     )
-    assert resp.status_code == 401, resp.text
+    assert resp.status_code == 403, resp.text
     user = db_session.query(User).filter(User.email == "acct_phonebad@example.com").one()
     assert user.phone_number is None
 
@@ -205,6 +207,21 @@ def test_me_tolerates_ordinary_browsing(anon_client):
     for _ in range(25):
         resp = anon_client.get("/api/v1/auth/me", headers=headers)
         assert resp.status_code == 200, resp.text
+
+
+def test_city_lookup_is_public_but_astrology_is_not(anon_client):
+    """Registration asks for a birth city before an account exists, so the city
+    search cannot require a session. It returns only reference data. Everything
+    that reads a user's chart must still refuse an anonymous caller."""
+    cities = anon_client.get("/api/v1/cities?q=Delhi")
+    assert cities.status_code == 200, cities.text
+    body = cities.json()
+    assert body["cities"], body
+    first = body["cities"][0]
+    assert {"name", "lat", "lng"} <= set(first)
+
+    assert anon_client.get("/api/v1/kundli/sample").status_code == 401
+    assert anon_client.get("/api/v1/charts/list").status_code == 401
 
 
 def test_account_routes_require_login(anon_client):

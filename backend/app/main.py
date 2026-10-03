@@ -202,7 +202,11 @@ app.include_router(doshas.router, dependencies=require_auth)
 app.include_router(auth.router)
 app.include_router(charts.router, dependencies=require_auth)
 app.include_router(chat.router, dependencies=require_auth)
-app.include_router(cities.router, dependencies=require_auth)
+# The city lookup is public reference data -- place names and coordinates, no
+# user data -- and registration asks for a birth city *before* there is an
+# account to authenticate with. Gating it meant a first-time user hit the city
+# picker, got a 401, and could not complete sign-up at all.
+app.include_router(cities.router)
 app.include_router(transit.router, dependencies=require_auth)
 app.include_router(gemstones.router, dependencies=require_auth)
 app.include_router(varshphal.router, dependencies=require_auth)
