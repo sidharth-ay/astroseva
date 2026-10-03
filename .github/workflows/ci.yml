@@ -41,22 +41,47 @@ jobs:
       - name: Lint (ruff)
         run: python -m ruff check app tests
 
-      # app/core/planets.py calls skyfield's load(), which downloads de421.bsp
-      # (~16 MB) on first use. It is gitignored, so without this cache every
-      # single run re-downloads it from JPL.
-      - name: Fetch the JPL ephemeris
-        run: >-
-          curl -fSL --retry 3 --retry-delay 5
-          -o "$GITHUB_WORKSPACE/backend/de421.bsp"
-          https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de421.bsp
-
-      - name: Cache the JPL ephemeris
+      # app/core/planets.py calls skyfield's load(), which needs de421.bsp
+      # (~16 MB). It is gitignored, so the run must provide it -- and the order
+      # matters. `actions/cache` restores at the moment its own step runs, so
+      # the restore has to come first: with the old order (fetch, then cache)
+      # the restore always landed after the download, and a cached copy could
+      # never save a run.
+      - name: Restore the JPL ephemeris from cache
+        id: ephemeris-cache
         uses: actions/cache@v4
         with:
           path: backend/de421.bsp
           key: ephemeris-${{ runner.os }}-de421
           restore-keys: |
             ephemeris-${{ runner.os }}-de421
+
+      # Skipped on a cache hit. Otherwise each origin gets a hard per-attempt
+      # cap: the ssd.jpl host has gone unresponsive before, and an uncapped
+      # curl stalled a whole job for ten minutes on zero bytes. If both NASA
+      # origins fail, the job fails here with the cause in its step name
+      # instead of surfacing later as an import error.
+      - name: Fetch the JPL ephemeris
+        if: steps.ephemeris-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 8
+        run: |
+          dest="$GITHUB_WORKSPACE/backend/de421.bsp"
+          if [ -s "$dest" ]; then
+            echo "ephemeris already present, skipping download"
+            exit 0
+          fi
+          for url in \
+            "https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de421.bsp" \
+            "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/a_old_versions/de421.bsp"; do
+            echo "trying $url"
+            if curl -fSL --retry 1 --retry-delay 5 --max-time 120 -o "$dest" "$url"; then
+              echo "downloaded from $url"
+              exit 0
+            fi
+            echo "failed: $url" >&2
+          done
+          echo "could not fetch de421.bsp from any origin" >&2
+          exit 1
 
       - name: Run tests
         # Only JWT_SECRET is mandatory: app/services/auth_service.py raises at
@@ -210,12 +235,39 @@ jobs:
         run: npm ci
 
       # The e2e job starts its own backend, which imports the ephemeris at
-      # startup. Same absolute path as the backend job.
+      # startup. Same absolute path as the backend job, and the same
+      # cache-first order: restore before fetching, and never touch the
+      # network on a cache hit.
+      - name: Restore the JPL ephemeris from cache
+        id: ephemeris-cache
+        uses: actions/cache@v4
+        with:
+          path: backend/de421.bsp
+          key: ephemeris-${{ runner.os }}-de421
+          restore-keys: |
+            ephemeris-${{ runner.os }}-de421
+
       - name: Fetch the JPL ephemeris
-        run: >-
-          curl -fSL --retry 3 --retry-delay 5
-          -o "$GITHUB_WORKSPACE/backend/de421.bsp"
-          https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de421.bsp
+        if: steps.ephemeris-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 8
+        run: |
+          dest="$GITHUB_WORKSPACE/backend/de421.bsp"
+          if [ -s "$dest" ]; then
+            echo "ephemeris already present, skipping download"
+            exit 0
+          fi
+          for url in \
+            "https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de421.bsp" \
+            "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/a_old_versions/de421.bsp"; do
+            echo "trying $url"
+            if curl -fSL --retry 1 --retry-delay 5 --max-time 120 -o "$dest" "$url"; then
+              echo "downloaded from $url"
+              exit 0
+            fi
+            echo "failed: $url" >&2
+          done
+          echo "could not fetch de421.bsp from any origin" >&2
+          exit 1
 
       - name: Install backend dependencies
         working-directory: backend
