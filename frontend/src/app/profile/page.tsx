@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import { User, Settings, FolderHeart, Download, Trash2, ChevronRight, Check, MonitorSmartphone, Sparkles, HeartHandshake } from "lucide-react";
 import Link from "next/link";
 import { api, type KundliResponse } from "@/lib/api";
+import { fetchLatestChart } from "@/lib/latest-chart";
 import { useAuth } from "@/hooks/useAuth";
 import { useReducedMotion, slideUp, staggerContainerCustom, staggerItem } from "@/lib/motion";
 
@@ -87,8 +88,12 @@ export default function ProfilePage() {
     try {
       const res = await api.listCharts();
       setCharts(res.charts.slice(0, 3));
-      const latest = res.charts[res.charts.length - 1] ?? res.charts[0];
-      if (latest) setSummary(summarizeChart(latest));
+      // The list carries metadata only; the summary needs the computed
+      // payload, which lives behind GET /{id}. fetchLatestChart resolves the
+      // two together -- reading chart_data off the list silently yields
+      // nothing, which is how the summary once stayed empty forever.
+      const found = await fetchLatestChart();
+      if (found) setSummary(summarizeChart({ name: found.name, chart_data: found.data }));
     } catch (e) {
       setChartsError(e instanceof Error ? e.message : "Could not load saved charts.");
     }

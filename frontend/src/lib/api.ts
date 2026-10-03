@@ -1396,8 +1396,10 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  // The list carries metadata only; the computed payload lives behind
+  // GET /{id}. See lib/latest-chart.ts, which resolves the two together.
   listCharts: () =>
-    fetchAuth<{ charts: { id: number; name: string; birth_date: string; birth_time: string; birth_place: string; created_at: string; chart_data?: KundliResponse }[]; total: number }>("/api/v1/charts/list"),
+    fetchAuth<{ charts: { id: number; name: string; birth_date: string; birth_time: string; birth_place: string; created_at: string }[]; total: number }>("/api/v1/charts/list"),
 
   getChart: (id: number) =>
     fetchAuth<Record<string, unknown>>(`/api/v1/charts/${id}`),

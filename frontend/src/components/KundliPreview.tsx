@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { api, getToken, type KundliResponse } from "@/lib/api";
+import { fetchLatestChart } from "@/lib/latest-chart";
 import { LocalKeys, readLocal, writeLocal } from "@/lib/local";
 import KundliChart from "@/components/KundliChart";
 import Reveal from "@/components/Reveal";
@@ -98,23 +99,20 @@ export default function KundliPreview() {
       return;
     }
     let cancelled = false;
-    api
-      .listCharts()
-      .then((res) => {
+    // Newest saved chart first; the sample only when there is nothing saved.
+    fetchLatestChart()
+      .then(async (found) => {
         if (cancelled) return;
-        const latest = res.charts[res.charts.length - 1] ?? res.charts[0];
-        if (latest?.chart_data) {
-          setChart(latest.chart_data);
-          setSource(latest.name);
-          setLoading(false);
+        if (found) {
+          setChart(found.data);
+          setSource(found.name);
         } else {
-          return api.getSampleKundli().then((sample) => {
-            if (cancelled) return;
-            setChart(sample);
-            setSource("Sample chart");
-            setLoading(false);
-          });
+          const sample = await api.getSampleKundli();
+          if (cancelled) return;
+          setChart(sample);
+          setSource("Sample chart");
         }
+        setLoading(false);
       })
       .catch(() => {
         if (!cancelled) setLoading(false);
