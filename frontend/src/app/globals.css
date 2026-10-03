@@ -547,6 +547,106 @@ input[type="file"].input-field::file-selector-button:hover {
   background: var(--scrollbar-hover);
 }
 
+/* ---------------------------------------------------------------------------
+   MOTION SYSTEM
+   One language for the whole product. Entrance is always fade + translateY;
+   hover is a small lift or scale with a gold shift; celestial motion is slow,
+   continuous, and transform/opacity-only so it never triggers layout. Every
+   duration here honours the budget pinned in motion.test.ts.
+--------------------------------------------------------------------------- */
+
+/* Scroll reveal (see components/Reveal.tsx). */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Celestial loops. SVG groups animate their own transform, so each animated
+   group must carry no transform ATTRIBUTE of its own -- nest a static
+   placement group outside the animated one instead. `transform-box: fill-box`
+   makes `transform-origin: center` mean the element's own center. */
+@keyframes cs-twinkle {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.12; }
+}
+
+@keyframes cs-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cs-drift {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
+}
+
+@keyframes cs-drift-far {
+  from { transform: translateX(-7px); }
+  to { transform: translateX(7px); }
+}
+
+@keyframes cs-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-11px); }
+}
+
+@keyframes cs-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@keyframes cs-fade-slide {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.cs-twinkle-a, .cs-twinkle-b {
+  transform-box: fill-box;
+}
+
+.cs-twinkle-a { animation: cs-twinkle 3.5s ease-in-out infinite; }
+.cs-twinkle-b { animation: cs-twinkle 5.2s ease-in-out -2.4s infinite; }
+
+/* ~four minutes per revolution: astronomical, not decorative. */
+.cs-spin {
+  animation: cs-spin 240s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.cs-drift {
+  animation: cs-drift 70s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.cs-drift-far {
+  animation: cs-drift-far 110s ease-in-out infinite alternate;
+}
+
+.cs-bob {
+  animation: cs-bob 19s ease-in-out infinite;
+  transform-box: fill-box;
+}
+
+.cs-breathe { animation: cs-breathe 11s ease-in-out infinite; }
+
+/* Content swap (horoscope sign change): quick fade-slide, keyed by content. */
+.horo-enter { animation: cs-fade-slide 0.45s cubic-bezier(0.16, 1, 0.3, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .horo-enter { animation: none; }
+}
+
 /* FOCUS VISIBLE */
 :focus-visible {
   outline: 2px solid var(--gold);

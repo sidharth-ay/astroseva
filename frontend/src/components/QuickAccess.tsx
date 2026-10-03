@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Brain, CalendarDays, Leaf, Phone, ShieldAlert, Sparkles, Sun } from "lucide-react";
 
 const ITEMS = [
@@ -18,6 +21,10 @@ const ITEMS = [
  * rows, icon first, so the order and the rhythm survive the reflow.
  */
 export default function QuickAccess() {
+  // The item matching the current route carries a quiet emphasis: the ring
+  // fills gold and the label holds the accent colour. Everything else only
+  // reacts on hover, so the row never shouts.
+  const pathname = usePathname();
   return (
     <section aria-label="Explore the World of Astrology" className="relative">
       <div className="max-w-6xl mx-auto px-5 pt-14 pb-4 md:pt-16 md:pb-6 text-center">
@@ -37,28 +44,42 @@ export default function QuickAccess() {
           aria-label="Astrology tools"
           className="flex flex-col lg:flex-row lg:items-stretch lg:justify-center divide-y lg:divide-y-0 lg:divide-x divide-[var(--border)] border-y lg:border-y-0 border-[var(--border-subtle)]"
         >
-          {ITEMS.map(({ href, label, descriptor, Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group flex lg:flex-col items-center gap-4 lg:gap-3 lg:text-center text-left lg:px-7 lg:first:pl-2 lg:last:pr-2 py-4 lg:py-2 rounded-xl transition-transform duration-100 active:scale-[0.98]"
-            >
-              <span
-                className="flex shrink-0 items-center justify-center w-14 h-14 rounded-full transition-colors"
-                style={{ border: "1.5px solid var(--gold)", color: "var(--accent-text)", background: "var(--bg-card)" }}
+          {ITEMS.map(({ href, label, descriptor, Icon }) => {
+            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className="group flex lg:flex-col items-center gap-4 lg:gap-3 lg:text-center text-left lg:px-7 lg:first:pl-2 lg:last:pr-2 py-4 lg:py-2 rounded-xl transition-transform duration-100 active:scale-[0.98]"
               >
-                <Icon size={24} />
-              </span>
-              <span className="flex flex-col lg:items-center gap-1">
-                <span className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                  {label}
+                <span
+                  className="flex shrink-0 items-center justify-center w-14 h-14 rounded-full transition-all duration-200 group-hover:scale-105 group-hover:bg-[rgba(201,162,39,0.1)]"
+                  style={{
+                    border: "1.5px solid var(--gold)",
+                    color: active ? "var(--gold)" : "var(--accent-text)",
+                    background: active ? "rgba(201, 162, 39, 0.12)" : "var(--bg-card)",
+                  }}
+                >
+                  <Icon size={24} />
                 </span>
-                <span className="text-xs leading-snug" style={{ color: "var(--text-tertiary)" }}>
-                  {descriptor}
+                <span className="flex flex-col lg:items-center gap-1">
+                  <span
+                    className="text-[15px] font-semibold transition-colors duration-200"
+                    style={{ color: active ? "var(--accent-text)" : "var(--text-primary)" }}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    className="text-xs leading-snug transition-colors duration-200 group-hover:text-[var(--text-secondary)]"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    {descriptor}
+                  </span>
                 </span>
-              </span>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </nav>
       </div>
     </section>

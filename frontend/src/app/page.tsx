@@ -20,6 +20,7 @@ import HoroscopePopup from "@/components/HoroscopePopup";
 import StatsStrip from "@/components/StatsStrip";
 import CelestialScene from "@/components/CelestialScene";
 import QuickAccess from "@/components/QuickAccess";
+import HoroscopePreview from "@/components/HoroscopePreview";
 import {
   useReducedMotion,
   staggerContainer,
@@ -267,10 +268,25 @@ export default function HomePage() {
             viewport={{ once: true, margin: "-40px" }}
           >
             {servicesGrid.slice(0, 1).map((s) => (
+              <div key={s.href} className="relative mb-2">
+                {/* Orbital dressing around the lead story: two slow ellipses
+                    and a breathing glow, all transform/opacity only. */}
+                <div className="absolute -inset-2 pointer-events-none" aria-hidden="true">
+                  <svg viewBox="0 0 400 260" className="w-full h-full overflow-visible">
+                    <g className="cs-drift">
+                      <ellipse cx="200" cy="130" rx="190" ry="86" fill="none" stroke="var(--gold)" strokeOpacity="0.28" strokeWidth="1" strokeDasharray="3 8" />
+                      <ellipse cx="200" cy="130" rx="150" ry="112" fill="none" stroke="var(--gold)" strokeOpacity="0.16" strokeWidth="1" />
+                      <circle cx="358" cy="82" r="3" fill="var(--gold)" opacity="0.8" />
+                      <circle cx="66" cy="188" r="2.2" fill="var(--gold)" opacity="0.6" />
+                    </g>
+                  </svg>
+                </div>
+                <div className="absolute -inset-2 pointer-events-none cs-breathe" aria-hidden="true"
+                  style={{ background: "radial-gradient(ellipse 60% 55% at 30% 40%, rgba(201,162,39,0.10) 0%, transparent 70%)" }}
+                />
               <Link
-                key={s.href}
                 href={s.href}
-                className="block rounded-2xl p-7 mb-2 transition-transform duration-100 active:scale-[0.99]"
+                className="relative block rounded-2xl p-7 transition-transform duration-100 active:scale-[0.99]"
                 style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderLeft: "3px solid var(--gold)" }}
               >
                 <div
@@ -289,10 +305,17 @@ export default function HomePage() {
                   Generate your chart <ChevronRight size={14} />
                 </span>
               </Link>
+              </div>
             ))}
-            <ul className="divide-y divide-[var(--border)]">
+            <motion.ul
+              className="divide-y divide-[var(--border)]"
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-40px" }}
+            >
               {servicesGrid.slice(1).map((s) => (
-                <li key={s.href}>
+                <motion.li key={s.href} variants={staggerItem}>
                   <Link
                     href={s.href}
                     className="group flex items-center gap-4 py-4 transition-transform duration-100 active:scale-[0.99]"
@@ -317,12 +340,18 @@ export default function HomePage() {
                       style={{ color: "var(--accent-text)" }}
                     />
                   </Link>
-                </li>
+                </motion.li>
               ))}
-            </ul>
+            </motion.ul>
           </motion.div>
         </div>
       </section>
+
+      {/* ================================================================
+          HOROSCOPE PREVIEW -- the first dark band after the hero. Live daily
+          data for the chosen sign, same endpoint as /horoscope.
+          ================================================================ */}
+      <HoroscopePreview />
 
       {/* ================================================================
           STATS STRIP

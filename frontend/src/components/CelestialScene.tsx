@@ -120,14 +120,34 @@ export default function CelestialScene() {
       <rect x="0" y="0" width="640" height="600" fill="url(#cs-sky)" />
 
       {/* nebulae: the atmosphere behind everything */}
-      <ellipse cx="120" cy="110" rx="190" ry="130" fill="url(#cs-nebula-ind)" />
-      <ellipse cx="560" cy="220" rx="150" ry="170" fill="url(#cs-nebula-plum)" />
-      <ellipse cx="330" cy="470" rx="330" ry="110" fill="url(#cs-horizon)" />
+      <g className="cs-breathe">
+        <ellipse cx="120" cy="110" rx="190" ry="130" fill="url(#cs-nebula-ind)" />
+        <ellipse cx="560" cy="220" rx="150" ry="170" fill="url(#cs-nebula-plum)" />
+        <ellipse cx="330" cy="470" rx="330" ry="110" fill="url(#cs-horizon)" />
+      </g>
 
-      {/* stars, far and dim */}
-      {STARS.map((s, i) => (
-        <circle key={i} cx={s.x} cy={s.y} r={s.r} fill={s.fill} opacity={s.opacity} />
-      ))}
+      {/* stars: most hold still, every fourth one twinkles on its own clock */}
+      <g className="cs-drift-far">
+        {STARS.map((s, i) =>
+          i % 4 === 2 ? null : i % 4 === 0 ? null : (
+            <circle key={i} cx={s.x} cy={s.y} r={s.r} fill={s.fill} opacity={s.opacity} />
+          ),
+        )}
+        <g className="cs-twinkle-a">
+          {STARS.map((s, i) =>
+            i % 4 === 0 ? (
+              <circle key={i} cx={s.x} cy={s.y} r={s.r} fill={s.fill} />
+            ) : null,
+          )}
+        </g>
+        <g className="cs-twinkle-b">
+          {STARS.map((s, i) =>
+            i % 4 === 2 ? (
+              <circle key={i} cx={s.x} cy={s.y} r={s.r} fill={s.fill} />
+            ) : null,
+          )}
+        </g>
+      </g>
       {/* a few bright ones with flares */}
       {BRIGHT.map((s, i) => (
         <g key={`b${i}`} stroke="#F5F1E8" strokeWidth="1" opacity="0.75">
@@ -137,14 +157,19 @@ export default function CelestialScene() {
         </g>
       ))}
 
-      {/* orbital paths: one dotted, one hairline, both quiet */}
-      <ellipse cx={cx} cy={cy} rx="296" ry="118" fill="none" stroke="#F5F1E8" strokeOpacity="0.08" strokeWidth="1" strokeDasharray="2 7" transform={`rotate(-16 ${cx} ${cy})`} />
-      <ellipse cx={cx} cy={cy} rx="252" ry="196" fill="none" stroke="#C9A227" strokeOpacity="0.08" strokeWidth="1" transform={`rotate(10 ${cx} ${cy})`} />
-      <circle cx={cx - 248} cy={cy + 62} r="2.4" fill="#E3C76B" opacity="0.9" />
-      <circle cx={cx + 212} cy={cy - 96} r="1.8" fill="#F5F1E8" opacity="0.8" />
+      {/* orbital paths: one dotted, one hairline, drifting almost imperceptibly */}
+      <g className="cs-drift">
+        <ellipse cx={cx} cy={cy} rx="296" ry="118" fill="none" stroke="#F5F1E8" strokeOpacity="0.08" strokeWidth="1" strokeDasharray="2 7" transform={`rotate(-16 ${cx} ${cy})`} />
+        <ellipse cx={cx} cy={cy} rx="252" ry="196" fill="none" stroke="#C9A227" strokeOpacity="0.08" strokeWidth="1" transform={`rotate(10 ${cx} ${cy})`} />
+        <circle cx={cx - 248} cy={cy + 62} r="2.4" fill="#E3C76B" opacity="0.9" />
+        <circle cx={cx + 212} cy={cy - 96} r="1.8" fill="#F5F1E8" opacity="0.8" />
+      </g>
 
-      {/* zodiac wheel: one object among several, upper right of the sky */}
+      {/* zodiac wheel: one object among several, upper right of the sky.
+          The outer group places it; the inner group turns it, one revolution
+          per four minutes. */}
       <g transform="translate(182,60) scale(0.68)">
+      <g className="cs-spin">
         <circle cx={cx} cy={cy} r={wheelR} fill="none" stroke="#C9A227" strokeOpacity="0.55" strokeWidth="1.5" />
         <circle cx={cx} cy={cy} r={wheelR - 10} fill="none" stroke="#F5F1E8" strokeOpacity="0.22" strokeWidth="0.75" />
         {SIGNS.map((sign, i) => {
@@ -189,6 +214,7 @@ export default function CelestialScene() {
         <circle cx={cx} cy={cy} r="30" fill="url(#cs-sun)" />
         <circle cx={cx - 8} cy={cy - 9} r="7" fill="#FBEFC0" opacity="0.7" />
       </g>
+      </g>
 
       {/* slate planet, high and distant */}
       <circle cx="548" cy="92" r="34" fill="url(#cs-glow)" />
@@ -196,12 +222,14 @@ export default function CelestialScene() {
       <circle cx="542" cy="86" r="4" fill="#B9C4DE" opacity="0.5" />
 
       {/* amber giant low over the ridge, its base tucked behind it */}
-      <circle cx="205" cy="395" r="66" fill="url(#cs-glow)" />
-      <circle cx="205" cy="395" r="40" fill="url(#cs-amber)" />
-      <path d="M167 385 Q205 395 243 385" stroke="#7A5F16" strokeWidth="3" fill="none" opacity="0.6" />
-      <path d="M167 402 Q205 412 243 402" stroke="#7A5F16" strokeWidth="2.5" fill="none" opacity="0.45" />
-      <path d="M175 416 Q205 423 235 416" stroke="#7A5F16" strokeWidth="2" fill="none" opacity="0.35" />
-      <ellipse cx="205" cy="395" rx="60" ry="13" fill="none" stroke="#E3C76B" strokeOpacity="0.35" strokeWidth="1.5" transform="rotate(-14 205 395)" />
+      <g className="cs-bob">
+        <circle cx="205" cy="395" r="66" fill="url(#cs-glow)" />
+        <circle cx="205" cy="395" r="40" fill="url(#cs-amber)" />
+        <path d="M167 385 Q205 395 243 385" stroke="#7A5F16" strokeWidth="3" fill="none" opacity="0.6" />
+        <path d="M167 402 Q205 412 243 402" stroke="#7A5F16" strokeWidth="2.5" fill="none" opacity="0.45" />
+        <path d="M175 416 Q205 423 235 416" stroke="#7A5F16" strokeWidth="2" fill="none" opacity="0.35" />
+        <ellipse cx="205" cy="395" rx="60" ry="13" fill="none" stroke="#E3C76B" strokeOpacity="0.35" strokeWidth="1.5" transform="rotate(-14 205 395)" />
+      </g>
 
       {/* small rust planet near the wheel */}
       <circle cx="545" cy="352" r="20" fill="url(#cs-glow)" />
