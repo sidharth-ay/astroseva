@@ -4,10 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Calculator, Monitor, Save, CheckCircle, AlertTriangle, ShieldCheck, LifeBuoy, Scale, LogOut, ChevronRight, Sun, Moon } from "lucide-react";
+import { Calculator, Monitor, Save, CheckCircle, AlertTriangle, ShieldCheck, LifeBuoy, Scale, LogOut, ChevronRight } from "lucide-react";
 import { api, type SettingsResponse } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { useTheme } from "@/components/ThemeProvider";
 import { useReducedMotion, slideUp } from "@/lib/motion";
 
 const HOUSE_BLURBS: Record<string, string> = {
@@ -17,7 +16,6 @@ const HOUSE_BLURBS: Record<string, string> = {
 
 export default function SettingsPage() {
   const { logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [houseSystem, setHouseSystem] = useState("");
@@ -198,19 +196,9 @@ export default function SettingsPage() {
           Stored only in this browser — signing in elsewhere will not carry them over.
         </p>
         <dl className="text-sm space-y-2">
-          <div className="flex justify-between gap-4 items-center">
+          <div className="flex justify-between gap-4">
             <dt style={{ color: "var(--text-tertiary)" }}>Theme</dt>
-            <dd>
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className="btn-ghost text-sm inline-flex items-center gap-2"
-                aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-              >
-                {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-                {theme === "dark" ? "Dark" : "Light"}
-              </button>
-            </dd>
+            <dd style={{ color: "var(--text-secondary)" }}>Light — the permanent AstroSeva theme</dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt style={{ color: "var(--text-tertiary)" }}>Language</dt>

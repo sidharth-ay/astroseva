@@ -9,41 +9,50 @@
 }
 
 /* ---------------------------------------------------------------------------
-   DESIGN TOKENS
-   Light is the default (`:root`); dark is an explicit override that wins by
-   specificity (`:root[data-theme="dark"]` beats `:root`). Every semantic
-   surface/text/border token is defined in BOTH places -- the token-parity test
-   enforces this, because a token missing its dark pair renders one theme
-   unreadable and the failure is silent.
+   DESIGN TOKENS -- PERMANENT LIGHT THEME
+   AstroSeva has one visual theme: warm ivory surfaces with intentional dark
+   navy bands (hero, AI, final CTA, footer). There is no dark mode, no toggle,
+   and no `data-theme` override -- the dark block that used to live below was
+   deleted, not commented out, so it cannot drift back in.
 
-   Brand constants (gold ramp, champagne) are theme-independent and live in
-   `:root` exactly once.
+   Brand constants (gold ramp, champagne, indigo, plum) live in `:root`
+   exactly once. Every semantic surface/text/border token is a single light
+   value. The token-completeness test enforces that this file contains no
+   `data-theme` blocks at all.
 --------------------------------------------------------------------------- */
 :root {
-  --gold: #C8956D;
-  --gold-bright: #E8B88A;
+  /* Reference palette. Gold is the accent (5-10% of any viewport); text set
+     in an accent colour uses --accent-text, a darker bronze that passes
+     contrast on ivory, while --gold itself is reserved for fills, rules and
+     large display type. */
+  --gold: #C9A227;
+  --gold-bright: #E3C76B;
   --gold-dim: #8B6B4A;
   --gold-glow: #D4A574;
   --champagne: #E8C9A0;
+  --midnight: #0E1128;
+  --indigo: #1E1A47;
+  --plum: #4B3A6B;
 
   /* Raw palette values kept for legacy references. New code uses the semantic
-     tokens below so both themes respond. */
-  --midnight: #060610;
+     tokens below. */
   --deep-indigo: #0C0C1A;
   --raised: #14142A;
   --ivory: #F5F5F5;
   --silver: #9A9AB0;
 
-  /* ---- light theme (default) ---- */
   color-scheme: light;
   --bg-primary: #FDFBF7;
   --bg-card: #FFFFFF;
   --bg-elevated: #FFFFFF;
   --bg-surface: rgba(22, 24, 43, 0.04);
   --input-bg: rgba(22, 24, 43, 0.03);
-  /* The sticky shell is translucent ivory so the page texture shows through,
-     the same role the near-black blur played on dark. */
+  /* The sticky shell is translucent ivory so the page texture shows through. */
   --nav-bg: rgba(253, 251, 247, 0.9);
+  /* Text on the dark bands. Fixed light values -- the bands are always dark. */
+  --on-dark: #F5F1E8;
+  --on-dark-dim: rgba(245, 241, 232, 0.68);
+  --on-dark-faint: rgba(245, 241, 232, 0.45);
 
   --border: rgba(22, 24, 43, 0.12);
   --border-subtle: rgba(22, 24, 43, 0.07);
@@ -53,9 +62,9 @@
   --text-secondary: rgba(22, 24, 43, 0.68);
   --text-tertiary: rgba(22, 24, 43, 0.5);
 
-  --accent: #C8956D;
-  /* Gold-on-ivory fails contrast, so anything that must be READ in the accent
-     colour uses this darker bronze on light and the bright gold on dark. */
+  --accent: #C9A227;
+  /* Anything that must be READ in the accent colour uses this darker bronze;
+     --gold itself is reserved for fills, rules and large display type. */
   --accent-text: #8A6A3A;
   --accent-deep: #8B6B4A;
 
@@ -74,7 +83,7 @@
 }
 
 /* Theme-independent geometry and motion. These never change between themes,
-   so they live outside the theme blocks and cannot be accidentally forked. */
+   so they live outside the token block and cannot be accidentally forked. */
 :root {
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -83,40 +92,6 @@
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-}
-
-/* ---- dark theme (explicit opt-in, wins over :root by specificity) ---- */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg-primary: #060610;
-  --bg-card: rgba(12, 12, 26, 0.6);
-  --bg-elevated: rgba(20, 20, 42, 0.7);
-  --bg-surface: rgba(20, 20, 42, 0.4);
-  --input-bg: rgba(245, 245, 245, 0.03);
-  --nav-bg: rgba(10, 10, 15, 0.92);
-
-  --border: rgba(245, 245, 245, 0.08);
-  --border-subtle: rgba(245, 245, 245, 0.05);
-  --border-active: rgba(200, 149, 109, 0.3);
-
-  --text-primary: #F5F5F5;
-  --text-secondary: rgba(245, 245, 245, 0.55);
-  --text-tertiary: rgba(245, 245, 245, 0.45);
-
-  --accent: #C8956D;
-  --accent-text: #E8B88A;
-  --accent-deep: #8B6B4A;
-
-  --danger: #EF5350;
-  --success: #4CAF50;
-
-  --shimmer-hi: rgba(245, 245, 245, 0.06);
-  --scrollbar: rgba(245, 245, 245, 0.1);
-  --scrollbar-hover: rgba(245, 245, 245, 0.18);
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -131,23 +106,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* PAGE TEXTURES
-   Light gets a warm paper wash; dark KEEPS the galaxy+starfield it already
-   had. The dark rules re-declare the same layers so the two themes never
-   inherit each other's skies. */
+/* PAGE TEXTURE -- a warm paper wash over ivory. Dark cinematic bands are painted
+   by their own sections (hero, AI, CTA, footer), not by the page background. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 90% 55% at 50% -5%, rgba(200, 149, 109, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 90% 55% at 50% -5%, rgba(200, 162, 39, 0.10) 0%, transparent 60%),
     radial-gradient(ellipse 60% 45% at 85% 90%, rgba(74, 63, 107, 0.06) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 40% at 8% 85%, rgba(200, 149, 109, 0.07) 0%, transparent 55%);
+    radial-gradient(ellipse 55% 40% at 8% 85%, rgba(200, 162, 39, 0.07) 0%, transparent 55%);
   pointer-events: none;
   z-index: 0;
 }
 
-/* STARFIELD / GRAIN -- light: a faint constellation dot grid; dark: stars */
+/* STARFIELD / GRAIN -- a faint constellation dot grid over the ivory. */
 body::after {
   content: '';
   position: fixed;
@@ -162,33 +135,6 @@ body::after {
   background-size: 380px 300px;
   pointer-events: none;
   z-index: 0;
-}
-
-:root[data-theme="dark"] body::before {
-  background:
-    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(40, 20, 80, 0.25) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(20, 40, 100, 0.2) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 50% at 50% 80%, rgba(60, 20, 60, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse 40% 40% at 10% 90%, rgba(20, 30, 80, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 40% at 90% 85%, rgba(50, 20, 70, 0.12) 0%, transparent 50%);
-}
-
-:root[data-theme="dark"] body::after {
-  background-image:
-    radial-gradient(1.5px 1.5px at 12% 18%, rgba(255, 255, 255, 0.15), transparent),
-    radial-gradient(1px 1px at 28% 32%, rgba(255, 255, 255, 0.08), transparent),
-    radial-gradient(1.5px 1.5px at 42% 12%, rgba(255, 255, 255, 0.14), transparent),
-    radial-gradient(1px 1px at 58% 55%, rgba(255, 255, 255, 0.06), transparent),
-    radial-gradient(1.5px 1.5px at 72% 22%, rgba(255, 255, 255, 0.10), transparent),
-    radial-gradient(1px 1px at 88% 42%, rgba(255, 255, 255, 0.08), transparent),
-    radial-gradient(1px 1px at 18% 68%, rgba(255, 255, 255, 0.05), transparent),
-    radial-gradient(1.5px 1.5px at 62% 78%, rgba(255, 255, 255, 0.07), transparent),
-    radial-gradient(1px 1px at 92% 72%, rgba(255, 255, 255, 0.06), transparent),
-    radial-gradient(1px 1px at 38% 88%, rgba(255, 255, 255, 0.04), transparent),
-    radial-gradient(1px 1px at 5% 45%, rgba(200, 149, 109, 0.12), transparent),
-    radial-gradient(1px 1px at 75% 55%, rgba(200, 149, 109, 0.08), transparent),
-    radial-gradient(1.5px 1.5px at 50% 30%, rgba(200, 149, 109, 0.10), transparent);
-  background-size: 350px 280px;
 }
 
 .noise-overlay {
@@ -275,7 +221,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #C8956D, #B8854D);
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold));
   color: #060610;
   font-weight: 600;
   font-size: 0.875rem;
@@ -289,9 +235,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-primary:hover {
-  box-shadow: 0 2px 16px rgba(200, 149, 109, 0.4);
+  box-shadow: 0 2px 16px rgba(201, 162, 39, 0.45);
   transform: translateY(-1px);
-  background: linear-gradient(135deg, #D4A574, #C8956D);
+  filter: brightness(1.07);
 }
 
 .btn-primary:active { transform: translateY(0); }
@@ -314,15 +260,15 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.875rem;
   padding: 0.65rem 1.5rem;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(200, 149, 109, 0.35);
+  border: 1px solid rgba(200, 162, 39, 0.35);
   cursor: pointer;
   transition: all 0.2s var(--ease-out);
   text-transform: uppercase;
 }
 
 .btn-secondary:hover {
-  background: rgba(200, 149, 109, 0.08);
-  border-color: #C8956D;
+  background: rgba(200, 162, 39, 0.08);
+  border-color: var(--gold);
 }
 
 .btn-ghost {
@@ -362,7 +308,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .input-field:focus {
   border-color: var(--border-active);
-  box-shadow: 0 0 0 3px rgba(200, 149, 109, 0.1);
+  box-shadow: 0 0 0 3px rgba(200, 162, 39, 0.1);
 }
 
 .input-field::placeholder { color: var(--text-tertiary); }
@@ -377,7 +323,7 @@ select.input-field optgroup {
 }
 
 input[type="file"].input-field::file-selector-button {
-  background: rgba(200, 149, 109, 0.1);
+  background: rgba(200, 162, 39, 0.1);
   border: 1px solid var(--border-active);
   border-radius: var(--radius-sm);
   color: var(--accent-text);
@@ -390,7 +336,7 @@ input[type="file"].input-field::file-selector-button {
 }
 
 input[type="file"].input-field::file-selector-button:hover {
-  background: rgba(200, 149, 109, 0.2);
+  background: rgba(200, 162, 39, 0.2);
 }
 
 /* Input with inner icon(s): padding must beat .input-field shorthand,
@@ -453,9 +399,71 @@ input[type="file"].input-field::file-selector-button:hover {
   transform: translateX(-50%);
   width: 50%;
   height: 1.5px;
-  background: #C8956D;
+  background: var(--gold);
   border-radius: 1px;
 }
+
+/* DARK NAVBAR -- the slim navy bar reuses .nav-link geometry but reads
+   light-on-dark, so the colours are re-declared here once rather than on
+   every link. The mobile panel matches the bar. */
+.navbar-dark .nav-link { color: var(--on-dark-dim); }
+.navbar-dark .nav-link:hover { color: var(--on-dark); }
+.navbar-dark .nav-link.active { color: var(--on-dark); }
+.navbar-dark .nav-link.active::after { background: var(--gold); }
+.navbar-dark .nav-link:active { color: var(--on-dark); }
+.navbar-dark .mobile-panel { background: var(--midnight); }
+
+/* GOLD PILL -- the single conversion button (navbar "Get Started", hero
+   primary CTA). Solid gold, midnight text, sentence case: the reference
+   reserves the gradient for display type, not buttons. */
+.btn-gold-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--gold);
+  color: var(--midnight);
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.55rem 1.4rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: filter 0.15s var(--ease-out), transform 0.1s var(--ease-out);
+  white-space: nowrap;
+}
+
+.btn-gold-pill:hover { filter: brightness(1.08); }
+.btn-gold-pill:active { transform: scale(0.98); }
+
+/* OUTLINED ON DARK -- the secondary CTA that sits on midnight bands (hero,
+   final CTA). Ivory text and border so it reads on dark; the fill arrives on
+   hover rather than surprising with it. */
+.btn-outline-light {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--on-dark);
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.55rem 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 241, 232, 0.45);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out), transform 0.1s var(--ease-out);
+  white-space: nowrap;
+}
+
+.btn-outline-light:hover {
+  background: rgba(245, 241, 232, 0.1);
+  border-color: var(--on-dark);
+}
+
+.btn-outline-light:active { transform: scale(0.98); }
 
 /* SHIMMER */
 @keyframes shimmer {
@@ -471,8 +479,8 @@ input[type="file"].input-field::file-selector-button:hover {
 
 /* AI / CHAT */
 .ai-bubble-user {
-  background: rgba(200, 149, 109, 0.08);
-  border: 1px solid rgba(200, 149, 109, 0.15);
+  background: rgba(200, 162, 39, 0.08);
+  border: 1px solid rgba(200, 162, 39, 0.15);
   border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
   padding: 0.8rem 1rem;
   color: var(--text-primary);
@@ -493,7 +501,7 @@ input[type="file"].input-field::file-selector-button:hover {
 /* FOOTER */
 .footer-gradient-border {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(200, 149, 109, 0.2), rgba(232, 184, 138, 0.15), rgba(200, 149, 109, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(200, 162, 39, 0.2), rgba(232, 184, 138, 0.15), rgba(200, 162, 39, 0.2), transparent);
 }
 
 /* HOROSCOPE POPUP */
@@ -541,7 +549,7 @@ input[type="file"].input-field::file-selector-button:hover {
 
 /* FOCUS VISIBLE */
 :focus-visible {
-  outline: 2px solid #C8956D;
+  outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
 

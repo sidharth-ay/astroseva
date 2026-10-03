@@ -118,7 +118,7 @@ export default function HoroscopePopup({ sign, onClose }: Props) {
               </div>
 
               <div className="text-center">
-                <a href={`/horoscope?sign=${sign}`} className="text-xs font-medium" style={{ color: "var(--lavender-dim)" }}>
+                <a href={`/horoscope?sign=${sign}`} className="text-xs font-medium" style={{ color: "var(--gold-dim)" }}>
                   View full horoscope →
                 </a>
               </div>

@@ -4,53 +4,43 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * The Phase 1 redesign made theming a property of the token layer: every
- * semantic surface/text/border token is defined once for light and once for
- * dark, and the 52 pages follow automatically through `var(--...)`. Two things
- * would silently re-darken or re-lighten the app, and both are asserted here:
+ * AstroSeva has ONE permanent visual theme: warm ivory surfaces with
+ * intentional dark-navy bands. There is no dark mode, no toggle, and no
+ * `data-theme` override -- the machinery for all three was deleted, and this
+ * asserts it stays deleted:
  *
- * 1. A token defined for only one theme. The page renders in one theme and
- *    inherits a stale value in the other -- typically unreadable text -- and
- *    nothing in tsc, lint, or the browser console says so.
- * 2. Raw colours creeping back into page components. The audit found 605 raw
- *    hex/rgba occurrences across the pages; that number may only shrink as
- *    phases migrate pages onto tokens, never grow.
+ * 1. No `data-theme` blocks may exist in the stylesheet. A second theme
+ *    cannot drift back in one override at a time.
+ * 2. Every semantic token the pages reach for must be defined in `:root`.
+ * 3. Raw colours in page components may only shrink. The audit found 605 raw
+ *    hex/rgba occurrences across the pages; that number goes down as phases
+ *    migrate pages onto tokens, never up.
  */
 
 const FRONTEND_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const APP_DIR = join(FRONTEND_ROOT, "src", "app");
 
-function themeBlocks(css: string): { light: string; dark: string } {
-  // `:root { ... }` appears twice (tokens + geometry); merge every
-  // non-dark :root block as the light/default side.
-  const light: string[] = [];
-  let dark = "";
-  const blockRe = /:root(?:\[data-theme="dark"\])?\s*\{([^}]*)\}/g;
-  let match: RegExpExecArray | null;
-  while ((match = blockRe.exec(css)) !== null) {
-    if (match[0].startsWith(":root[")) dark += match[1];
-    else light.push(match[1]);
-  }
-  return { light: light.join("\n"), dark };
-}
-
-function definedVars(block: string): Set<string> {
+function definedVars(css: string): Set<string> {
   const names = new Set<string>();
   const varRe = /--([a-z][a-z0-9-]*)\s*:/g;
   let match: RegExpExecArray | null;
-  while ((match = varRe.exec(block)) !== null) names.add(match[1]);
+  while ((match = varRe.exec(css)) !== null) names.add(match[1]);
   return names;
 }
 
 // Every token a page reaches for through var(--...). If a future token joins
-// this list it belongs here too, in both themes.
-const SEMANTIC_TOKENS = [
+// this list it belongs in `:root` unconditionally -- there is no second theme
+// to pair it with.
+const REQUIRED_TOKENS = [
   "bg-primary",
   "bg-card",
   "bg-elevated",
   "bg-surface",
   "input-bg",
   "nav-bg",
+  "on-dark",
+  "on-dark-dim",
+  "on-dark-faint",
   "border",
   "border-subtle",
   "border-active",
@@ -68,18 +58,28 @@ const SEMANTIC_TOKENS = [
   "shadow-sm",
   "shadow-md",
   "shadow-lg",
+  "gold",
+  "gold-bright",
+  "gold-dim",
+  "gold-glow",
+  "champagne",
+  "midnight",
+  "indigo",
+  "plum",
 ];
 
 describe("design tokens", () => {
-  it("defines every semantic token in both themes", () => {
+  it("has exactly one theme and no theme-switching machinery", () => {
     const css = readFileSync(join(APP_DIR, "globals.css"), "utf-8");
-    const { light, dark } = themeBlocks(css);
-    expect(dark.length, "no :root[data-theme=dark] block found").toBeGreaterThan(0);
-    const lightVars = definedVars(light);
-    const darkVars = definedVars(dark);
-    for (const token of SEMANTIC_TOKENS) {
-      expect(lightVars.has(token), `--${token} missing from the light/default theme`).toBe(true);
-      expect(darkVars.has(token), `--${token} missing from the dark theme`).toBe(true);
+    expect(css, "a data-theme override reappeared in globals.css").not.toMatch(
+      /\[data-theme=/,
+    );
+    expect(css, "a data-theme override reappeared in globals.css").not.toMatch(
+      /dataset\.theme/,
+    );
+    const vars = definedVars(css);
+    for (const token of REQUIRED_TOKENS) {
+      expect(vars.has(token), `--${token} is not defined in :root`).toBe(true);
     }
   });
 
@@ -102,7 +102,7 @@ describe("design tokens", () => {
       total += hex + func;
     }
 
-    // Audited at the Phase 1 commit: 48 of 52 pages, 605 occurrences, almost
+    // Audited at the redesign start: 48 of 52 pages, 605 occurrences, almost
     // all of it the gold accent ramp. Lower this number as phases migrate
     // pages onto tokens; never raise it.
     expect(pages.length).toBeGreaterThan(0);
