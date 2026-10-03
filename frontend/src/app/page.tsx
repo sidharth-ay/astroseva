@@ -22,6 +22,12 @@ import CelestialScene from "@/components/CelestialScene";
 import QuickAccess from "@/components/QuickAccess";
 import HoroscopePreview from "@/components/HoroscopePreview";
 import KundliPreview from "@/components/KundliPreview";
+import PanchangPreview from "@/components/PanchangPreview";
+import DoshaDashaPreview from "@/components/DoshaDashaPreview";
+import AIPreview from "@/components/AIPreview";
+import RemediesPreview from "@/components/RemediesPreview";
+import ConsultationPreview from "@/components/ConsultationPreview";
+import FinalCTA from "@/components/FinalCTA";
 import TempleArch from "@/components/TempleArch";
 import {
   useReducedMotion,
@@ -371,6 +377,18 @@ export default function HomePage() {
       <HoroscopePreview />
 
       {/* ================================================================
+          PANCHANG (light) -> DOSHA+DASHA (light) -> AI (dark) ->
+          REMEDIES (light) -> CONSULTATION (light). Each band fetches its own
+          data only for signed-in visitors; guests get the structure and an
+          honest way in, because the endpoints are authenticated.
+          ================================================================ */}
+      <PanchangPreview />
+      <DoshaDashaPreview />
+      <AIPreview />
+      <RemediesPreview />
+      <ConsultationPreview />
+
+      {/* ================================================================
           STATS STRIP
           ================================================================ */}
       <StatsStrip />
@@ -439,6 +457,11 @@ export default function HomePage() {
           </motion.div>
         </div>
       </section>
+
+      {/* ================================================================
+          FINAL CTA -- dark closing band, then the footer from the layout.
+          ================================================================ */}
+      <FinalCTA />
     </div>
   );
 }
