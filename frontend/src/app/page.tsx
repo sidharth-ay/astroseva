@@ -230,86 +230,96 @@ export default function HomePage() {
       <QuickAccess />
 
       {/* ================================================================
-          SERVICES GRID
+          SERVICES -- editorial split, not a card grid. The lead story
+          (Kundli) gets the weight; the other five read as an index below
+          it, separated by hairlines. Same data, different hierarchy.
           ================================================================ */}
-      <section className="py-20 px-5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
-        <div className="max-w-5xl mx-auto">
+      <section className="py-20 md:py-24 px-5" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_1.35fr] gap-12 lg:gap-16 items-start">
           <motion.div
-            className="text-center mb-14"
+            className="lg:sticky lg:top-24 min-w-0"
             variants={slideUp}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-40px" }}
           >
-            <p className="heading-section mb-3">OUR SERVICES</p>
+            <p className="heading-section mb-3">Our services</p>
             <h2
-              className="heading-display font-bold"
-              style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.4rem)" }}
+              className="font-display mb-4"
+              style={{ fontSize: "clamp(1.7rem, 3.5vw, 2.5rem)", fontWeight: 600, lineHeight: 1.15, color: "var(--text-primary)" }}
             >
-              WHAT WE <span className="text-gradient-gold">OFFER</span>
+              One platform, every branch of the science
             </h2>
+            <p className="text-sm mb-7 max-w-sm" style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
+              Charts, compatibility, timing and remedies — each tool reads the
+              same birth data, so nothing here asks twice or invents answers.
+            </p>
+            <Link href="/services" className="btn-secondary text-sm inline-flex items-center gap-2">
+              Explore all services <ChevronRight size={14} />
+            </Link>
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
-            variants={staggerContainerCustom(stagger.normal, 0.08)}
+            className="min-w-0"
+            variants={slideUp}
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-30px" }}
+            viewport={{ once: true, margin: "-40px" }}
           >
-            {servicesGrid.map((s) => (
-              <motion.div
+            {servicesGrid.slice(0, 1).map((s) => (
+              <Link
                 key={s.href}
-                variants={staggerItem}
-                /* Pressed feedback: these cards were the main way into each
-                   feature and had no `whileTap`, so a tap on touch registered
-                   only when the destination finally rendered. */
-                whileTap={reduced ? undefined : { scale: 0.98 }}
+                href={s.href}
+                className="block rounded-2xl p-7 mb-2 transition-transform duration-100 active:scale-[0.99]"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderLeft: "3px solid var(--gold)" }}
               >
-                <Tilt rotationFactor={8} isRevese>
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                  style={{ background: `${s.color}14`, color: s.color }}
+                >
+                  <s.icon size={22} />
+                </div>
+                <h3 className="font-display text-xl mb-2" style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                  {s.title}
+                </h3>
+                <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--text-secondary)" }}>
+                  {s.description}
+                </p>
+                <span className="text-sm font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--accent-text)" }}>
+                  Generate your chart <ChevronRight size={14} />
+                </span>
+              </Link>
+            ))}
+            <ul className="divide-y divide-[var(--border)]">
+              {servicesGrid.slice(1).map((s) => (
+                <li key={s.href}>
                   <Link
                     href={s.href}
-                    className="glass-card block p-6 group relative overflow-hidden"
-                    style={{ textDecoration: "none" }}
+                    className="group flex items-center gap-4 py-4 transition-transform duration-100 active:scale-[0.99]"
                   >
-                    <div className="relative z-10">
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
-                        style={{ background: `${s.color}12`, color: s.color }}
-                      >
-                        <s.icon size={20} />
-                      </div>
-                      <h3
-                        className="text-base font-semibold mb-2"
-                        style={{ color: "var(--text-primary)" }}
-                      >
+                    <span
+                      className="flex shrink-0 w-10 h-10 rounded-full items-center justify-center"
+                      style={{ border: "1px solid var(--border)", color: s.color, background: "var(--bg-card)" }}
+                    >
+                      <s.icon size={17} />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
                         {s.title}
-                      </h3>
-                      <p
-                        className="text-sm leading-relaxed mb-4"
-                        style={{ color: "var(--text-secondary)" }}
-                      >
-                        {s.description}
-                      </p>
-                      <span
-                        className="text-sm font-medium flex items-center gap-1 transition-all duration-150"
-                        style={{ color: s.color, opacity: 0.6 }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.opacity = "1";
-                          e.currentTarget.style.gap = "0.5rem";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.opacity = "0.6";
-                          e.currentTarget.style.gap = "0.25rem";
-                        }}
-                      >
-                        Learn more <ChevronRight size={13} />
                       </span>
-                    </div>
+                      <span className="block text-[13px] truncate" style={{ color: "var(--text-tertiary)" }}>
+                        {s.description}
+                      </span>
+                    </span>
+                    <ChevronRight
+                      size={16}
+                      className="shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
+                      style={{ color: "var(--accent-text)" }}
+                    />
                   </Link>
-                </Tilt>
-              </motion.div>
-            ))}
+                </li>
+              ))}
+            </ul>
           </motion.div>
         </div>
       </section>
@@ -336,7 +346,7 @@ export default function HomePage() {
               className="heading-display font-bold"
               style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.4rem)" }}
             >
-              WHY CHOOSE <span className="text-gradient-gold">ASTROSEVA</span>
+              Why choose <span className="text-gradient-gold">AstroSeva</span>
             </h2>
           </motion.div>
 

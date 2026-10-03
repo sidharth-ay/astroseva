@@ -10,7 +10,7 @@ export default function Footer() {
         className="h-[2px] w-full"
         style={{
           background:
-            "linear-gradient(90deg, transparent, #C8956D, transparent)",
+            "linear-gradient(90deg, transparent, var(--gold), transparent)",
         }}
       />
       <div style={{ background: "rgba(10, 10, 15, 0.95)" }}>
@@ -21,7 +21,7 @@ export default function Footer() {
               <div className="flex items-center gap-2.5 mb-4">
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: "#C8956D" }}
+                  style={{ background: "var(--gold)" }}
                 >
                   <Sparkles size={14} color="var(--ivory)" />
                 </div>
@@ -31,7 +31,7 @@ export default function Footer() {
               </div>
               <p
                 className="text-sm leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
+                style={{ color: "var(--on-dark-dim)" }}
               >
                 Free Vedic Astrology platform. Accurate Kundli, matching,
                 predictions, and more.
@@ -42,7 +42,7 @@ export default function Footer() {
             <div>
               <h4
                 className="mb-4 text-xs font-bold uppercase tracking-widest"
-                style={{ color: "var(--text-primary)" }}
+                style={{ color: "var(--on-dark)" }}
               >
                 Services
               </h4>
@@ -57,12 +57,12 @@ export default function Footer() {
                     <Link
                       href={l.href}
                       className="transition-colors duration-200"
-                      style={{ color: "var(--text-secondary)" }}
+                      style={{ color: "var(--on-dark-dim)" }}
                       onMouseEnter={(e) =>
-                        (e.currentTarget.style.color = "#C8956D")
+                        (e.currentTarget.style.color = "var(--gold)")
                       }
                       onMouseLeave={(e) =>
-                        (e.currentTarget.style.color = "var(--text-secondary)")
+                        (e.currentTarget.style.color = "var(--on-dark-dim)")
                       }
                     >
                       {l.label}
@@ -76,7 +76,7 @@ export default function Footer() {
             <div>
               <h4
                 className="mb-4 text-xs font-bold uppercase tracking-widest"
-                style={{ color: "var(--text-primary)" }}
+                style={{ color: "var(--on-dark)" }}
               >
                 Links
               </h4>
@@ -94,12 +94,12 @@ export default function Footer() {
                     <Link
                       href={l.href}
                       className="transition-colors duration-200"
-                      style={{ color: "var(--text-secondary)" }}
+                      style={{ color: "var(--on-dark-dim)" }}
                       onMouseEnter={(e) =>
-                        (e.currentTarget.style.color = "#C8956D")
+                        (e.currentTarget.style.color = "var(--gold)")
                       }
                       onMouseLeave={(e) =>
-                        (e.currentTarget.style.color = "var(--text-secondary)")
+                        (e.currentTarget.style.color = "var(--on-dark-dim)")
                       }
                     >
                       {l.label}
@@ -113,7 +113,7 @@ export default function Footer() {
             <div>
               <h4
                 className="mb-4 text-xs font-bold uppercase tracking-widest"
-                style={{ color: "var(--text-primary)" }}
+                style={{ color: "var(--on-dark)" }}
               >
                 Contact Us
               </h4>
@@ -122,12 +122,12 @@ export default function Footer() {
                   <Link
                     href="mailto:info@astroseva.com"
                     className="transition-colors duration-200"
-                    style={{ color: "var(--text-secondary)" }}
+                    style={{ color: "var(--on-dark-dim)" }}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "#C8956D")
+                      (e.currentTarget.style.color = "var(--gold)")
                     }
                     onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "var(--text-secondary)")
+                      (e.currentTarget.style.color = "var(--on-dark-dim)")
                     }
                   >
                     info@astroseva.com
@@ -139,12 +139,12 @@ export default function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="transition-colors duration-200"
-                    style={{ color: "var(--text-secondary)" }}
+                    style={{ color: "var(--on-dark-dim)" }}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "#C8956D")
+                      (e.currentTarget.style.color = "var(--gold)")
                     }
                     onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "var(--text-secondary)")
+                      (e.currentTarget.style.color = "var(--on-dark-dim)")
                     }
                   >
                     Facebook
@@ -156,12 +156,12 @@ export default function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="transition-colors duration-200"
-                    style={{ color: "var(--text-secondary)" }}
+                    style={{ color: "var(--on-dark-dim)" }}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "#C8956D")
+                      (e.currentTarget.style.color = "var(--gold)")
                     }
                     onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "var(--text-secondary)")
+                      (e.currentTarget.style.color = "var(--on-dark-dim)")
                     }
                   >
                     Twitter
@@ -173,12 +173,12 @@ export default function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="transition-colors duration-200"
-                    style={{ color: "var(--text-secondary)" }}
+                    style={{ color: "var(--on-dark-dim)" }}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "#C8956D")
+                      (e.currentTarget.style.color = "var(--gold)")
                     }
                     onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "var(--text-secondary)")
+                      (e.currentTarget.style.color = "var(--on-dark-dim)")
                     }
                   >
                     Instagram
@@ -193,7 +193,7 @@ export default function Footer() {
             className="mt-12 pt-6 text-center text-xs"
             style={{
               borderTop: "1px solid rgba(255,255,255,0.08)",
-              color: "var(--text-tertiary)",
+              color: "var(--on-dark-faint)",
             }}
           >
             <p>
@@ -201,10 +201,10 @@ export default function Footer() {
               purposes only. &copy; {new Date().getFullYear()}
             </p>
             <p className="mt-2 flex justify-center gap-4">
-              <Link href="/terms" style={{ color: "var(--text-tertiary)" }}>Terms</Link>
-              <Link href="/privacy" style={{ color: "var(--text-tertiary)" }}>Privacy</Link>
-              <Link href="/refund" style={{ color: "var(--text-tertiary)" }}>Refunds</Link>
-              <Link href="/grievance" style={{ color: "var(--text-tertiary)" }}>Grievance</Link>
+              <Link href="/terms" style={{ color: "var(--on-dark-faint)" }}>Terms</Link>
+              <Link href="/privacy" style={{ color: "var(--on-dark-faint)" }}>Privacy</Link>
+              <Link href="/refund" style={{ color: "var(--on-dark-faint)" }}>Refunds</Link>
+              <Link href="/grievance" style={{ color: "var(--on-dark-faint)" }}>Grievance</Link>
             </p>
           </div>
         </div>

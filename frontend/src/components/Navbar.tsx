@@ -7,10 +7,9 @@ import { Menu, Sun, X, User as UserIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "@/hooks/useAuth";
 
-// The reference information architecture: eight primary destinations. Role
-// entries (review queue) append after these, never replace them.
+// Seven primary destinations. Home is the logo mark itself, which keeps the
+// bar uncrowded at every width; the review queue appends for staff roles.
 const navLinks = [
-  { href: "/", label: "Home" },
   { href: "/kundli", label: "Kundli" },
   { href: "/horoscope", label: "Horoscope" },
   { href: "/panchang", label: "Panchang" },
@@ -52,8 +51,10 @@ export default function Navbar() {
     <nav
       className="navbar-dark sticky top-0 z-50"
       style={{
+        /* No bottom border: the bar is the same midnight as the hero it sits
+           on, so the two read as one continuous band rather than a chrome
+           strip bolted above the page. */
         background: "var(--midnight)",
-        borderBottom: "1px solid rgba(201, 162, 39, 0.22)",
       }}
     >
       <div className="max-w-6xl mx-auto px-5">
@@ -139,7 +140,7 @@ export default function Navbar() {
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="md:hidden overflow-hidden"
-            style={{ borderTop: "1px solid rgba(201, 162, 39, 0.22)" }}
+            style={{ borderTop: "1px solid rgba(245, 241, 232, 0.12)" }}
           >
             <div className="mobile-panel px-4 py-2 space-y-0.5">
               {navLinks.map((link) => {
