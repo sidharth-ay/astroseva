@@ -52,13 +52,7 @@ export default function HoroscopePreview() {
   // any anonymous 401 triggers the global expired-session redirect. So the
   // band never fetches without a token: guests get the selector and an honest
   // sign-in prompt instead of a forced trip to /login.
-  const [authed] = useState(() => {
-    try {
-      return !!getToken();
-    } catch {
-      return false;
-    }
-  });
+  const [authed, setAuthed] = useState(false);
 
   const fetchFor = useCallback((zodiac: string) => {
     abortRef.current?.abort();
@@ -85,12 +79,27 @@ export default function HoroscopePreview() {
   }, []);
 
   useEffect(() => {
-    if (!authed) {
-      // Guests never fetch (see above). Clearing the flag here -- rather than
-      // deriving it -- keeps the server render and the first client render
-      // identical, so hydration stays clean.
+    // The session is determined after mount, never during render: the server
+    // and the first client render always agree (guest skeleton), and a member
+    // upgrades to the live view one render later. Reading storage in a state
+    // initializer instead would hydrate differently for members than the
+    // server rendered, which breaks hydration.
+    let ok = false;
+    try {
+      ok = !!getToken();
+    } catch {
+      ok = false;
+    }
+    if (ok) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAuthed(true);
+    } else {
       setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authed) {
       return;
     }
     // Fetching the forecast on mount and on sign change is exactly what
@@ -98,6 +107,7 @@ export default function HoroscopePreview() {
     // first paint still shows a skeleton instead of an empty panel. A
     // stale-token 401 still redirects via fetchAPI, which is correct for a
     // truly dead session -- the guard above only skips the never-authed case.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     const cleanup = fetchFor(sign);
     return cleanup;
   }, [sign, fetchFor, authed]);

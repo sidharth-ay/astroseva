@@ -21,6 +21,7 @@ import StatsStrip from "@/components/StatsStrip";
 import CelestialScene from "@/components/CelestialScene";
 import QuickAccess from "@/components/QuickAccess";
 import HoroscopePreview from "@/components/HoroscopePreview";
+import KundliPreview from "@/components/KundliPreview";
 import {
   useReducedMotion,
   staggerContainer,
@@ -348,8 +349,14 @@ export default function HomePage() {
       </section>
 
       {/* ================================================================
-          HOROSCOPE PREVIEW -- the first dark band after the hero. Live daily
-          data for the chosen sign, same endpoint as /horoscope.
+          KUNDLI PREVIEW -- light band: the tool teaser with the member's own
+          latest chart (or the sample), then the dark horoscope band.
+          ================================================================ */}
+      <KundliPreview />
+
+      {/* ================================================================
+          HOROSCOPE PREVIEW -- dark band after the light Kundli band. Live
+          daily data for the chosen sign, same endpoint as /horoscope.
           ================================================================ */}
       <HoroscopePreview />
 
