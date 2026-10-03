@@ -26,8 +26,25 @@ export default function QuickAccess() {
   // reacts on hover, so the row never shouts.
   const pathname = usePathname();
   return (
-    <section aria-label="Explore the World of Astrology" className="relative">
-      <div className="max-w-6xl mx-auto px-5 pt-14 pb-4 md:pt-16 md:pb-6 text-center">
+    <section aria-label="Explore the World of Astrology" className="relative overflow-hidden">
+      {/* faint drafting-compass arcs, barely there: the band is paper, not blank */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        aria-hidden="true"
+        preserveAspectRatio="xMidYMid slice"
+        viewBox="0 0 1200 300"
+      >
+        <g fill="none" stroke="#8A6A3A" strokeOpacity="0.07">
+          <circle cx="1050" cy="150" r="40" />
+          <circle cx="1050" cy="150" r="70" />
+          <circle cx="1050" cy="150" r="100" />
+          <circle cx="150" cy="150" r="40" />
+          <circle cx="150" cy="150" r="70" />
+          <circle cx="150" cy="150" r="100" />
+          <circle cx="600" cy="150" r="130" strokeDasharray="2 8" />
+        </g>
+      </svg>
+      <div className="relative max-w-6xl mx-auto px-5 pt-14 pb-4 md:pt-16 md:pb-6 text-center">
         <p className="heading-section mb-3">Begin here</p>
         <h2
           className="font-display mb-2"

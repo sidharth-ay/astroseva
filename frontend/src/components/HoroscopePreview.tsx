@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Briefcase, Heart, Stethoscope } from "lucide-react";
 import { api, getToken, type HoroscopeResponse } from "@/lib/api";
 import { zodiacIcons } from "@/components/icons/ZodiacIcons";
 import Reveal from "@/components/Reveal";
@@ -22,15 +22,33 @@ const SIGNS = [
   { id: "pisces", name: "Pisces", dates: "Feb 19 – Mar 20" },
 ];
 
-function Stars({ value }: { value: number }) {
+/** A 1-5 rating as the reference shows it: icon, label, percent, thin bar.
+ * The percent is the rating mapped onto 100 -- displayed data, not new data. */
+function Meter({ label, value, Icon }: { label: string; value: number; Icon: typeof Heart }) {
+  const pct = Math.round((Math.max(0, Math.min(5, value)) / 5) * 100);
   return (
-    <span aria-label={`${value} out of 5`} className="text-sm tracking-widest">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <span key={n} style={{ color: n <= value ? "var(--gold)" : "rgba(245, 241, 232, 0.22)" }}>
-          {n <= value ? "★" : "☆"}
-        </span>
-      ))}
-    </span>
+    <div>
+      <div className="flex items-center gap-2 mb-1.5">
+        <Icon size={13} style={{ color: "var(--gold)" }} aria-hidden="true" />
+        <dt className="text-[11px] font-semibold uppercase" style={{ color: "var(--on-dark-faint)", letterSpacing: "0.08em" }}>
+          {label}
+        </dt>
+        <dd className="ml-auto text-xs font-semibold" style={{ color: "var(--on-dark)" }}>
+          {pct}%
+        </dd>
+      </div>
+      <div
+        className="h-1 rounded-full overflow-hidden"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`${label} ${pct} percent`}
+        style={{ background: "rgba(245, 241, 232, 0.14)" }}
+      >
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--gold)" }} />
+      </div>
+    </div>
   );
 }
 
@@ -252,21 +270,10 @@ export default function HoroscopePreview() {
                 <p className="text-[15px] leading-relaxed mb-6" style={{ color: "var(--on-dark-dim)" }}>
                   {result.prediction}
                 </p>
-                <dl className="grid grid-cols-3 gap-4 mb-6">
-                  {[
-                    { label: "Love", value: result.love_rating },
-                    { label: "Career", value: result.career_rating },
-                    { label: "Health", value: result.health_rating },
-                  ].map((r) => (
-                    <div key={r.label}>
-                      <dt className="text-[11px] font-semibold uppercase mb-1.5" style={{ color: "var(--on-dark-faint)", letterSpacing: "0.08em" }}>
-                        {r.label}
-                      </dt>
-                      <dd>
-                        <Stars value={r.value} />
-                      </dd>
-                    </div>
-                  ))}
+                <dl className="grid sm:grid-cols-3 gap-x-6 gap-y-4 mb-6">
+                  <Meter label="Love" value={result.love_rating} Icon={Heart} />
+                  <Meter label="Career" value={result.career_rating} Icon={Briefcase} />
+                  <Meter label="Health" value={result.health_rating} Icon={Stethoscope} />
                 </dl>
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs" style={{ color: "var(--on-dark-dim)" }}>
                   <span>

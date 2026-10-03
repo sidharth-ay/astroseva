@@ -22,6 +22,7 @@ import CelestialScene from "@/components/CelestialScene";
 import QuickAccess from "@/components/QuickAccess";
 import HoroscopePreview from "@/components/HoroscopePreview";
 import KundliPreview from "@/components/KundliPreview";
+import TempleArch from "@/components/TempleArch";
 import {
   useReducedMotion,
   staggerContainer,
@@ -308,8 +309,9 @@ export default function HomePage() {
               </Link>
               </div>
             ))}
+            <div className="grid sm:grid-cols-[1fr_190px] gap-6 items-stretch">
             <motion.ul
-              className="divide-y divide-[var(--border)]"
+              className="divide-y divide-[var(--border)] min-w-0"
               variants={staggerContainer}
               initial="hidden"
               whileInView="visible"
@@ -344,6 +346,14 @@ export default function HomePage() {
                 </motion.li>
               ))}
             </motion.ul>
+              <div
+                className="hidden sm:block rounded-2xl overflow-hidden min-w-0"
+                style={{ border: "1px solid var(--border)" }}
+                aria-hidden="true"
+              >
+                <TempleArch />
+              </div>
+            </div>
           </motion.div>
         </div>
       </section>

@@ -42,20 +42,20 @@
   --silver: #9A9AB0;
 
   color-scheme: light;
-  --bg-primary: #FDFBF7;
-  --bg-card: #FFFFFF;
-  --bg-elevated: #FFFFFF;
-  --bg-surface: rgba(22, 24, 43, 0.04);
-  --input-bg: rgba(22, 24, 43, 0.03);
-  /* The sticky shell is translucent ivory so the page texture shows through. */
-  --nav-bg: rgba(253, 251, 247, 0.9);
+  --bg-primary: #F6EDD9;
+  --bg-card: #FFFDF6;
+  --bg-elevated: #FFFDF6;
+  --bg-surface: rgba(101, 78, 28, 0.06);
+  --input-bg: rgba(101, 78, 28, 0.04);
+  /* The sticky shell is translucent cream so the page texture shows through. */
+  --nav-bg: rgba(246, 237, 217, 0.9);
   /* Text on the dark bands. Fixed light values -- the bands are always dark. */
   --on-dark: #F5F1E8;
   --on-dark-dim: rgba(245, 241, 232, 0.68);
   --on-dark-faint: rgba(245, 241, 232, 0.45);
 
-  --border: rgba(22, 24, 43, 0.12);
-  --border-subtle: rgba(22, 24, 43, 0.07);
+  --border: rgba(101, 78, 28, 0.16);
+  --border-subtle: rgba(101, 78, 28, 0.09);
   --border-active: rgba(138, 106, 58, 0.45);
 
   --text-primary: #16182B;
