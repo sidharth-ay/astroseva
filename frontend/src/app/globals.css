@@ -1,31 +1,99 @@
 @import 'tailwindcss';
 
 @theme inline {
-  --color-background: #060610;
-  --color-foreground: #F5F5F5;
-  --font-sans: var(--font-geist-sans);
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-playfair);
 }
 
+/* ---------------------------------------------------------------------------
+   DESIGN TOKENS
+   Light is the default (`:root`); dark is an explicit override that wins by
+   specificity (`:root[data-theme="dark"]` beats `:root`). Every semantic
+   surface/text/border token is defined in BOTH places -- the token-parity test
+   enforces this, because a token missing its dark pair renders one theme
+   unreadable and the failure is silent.
+
+   Brand constants (gold ramp, champagne) are theme-independent and live in
+   `:root` exactly once.
+--------------------------------------------------------------------------- */
 :root {
-  color-scheme: dark;
-  --midnight: #060610;
-  --deep-indigo: #0C0C1A;
-  --raised: #14142A;
   --gold: #C8956D;
   --gold-bright: #E8B88A;
   --gold-dim: #8B6B4A;
   --gold-glow: #D4A574;
+  --champagne: #E8C9A0;
+
+  /* Raw palette values kept for legacy references. New code uses the semantic
+     tokens below so both themes respond. */
+  --midnight: #060610;
+  --deep-indigo: #0C0C1A;
+  --raised: #14142A;
   --ivory: #F5F5F5;
   --silver: #9A9AB0;
-  --champagne: #E8C9A0;
-  --lavender: #C8956D;
-  --lavender-dim: #8B6B4A;
 
+  /* ---- light theme (default) ---- */
+  color-scheme: light;
+  --bg-primary: #FDFBF7;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-surface: rgba(22, 24, 43, 0.04);
+  --input-bg: rgba(22, 24, 43, 0.03);
+  /* The sticky shell is translucent ivory so the page texture shows through,
+     the same role the near-black blur played on dark. */
+  --nav-bg: rgba(253, 251, 247, 0.9);
+
+  --border: rgba(22, 24, 43, 0.12);
+  --border-subtle: rgba(22, 24, 43, 0.07);
+  --border-active: rgba(138, 106, 58, 0.45);
+
+  --text-primary: #16182B;
+  --text-secondary: rgba(22, 24, 43, 0.68);
+  --text-tertiary: rgba(22, 24, 43, 0.5);
+
+  --accent: #C8956D;
+  /* Gold-on-ivory fails contrast, so anything that must be READ in the accent
+     colour uses this darker bronze on light and the bright gold on dark. */
+  --accent-text: #8A6A3A;
+  --accent-deep: #8B6B4A;
+
+  --danger: #C62828;
+  --success: #2E7D32;
+
+  --shimmer-hi: rgba(22, 24, 43, 0.07);
+  --scrollbar: rgba(22, 24, 43, 0.18);
+  --scrollbar-hover: rgba(22, 24, 43, 0.28);
+
+  --shadow-sm: 0 1px 2px rgba(22, 24, 43, 0.07);
+  --shadow-md: 0 4px 12px rgba(22, 24, 43, 0.09);
+  --shadow-lg: 0 12px 32px rgba(22, 24, 43, 0.14);
+
+  --font-display: var(--font-playfair), Georgia, serif;
+}
+
+/* Theme-independent geometry and motion. These never change between themes,
+   so they live outside the theme blocks and cannot be accidentally forked. */
+:root {
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* ---- dark theme (explicit opt-in, wins over :root by specificity) ---- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
   --bg-primary: #060610;
   --bg-card: rgba(12, 12, 26, 0.6);
   --bg-elevated: rgba(20, 20, 42, 0.7);
   --bg-surface: rgba(20, 20, 42, 0.4);
+  --input-bg: rgba(245, 245, 245, 0.03);
+  --nav-bg: rgba(10, 10, 15, 0.92);
 
   --border: rgba(245, 245, 245, 0.08);
   --border-subtle: rgba(245, 245, 245, 0.05);
@@ -36,24 +104,19 @@
   --text-tertiary: rgba(245, 245, 245, 0.45);
 
   --accent: #C8956D;
+  --accent-text: #E8B88A;
   --accent-deep: #8B6B4A;
 
   --danger: #EF5350;
   --success: #4CAF50;
 
-  --font-display: var(--font-cinzel), 'Georgia', serif;
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  --shimmer-hi: rgba(245, 245, 245, 0.06);
+  --scrollbar: rgba(245, 245, 245, 0.1);
+  --scrollbar-hover: rgba(245, 245, 245, 0.18);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -68,26 +131,49 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* GALAXY BACKGROUND */
+/* PAGE TEXTURES
+   Light gets a warm paper wash; dark KEEPS the galaxy+starfield it already
+   had. The dark rules re-declare the same layers so the two themes never
+   inherit each other's skies. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -5%, rgba(200, 149, 109, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 45% at 85% 90%, rgba(74, 63, 107, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 40% at 8% 85%, rgba(200, 149, 109, 0.07) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* STARFIELD / GRAIN -- light: a faint constellation dot grid; dark: stars */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(22, 24, 43, 0.10), transparent),
+    radial-gradient(1px 1px at 28% 32%, rgba(22, 24, 43, 0.06), transparent),
+    radial-gradient(1px 1px at 42% 12%, rgba(138, 106, 58, 0.14), transparent),
+    radial-gradient(1px 1px at 58% 55%, rgba(22, 24, 43, 0.05), transparent),
+    radial-gradient(1px 1px at 72% 22%, rgba(22, 24, 43, 0.07), transparent),
+    radial-gradient(1px 1px at 88% 42%, rgba(138, 106, 58, 0.10), transparent);
+  background-size: 380px 300px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+:root[data-theme="dark"] body::before {
   background:
     radial-gradient(ellipse 80% 60% at 20% 10%, rgba(40, 20, 80, 0.25) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 80% 20%, rgba(20, 40, 100, 0.2) 0%, transparent 55%),
     radial-gradient(ellipse 70% 50% at 50% 80%, rgba(60, 20, 60, 0.15) 0%, transparent 60%),
     radial-gradient(ellipse 40% 40% at 10% 90%, rgba(20, 30, 80, 0.15) 0%, transparent 50%),
     radial-gradient(ellipse 50% 40% at 90% 85%, rgba(50, 20, 70, 0.12) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
 }
 
-/* STARFIELD */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
+:root[data-theme="dark"] body::after {
   background-image:
     radial-gradient(1.5px 1.5px at 12% 18%, rgba(255, 255, 255, 0.15), transparent),
     radial-gradient(1px 1px at 28% 32%, rgba(255, 255, 255, 0.08), transparent),
@@ -103,8 +189,6 @@ body::after {
     radial-gradient(1px 1px at 75% 55%, rgba(200, 149, 109, 0.08), transparent),
     radial-gradient(1.5px 1.5px at 50% 30%, rgba(200, 149, 109, 0.10), transparent);
   background-size: 350px 280px;
-  pointer-events: none;
-  z-index: 0;
 }
 
 .noise-overlay {
@@ -131,30 +215,25 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
 }
 
-/* GRADIENT TEXT */
+/* GRADIENT TEXT -- defined through tokens so they invert with the theme.
+   `.text-gradient-lavender` was deleted here: nothing referenced it, and it was
+   a third name for the same gold ramp. */
 .text-gradient-gold {
-  background: linear-gradient(135deg, #C8956D, #E8B88A, #D4A574);
+  background: linear-gradient(135deg, var(--gold), var(--gold-bright), var(--gold-glow));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-gradient-white {
-  background: linear-gradient(135deg, #FFFFFF, #CCCCCC);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.text-gradient-lavender {
-  background: linear-gradient(135deg, #C8956D, #E8B88A, #8B6B4A);
+  background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .text-gradient-crimson {
-  background: linear-gradient(135deg, #C8956D, #E8B88A);
+  background: linear-gradient(135deg, var(--gold), var(--gold-bright));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -169,7 +248,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .glass-card:hover {
-  border-color: rgba(200, 149, 109, 0.2);
+  border-color: var(--border-active);
 }
 
 .glass-card-static {
@@ -230,7 +309,7 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   gap: 0.5rem;
   background: transparent;
-  color: #F5F5F5;
+  color: var(--text-primary);
   font-weight: 600;
   font-size: 0.875rem;
   padding: 0.65rem 1.5rem;
@@ -264,12 +343,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .btn-ghost:hover {
   color: var(--text-primary);
-  background: rgba(245, 245, 245, 0.04);
+  background: var(--bg-surface);
 }
 
 /* INPUTS */
 .input-field {
-  background: rgba(245, 245, 245, 0.03);
+  background: var(--input-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 0.6rem 0.85rem;
@@ -289,11 +368,11 @@ h1, h2, h3, h4, h5, h6 {
 .input-field::placeholder { color: var(--text-tertiary); }
 .input-field:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* Native controls: force dark rendering so OS panels (select dropdowns,
-   date/time pickers, file buttons) match the theme instead of white. */
+/* Native controls follow `color-scheme` from the theme block automatically,
+   so OS panels (select dropdowns, date/time pickers) match without forcing. */
 select.input-field option,
 select.input-field optgroup {
-  background-color: var(--raised);
+  background-color: var(--bg-elevated);
   color: var(--text-primary);
 }
 
@@ -301,7 +380,7 @@ input[type="file"].input-field::file-selector-button {
   background: rgba(200, 149, 109, 0.1);
   border: 1px solid var(--border-active);
   border-radius: var(--radius-sm);
-  color: var(--gold-bright);
+  color: var(--accent-text);
   font: inherit;
   font-size: 0.75rem;
   font-weight: 600;
@@ -385,7 +464,7 @@ input[type="file"].input-field::file-selector-button:hover {
 }
 
 .shimmer {
-  background: linear-gradient(90deg, var(--bg-surface) 25%, rgba(245, 245, 245, 0.05) 50%, var(--bg-surface) 75%);
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--shimmer-hi) 50%, var(--bg-surface) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
@@ -402,7 +481,7 @@ input[type="file"].input-field::file-selector-button:hover {
 }
 
 .ai-bubble-assistant {
-  background: rgba(245, 245, 245, 0.03);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
   padding: 0.8rem 1rem;
@@ -436,7 +515,7 @@ input[type="file"].input-field::file-selector-button:hover {
   max-width: 400px;
   max-height: 85vh;
   overflow-y: auto;
-  background: var(--deep-indigo);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: 1.5rem;
@@ -445,7 +524,7 @@ input[type="file"].input-field::file-selector-button:hover {
 
 .popup-content::-webkit-scrollbar { width: 4px; }
 .popup-content::-webkit-scrollbar-thumb {
-  background: rgba(245, 245, 245, 0.12);
+  background: var(--scrollbar);
   border-radius: 2px;
 }
 
@@ -453,11 +532,11 @@ input[type="file"].input-field::file-selector-button:hover {
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(245, 245, 245, 0.10);
+  background: var(--scrollbar);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 245, 245, 0.18);
+  background: var(--scrollbar-hover);
 }
 
 /* FOCUS VISIBLE */
@@ -489,17 +568,23 @@ input[type='number']::-webkit-outer-spin-button {
 }
 input[type='number'] { -moz-appearance: textfield; }
 
+/* Display type is editorial serif in normal case: hierarchy comes from size and
+   weight, not from shouting. Pages that want caps already write literal
+   capitals in their JSX, so nothing that was intentionally uppercase changes. */
 .heading-display {
   font-family: var(--font-display);
-  text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.005em;
 }
 
+/* Section eyebrow: the one place small caps are the design -- bronze on both
+   themes so marketing eyebrows read as a signature rather than grey noise. */
 .heading-section {
   text-transform: uppercase;
   font-weight: 700;
   font-size: 0.75rem;
   letter-spacing: 0.08em;
+  color: var(--accent-text);
 }
 
 /* Print: a chart is something people print and share, so printing the dark

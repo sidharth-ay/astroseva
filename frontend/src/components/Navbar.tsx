@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, Sparkles, User as UserIcon } from "lucide-react";
+import { Menu, X, Sparkles, User as UserIcon, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/components/ThemeProvider";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -38,6 +39,7 @@ export default function Navbar() {
   const [busy, setBusy] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = async () => {
     setBusy(true);
@@ -51,10 +53,10 @@ export default function Navbar() {
     <nav
       className="sticky top-0 z-50"
       style={{
-        background: "rgba(10, 10, 15, 0.92)",
+        background: "var(--nav-bg)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(200, 149, 109, 0.12)",
+        borderBottom: "1px solid var(--border-active)",
       }}
     >
       <div className="max-w-6xl mx-auto px-5">
@@ -89,6 +91,16 @@ export default function Navbar() {
 
           {/* CTA + logout */}
           <div className="hidden md:flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: "var(--text-secondary)" }}
+              title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            >
+              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             <Link href="/kundli" className="btn-primary inline-flex">
               Get Kundli
             </Link>
@@ -112,14 +124,26 @@ export default function Navbar() {
           </div>
 
           {/* Mobile toggle */}
-          <button
-            onClick={() => setOpen(!open)}
-            className="md:hidden p-2 rounded-lg transition-colors"
-            style={{ color: "var(--text-secondary)" }}
-            aria-label="Toggle navigation"
-          >
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="md:hidden flex items-center gap-1">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: "var(--text-secondary)" }}
+              title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
+              onClick={() => setOpen(!open)}
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: "var(--text-secondary)" }}
+              aria-label="Toggle navigation"
+            >
+              {open ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -132,9 +156,9 @@ export default function Navbar() {
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="md:hidden overflow-hidden"
-            style={{ borderTop: "1px solid rgba(200, 149, 109, 0.15)" }}
+            style={{ borderTop: "1px solid var(--border-active)" }}
           >
-            <div className="px-4 py-2 space-y-0.5" style={{ background: "rgba(10, 10, 15, 0.96)" }}>
+            <div className="px-4 py-2 space-y-0.5" style={{ background: "var(--bg-elevated)" }}>
               {navLinks.map((link) => {
                 const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
                 return (
