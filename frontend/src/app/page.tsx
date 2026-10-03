@@ -406,7 +406,14 @@ export default function HomePage() {
             viewport={{ once: true, margin: "-30px" }}
           >
             {servicesGrid.map((s) => (
-              <motion.div key={s.href} variants={staggerItem}>
+              <motion.div
+                key={s.href}
+                variants={staggerItem}
+                /* Pressed feedback: these cards were the main way into each
+                   feature and had no `whileTap`, so a tap on touch registered
+                   only when the destination finally rendered. */
+                whileTap={reduced ? undefined : { scale: 0.98 }}
+              >
                 <Tilt rotationFactor={8} isRevese>
                   <Link
                     href={s.href}

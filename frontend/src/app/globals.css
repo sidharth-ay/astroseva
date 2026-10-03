@@ -346,12 +346,25 @@ input[type="file"].input-field::file-selector-button:hover {
   font-weight: 500;
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
-  transition: color 0.15s var(--ease-out);
+  /* `transform` is transitioned as well as `color`: without a pressed state a
+     tap produced no visible acknowledgement at all, so while the dev server
+     compiled the route the navbar looked frozen and the tap read as ignored.
+     100ms is short enough to feel like the press itself, not an animation. */
+  transition: color 0.15s var(--ease-out), transform 0.1s var(--ease-out);
   text-decoration: none;
 }
 
 .nav-link:hover { color: var(--text-primary); }
 .nav-link.active { color: var(--text-primary); }
+
+/* Pressed, not hovered: a mouse user never sees this, but on touch it is the
+   only confirmation that the tap registered. Gated on `motion-safe` so a
+   reduced-motion preference gets colour feedback only. */
+.nav-link:active { transform: scale(0.96); color: var(--text-primary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-link:active { transform: none; }
+}
 
 .nav-link.active::after {
   content: '';
