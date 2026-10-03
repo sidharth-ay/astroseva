@@ -3,21 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, X, Sparkles, User as UserIcon, Sun, Moon } from "lucide-react";
+import { Menu, Sun, X, User as UserIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "@/hooks/useAuth";
-import { useTheme } from "@/components/ThemeProvider";
 
+// The reference information architecture: eight primary destinations. Role
+// entries (review queue) append after these, never replace them.
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/kundli", label: "Kundli" },
-  { href: "/matching", label: "Matching" },
   { href: "/horoscope", label: "Horoscope" },
-  { href: "/predictions", label: "Predictions" },
-  { href: "/numerology", label: "Numerology" },
   { href: "/panchang", label: "Panchang" },
-  { href: "/services", label: "Services" },
-  { href: "/chat", label: "AI Chat" },
+  { href: "/doshas", label: "Dosha" },
+  { href: "/remedies", label: "Remedies" },
+  { href: "/astrologers", label: "Consultation" },
+  { href: "/academy", label: "Learn" },
 ];
 
 // Role-gated entries. Only the review queue appears here, and only to
@@ -39,7 +39,6 @@ export default function Navbar() {
   const [busy, setBusy] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = async () => {
     setBusy(true);
@@ -51,21 +50,24 @@ export default function Navbar() {
 
   return (
     <nav
-      className="sticky top-0 z-50"
+      className="navbar-dark sticky top-0 z-50"
       style={{
-        background: "var(--nav-bg)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid var(--border-active)",
+        background: "var(--midnight)",
+        borderBottom: "1px solid rgba(201, 162, 39, 0.22)",
       }}
     >
       <div className="max-w-6xl mx-auto px-5">
         <div className="flex items-center justify-between h-14">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="flex items-center justify-center transition-transform duration-200 group-hover:scale-105">
-              <Sparkles size={20} color="#C8956D" />
-            </div>
-            <span className="text-lg font-display font-bold text-gradient-gold">AstroSeva</span>
+          <Link href="/" className="flex items-center gap-2 group" aria-label="AstroSeva home">
+            <span
+              className="flex items-center justify-center w-7 h-7 rounded-full transition-transform duration-200 group-hover:scale-105"
+              style={{ background: "var(--gold)" }}
+            >
+              <Sun size={15} style={{ color: "var(--midnight)" }} />
+            </span>
+            <span className="text-lg font-display font-semibold" style={{ color: "var(--gold)" }}>
+              AstroSeva
+            </span>
           </Link>
 
           {/* Desktop nav */}
@@ -89,61 +91,42 @@ export default function Navbar() {
               })}
           </div>
 
-          {/* CTA + logout */}
-          <div className="hidden md:flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="p-2 rounded-lg transition-colors"
-              style={{ color: "var(--text-secondary)" }}
-              title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-            >
-              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
-            <Link href="/kundli" className="btn-primary inline-flex">
-              Get Kundli
-            </Link>
-            {user && (
+          {/* Sign in + Get Started */}
+          <div className="hidden md:flex items-center gap-3">
+            {user ? (
               <div className="flex items-center gap-2">
-                <Link href="/profile" className="btn-ghost inline-flex items-center gap-1.5" title="My Profile">
+                <Link href="/profile" className="nav-link inline-flex items-center gap-1.5" title="My Profile">
                   <UserIcon size={14} />
                   Profile
                 </Link>
                 <button
                   onClick={handleLogout}
                   disabled={busy}
-                  className="text-xs transition-colors hover:text-white"
-                  style={{ color: "var(--text-tertiary)" }}
+                  className="nav-link"
                   title="Logout"
                 >
                   {busy ? "..." : "Logout"}
                 </button>
               </div>
+            ) : (
+              <Link href="/login" className="nav-link">
+                Sign in
+              </Link>
             )}
+            <Link href="/kundli" className="btn-gold-pill">
+              Get Started
+            </Link>
           </div>
 
           {/* Mobile toggle */}
-          <div className="md:hidden flex items-center gap-1">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="p-2 rounded-lg transition-colors"
-              style={{ color: "var(--text-secondary)" }}
-              title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-            >
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            <button
-              onClick={() => setOpen(!open)}
-              className="p-2 rounded-lg transition-colors"
-              style={{ color: "var(--text-secondary)" }}
-              aria-label="Toggle navigation"
-            >
-              {open ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
+          <button
+            onClick={() => setOpen(!open)}
+            className="md:hidden p-2 rounded-lg transition-colors"
+            style={{ color: "var(--on-dark-dim)" }}
+            aria-label="Toggle navigation"
+          >
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
 
@@ -156,17 +139,17 @@ export default function Navbar() {
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="md:hidden overflow-hidden"
-            style={{ borderTop: "1px solid var(--border-active)" }}
+            style={{ borderTop: "1px solid rgba(201, 162, 39, 0.22)" }}
           >
-            <div className="px-4 py-2 space-y-0.5" style={{ background: "var(--bg-elevated)" }}>
+            <div className="mobile-panel px-4 py-2 space-y-0.5">
               {navLinks.map((link) => {
                 const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
                 return (
                   <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
                     className={`nav-link block ${active ? "active" : ""}`}>
-                  {link.label}
-                </Link>
-              );
+                    {link.label}
+                  </Link>
+                );
               })}
               {user &&
                 roleLinks(user.role).map((link) => {
@@ -178,31 +161,41 @@ export default function Navbar() {
                     </Link>
                   );
                 })}
-              <div className="pt-2 pb-1">
-                <Link
-                  href="/kundli"
-                  onClick={() => setOpen(false)}
-                  className="btn-primary block text-center"
-                >
-                  Get Kundli
-                </Link>
-                {user && (
-                  <div className="pt-2 pb-1 space-y-2">
+              <div className="pt-2 pb-1 space-y-2">
+                {user ? (
+                  <>
                     <Link
                       href="/profile"
                       onClick={() => setOpen(false)}
-                      className="btn-secondary block text-center w-full"
+                      className="btn-gold-pill block text-center w-full"
                     >
                       My Profile
                     </Link>
                     <button
                       onClick={handleLogout}
                       disabled={busy}
-                      className="btn-ghost block text-center w-full"
+                      className="nav-link block text-center w-full"
                     >
                       {busy ? "Logging out…" : `Logout (${user.name || user.email})`}
                     </button>
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setOpen(false)}
+                      className="nav-link block text-center"
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      href="/kundli"
+                      onClick={() => setOpen(false)}
+                      className="btn-gold-pill block text-center"
+                    >
+                      Get Started
+                    </Link>
+                  </>
                 )}
               </div>
             </div>

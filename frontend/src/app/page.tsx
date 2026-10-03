@@ -5,52 +5,39 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import {
   ArrowRight,
-  Sparkles,
-  Heart,
-  Star,
+  BadgeCheck,
   Brain,
   Hash,
+  Heart,
+  Moon,
+  Sparkles,
+  Star,
+  Sun,
   BookOpen,
   ChevronRight,
 } from "lucide-react";
 import HoroscopePopup from "@/components/HoroscopePopup";
 import StatsStrip from "@/components/StatsStrip";
-import { } from "@/components/icons/ZodiacIcons";
+import CelestialScene from "@/components/CelestialScene";
+import QuickAccess from "@/components/QuickAccess";
 import {
   useReducedMotion,
   staggerContainer,
   staggerContainerCustom,
   staggerItem,
   slideUp,
-  slideInRight,
   stagger} from "@/lib/motion";
-import { TextScramble } from "@/components/motion-primitives/text-scramble";
-import { TextEffect } from "@/components/motion-primitives/text-effect";
-import { Spotlight } from "@/components/motion-primitives/spotlight";
-import { Magnetic } from "@/components/motion-primitives/magnetic";
 import { Tilt } from "@/components/motion-primitives/tilt";
 
-const zodiacSigns = [
-  { name: "aries", symbol: "♈", angle: 0 },
-  { name: "taurus", symbol: "♉", angle: 30 },
-  { name: "gemini", symbol: "♊", angle: 60 },
-  { name: "cancer", symbol: "♋", angle: 90 },
-  { name: "leo", symbol: "♌", angle: 120 },
-  { name: "virgo", symbol: "♍", angle: 150 },
-  { name: "libra", symbol: "♎", angle: 180 },
-  { name: "scorpio", symbol: "♏", angle: 210 },
-  { name: "sagittarius", symbol: "♐", angle: 240 },
-  { name: "capricorn", symbol: "♑", angle: 270 },
-  { name: "aquarius", symbol: "♒", angle: 300 },
-  { name: "pisces", symbol: "♓", angle: 330 },
-];
-
-const heroServices = [
-  { label: "Kundli", icon: Sparkles },
-  { label: "Matching", icon: Heart },
-  { label: "Horoscope", icon: Star },
-  { label: "Predictions", icon: Brain },
-  { label: "Numerology", icon: Hash },
+/* Trust row under the hero CTAs. These are properties of the product, not
+   traffic figures: a fabricated "1M+ users" count was removed once before as
+   false advertising and stays removed. Twelve signs, twenty-seven nakshatras,
+   nine grahas and a free service are all checkable in the app itself. */
+const heroStats = [
+  { value: "12", label: "Zodiac Signs", icon: Star },
+  { value: "27", label: "Nakshatras", icon: Moon },
+  { value: "9", label: "Grahas", icon: Sun },
+  { value: "100%", label: "Free Service", icon: BadgeCheck },
 ];
 
 const servicesGrid = [
@@ -128,134 +115,6 @@ const whyChooseUs = [
   },
 ];
 
-function ZodiacWheel() {
-  const outerR = 150;
-  const midR = 115;
-  const innerR = 80;
-  const center = 190;
-  const svgSize = 380;
-
-  return (
-    <div className="relative" style={{ width: svgSize, height: svgSize }}>
-      <motion.div
-        className="absolute inset-0"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
-      >
-        <svg
-          viewBox={`0 0 ${svgSize} ${svgSize}`}
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-full"
-        >
-          <defs>
-            <radialGradient id="wheelGlow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#C8956D" stopOpacity="0.15" />
-              <stop offset="60%" stopColor="#C8956D" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="#C8956D" stopOpacity="0" />
-            </radialGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {/* Glow background */}
-          <circle cx={center} cy={center} r={outerR + 30} fill="url(#wheelGlow)" />
-
-          {/* Outer circle */}
-          <circle
-            cx={center}
-            cy={center}
-            r={outerR}
-            stroke="#C8956D"
-            strokeWidth="1"
-            opacity="0.4"
-          />
-          {/* Middle circle */}
-          <circle
-            cx={center}
-            cy={center}
-            r={midR}
-            stroke="#E8B88A"
-            strokeWidth="0.6"
-            opacity="0.25"
-          />
-          {/* Inner circle */}
-          <circle
-            cx={center}
-            cy={center}
-            r={innerR}
-            stroke="#D4A574"
-            strokeWidth="0.6"
-            opacity="0.2"
-          />
-
-          {/* Radial lines for each sign */}
-          {zodiacSigns.map((sign) => {
-            const rad = (sign.angle * Math.PI) / 180;
-            const x1 = center + innerR * Math.cos(rad);
-            const y1 = center + innerR * Math.sin(rad);
-            const x2 = center + outerR * Math.cos(rad);
-            const y2 = center + outerR * Math.sin(rad);
-            return (
-              <line
-                key={sign.name}
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                stroke="#C8956D"
-                strokeWidth="0.5"
-                opacity="0.2"
-              />
-            );
-          })}
-
-          {/* Zodiac symbols around the wheel */}
-          {zodiacSigns.map((sign) => {
-            const symbolR = outerR + 22;
-            const rad = (sign.angle * Math.PI) / 180;
-            const x = center + symbolR * Math.cos(rad);
-            const y = center + symbolR * Math.sin(rad);
-            return (
-              <text
-                key={sign.name}
-                x={x}
-                y={y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill="#C8956D"
-                fontSize="18"
-                opacity="0.6"
-                filter="url(#glow)"
-              >
-                {sign.symbol}
-              </text>
-            );
-          })}
-
-          {/* Center dot */}
-          <circle cx={center} cy={center} r="3" fill="#C8956D" opacity="0.5" />
-        </svg>
-      </motion.div>
-
-      {/* Non-rotating center symbol */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span
-          className="text-4xl font-bold"
-          style={{ color: "#C8956D", opacity: 0.35 }}
-        >
-          ☉
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export default function HomePage() {
   const [popupSign, setPopupSign] = useState<string | null>(null);
   const reduced = useReducedMotion();
@@ -270,112 +129,105 @@ export default function HomePage() {
       )}
 
       {/* ================================================================
-          HERO SECTION
+          HERO -- full-bleed dark cinematic band. The sky, wheel, planets and
+          temple horizon are one composed SVG (CelestialScene); the copy sits
+          left with a legibility gradient between art and text. The Quick
+          Access band below is its own ivory section, never overlapped.
           ================================================================ */}
-      <section className="relative min-h-[90vh] flex items-center overflow-hidden px-5">
-        {/* Spotlight effect */}
-        <Spotlight className="opacity-30" size={400} />
-
-        {/* Background glow */}
+      <section className="relative overflow-hidden" style={{ background: "var(--midnight)" }}>
+        {/* The sky fills the band; from the medium breakpoint the art is
+            pushed right of the copy column so the wheel never sits behind
+            the headline. `slice` crops the empty left of the scene. */}
+        <div className="absolute inset-0 md:left-[24%] md:right-[-8%]" aria-hidden="true">
+          <CelestialScene />
+        </div>
+        {/* Legibility gradient: text must read over the art at every width. */}
         <div
-          className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[500px] h-[500px] rounded-full pointer-events-none"
+          className="absolute inset-0 pointer-events-none"
           style={{
-            background: "radial-gradient(circle, rgba(200,149,109,0.08) 0%, transparent 70%)",
+            background:
+              "linear-gradient(100deg, rgba(10,12,30,0.9) 0%, rgba(10,12,30,0.62) 36%, rgba(10,12,30,0.08) 62%, rgba(10,12,30,0) 78%)",
           }}
+          aria-hidden="true"
+        />
+        <div
+          className="absolute inset-0 pointer-events-none md:hidden"
+          style={{ background: "rgba(10, 12, 30, 0.45)" }}
+          aria-hidden="true"
         />
 
-        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
-          {/* Left: Text */}
+        <div className="relative z-10 max-w-6xl mx-auto px-5 pt-16 pb-14 md:pt-24 md:pb-20 grid md:grid-cols-2 gap-10 items-center min-h-[88vh]">
+          {/* Left: copy */}
           <motion.div
-            className="flex flex-col"
+            className="flex flex-col items-start"
             variants={staggerContainer}
             initial={reduced ? false : "hidden"}
             animate="visible"
           >
+            <motion.p
+              className="heading-section mb-4"
+              style={{ color: "var(--gold-bright)", fontSize: "0.72rem" }}
+              variants={slideUp}
+            >
+              Ancient Wisdom · Modern Guidance
+            </motion.p>
             <motion.h1
-              className="heading-display text-gradient-white font-bold mb-6"
+              className="font-display mb-5"
               style={{
-                fontSize: "clamp(2.2rem, 5vw, 4rem)",
-                letterSpacing: "-0.03em",
-                lineHeight: 1.05,
+                fontSize: "clamp(2.75rem, 6vw, 4.5rem)",
+                lineHeight: 1.04,
+                letterSpacing: "-0.015em",
+                fontWeight: 600,
+                color: "var(--on-dark)",
               }}
               variants={slideUp}
             >
-              <TextScramble as="span" duration={1.2} speed={0.03}>
-                YOUR PATH TO UNDERSTANDING ZODIAC
-              </TextScramble>
+              Discover Your Life&rsquo;s{" "}
+              <span className="text-gradient-gold">True Path</span>
             </motion.h1>
 
-            <motion.div className="mb-10 max-w-md" variants={slideUp}>
-              <TextEffect
-                as="p"
-                preset="fade-in-blur"
-                per="word"
-                className="text-base"
-                style={{
-                  color: "var(--text-secondary)",
-                  lineHeight: 1.7,
-                  fontWeight: 300,
-                }}
-              >
-                Free Vedic Astrology platform. Kundli, marriage matching, predictions, horoscope, and more.
-              </TextEffect>
-            </motion.div>
-
-            <motion.div variants={slideUp}>
-              <Magnetic intensity={0.3} range={80}>
-                <Link href="/services" className="btn-primary">
-                  Explore Now <ArrowRight size={15} />
-                </Link>
-              </Magnetic>
-            </motion.div>
-          </motion.div>
-
-          {/* Right: Zodiac Wheel */}
-          <motion.div
-            className="flex items-center justify-center"
-            variants={slideInRight}
-            initial={reduced ? false : "hidden"}
-            animate="visible"
-          >
-            <ZodiacWheel />
-          </motion.div>
-        </div>
-
-        {/* Service Icons Row */}
-        <motion.div
-          className="absolute bottom-10 left-0 right-0 flex justify-center gap-6 sm:gap-8 px-5"
-          variants={staggerContainerCustom(stagger.normal, 0.3)}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-        >
-          {heroServices.map((s) => (
-            <motion.div
-              key={s.label}
-              className="flex flex-col items-center gap-2"
-              variants={staggerItem}
+            <motion.p
+              className="mb-8 max-w-md text-base"
+              style={{ color: "var(--on-dark-dim)", lineHeight: 1.7 }}
+              variants={slideUp}
             >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{
-                  border: "1.5px solid #C8956D",
-                  background: "rgba(200, 149, 109, 0.06)",
-                  color: "#C8956D",
-                }}
-              >
-                <s.icon size={16} />
-              </div>
-              <span
-                className="text-[10px] font-medium"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {s.label}
-              </span>
+              Personalized astrology insights powered by Vedic wisdom, AI and
+              expert guidance.
+            </motion.p>
+
+            <motion.div className="flex flex-wrap items-center gap-3" variants={slideUp}>
+              <Link href="/kundli" className="btn-gold-pill">
+                Generate Your Kundli <ArrowRight size={15} />
+              </Link>
+              <Link href="/services" className="btn-outline-light">
+                Explore Astrology
+              </Link>
             </motion.div>
-          ))}
-        </motion.div>
+
+            <motion.dl
+              className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-6 mt-12"
+              variants={slideUp}
+            >
+              {heroStats.map((s) => (
+                <div key={s.label} className="flex flex-col gap-1">
+                  <dt className="order-2 text-[11px] font-medium uppercase" style={{ color: "var(--on-dark-faint)", letterSpacing: "0.08em" }}>
+                    {s.label}
+                  </dt>
+                  <dd className="order-1 flex items-center gap-2 font-display" style={{ fontSize: "1.55rem", fontWeight: 600, color: "var(--on-dark)" }}>
+                    <s.icon size={17} style={{ color: "var(--gold)" }} aria-hidden="true" />
+                    {s.value}
+                  </dd>
+                </div>
+              ))}
+            </motion.dl>
+          </motion.div>
+
+          {/* Right: the artwork shows through here on desktop. */}
+          <div className="hidden md:block" aria-hidden="true" />
+        </div>
       </section>
+
+      <QuickAccess />
 
       {/* ================================================================
           SERVICES GRID
