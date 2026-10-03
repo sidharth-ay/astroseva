@@ -413,6 +413,168 @@ input[type="file"].input-field::file-selector-button:hover {
 .navbar-dark .nav-link:active { color: var(--on-dark); }
 .navbar-dark .mobile-panel { background: var(--midnight); }
 
+/* ---------------------------------------------------------------------------
+   NAV DRAWER -- the complete astrology index. Ivory surface, midnight text,
+   gold reserved for the active item and the AI badge. Motion is transform and
+   opacity only; the global reduced-motion rule zeroes these durations, and the
+   component additionally collapses its own durations when the hook reports it.
+--------------------------------------------------------------------------- */
+
+/* Hamburger trigger: three lines that morph into an X. 44px target. */
+.drawer-trigger {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  color: var(--on-dark-dim);
+  cursor: pointer;
+  transition: color 0.15s var(--ease-out), background 0.15s var(--ease-out);
+}
+
+.drawer-trigger:hover { color: var(--on-dark); }
+
+.drawer-trigger span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform 0.22s var(--ease-out), opacity 0.2s var(--ease-out);
+}
+
+.drawer-trigger span + span { margin-top: 5px; }
+
+.drawer-trigger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.drawer-trigger.open span:nth-child(2) { opacity: 0; }
+.drawer-trigger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Backdrop + panel geometry. The open/close slide itself is driven by the
+   component (motion), these classes only fix placement and surface. */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(10, 12, 28, 0.5);
+}
+
+.drawer-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 95;
+  width: min(92vw, 400px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.drawer-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Section toggle: full-width button, label left, chevron right. */
+.drawer-sec-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.drawer-sec-btn:hover { color: var(--text-primary); }
+
+.drawer-sec-btn svg {
+  transition: transform 0.22s var(--ease-out);
+}
+
+.drawer-sec-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+/* Accordion body: grid-rows animation, no JS height measurement. */
+.drawer-sub {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.25s var(--ease-out),
+    opacity 0.22s var(--ease-out);
+}
+
+.drawer-sub.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.drawer-sub > div { overflow: hidden; }
+
+/* Links: quiet rows, never pills. The active page gets a cream/indigo wash
+   and a gold bar -- identifiable without shouting. */
+.drawer-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 44px;
+  padding: 0.55rem 1.25rem 0.55rem 1.5rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: color 0.15s var(--ease-out), background 0.15s var(--ease-out);
+}
+
+.drawer-link:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
+.drawer-link.active {
+  color: var(--text-primary);
+  font-weight: 600;
+  background: rgba(74, 63, 107, 0.08);
+}
+
+.drawer-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0.55rem;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--gold);
+}
+
+/* AI badge: a bordered tag, deliberately flat -- no gradient, no glow. */
+.drawer-badge-ai {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--gold);
+  color: var(--accent-text);
+}
+
+.drawer-divider { height: 1px; background: var(--border-subtle); }
+
+.drawer-footer { border-top: 1px solid var(--border-subtle); }
+
 /* GOLD PILL -- the single conversion button (navbar "Get Started", hero
    primary CTA). Solid gold, midnight text, sentence case: the reference
    reserves the gradient for display type, not buttons. */
