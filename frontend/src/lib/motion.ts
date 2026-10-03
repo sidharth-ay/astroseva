@@ -30,11 +30,17 @@ export function useReducedMotion(): boolean {
 // Motion Tokens
 // ---------------------------------------------------------------------------
 
+// `duration` and `stagger` are a perceived-latency budget, not a style choice.
+// A page was interactive about 150 ms after the URL changed, but a stagger of
+// 0.08-0.12 per child plus a 0.3s fade meant a ten-card grid was still fading in
+// a second later -- which reads as "still loading" even though nothing is being
+// waited on. The easing curves are untouched; only the clocks are shorter, and
+// `motion.test.ts` pins the budget so it cannot creep back.
 export const duration = {
   instant: 0.05,
   fast: 0.15,
-  normal: 0.3,
-  slow: 0.5,
+  normal: 0.22,
+  slow: 0.35,
   cinematic: 0.8,
 } as const;
 
@@ -48,11 +54,22 @@ export const ease = {
 } as const;
 
 export const stagger = {
-  fast: 0.05,
-  normal: 0.08,
-  slow: 0.12,
-  child: 0.06,
+  fast: 0.03,
+  normal: 0.04,
+  slow: 0.05,
+  child: 0.03,
 } as const;
+
+/**
+ * Longest a staggered container may sit empty before its first child appears.
+ *
+ * Every page used to pass its own `delayChildren` of 0.04-0.3s, which is pure
+ * waiting: nothing is painted until it elapses, so a page looked blank after the
+ * route had already changed. The request is clamped in `staggerContainerCustom`
+ * rather than fixed at the call sites, so a page can still ask for a small beat
+ * but cannot buy a visible pause.
+ */
+export const MAX_STAGGER_DELAY = 0.05;
 
 // ---------------------------------------------------------------------------
 // Reusable Variants
@@ -99,11 +116,12 @@ export const staggerContainer: Variants = {
 
 // Stagger container with custom stagger
 export function staggerContainerCustom(staggerAmount: number, delayChildren = 0): Variants {
+  const delay = Math.min(Math.max(delayChildren, 0), MAX_STAGGER_DELAY);
   return {
     hidden: { opacity: 1 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: staggerAmount, delayChildren },
+      transition: { staggerChildren: staggerAmount, delayChildren: delay },
     },
   };
 }
