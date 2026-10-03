@@ -25,6 +25,11 @@ function LoginForm() {
 
   useEffect(() => {
     document.title = "Login | AstroSeva";
+    // Deep links (?mode=register) land on the registration form.
+    if (search.get("mode") === "register") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMode("register");
+    }
     // Validate any stored token server-side instead of trusting it.
     if (getToken()) {
       api.getMe().then(
@@ -32,7 +37,7 @@ function LoginForm() {
         () => clearSession()
       );
     }
-  }, [router, next]);
+  }, [router, next, search]);
 
   const submit = async () => {
     setError("");

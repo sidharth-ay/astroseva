@@ -34,6 +34,16 @@ export default function PredictionsPage() {
     document.title = "AI Predictions | AstroSeva";
   }, []);
 
+  useEffect(() => {
+    // Deep links (?category=career) land on the right category; anything else
+    // keeps the default instead of rendering an empty selection.
+    const category = new URLSearchParams(window.location.search).get("category");
+    if (category && categories.some((c) => c.key === category)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveCategory(category);
+    }
+  }, []);
+
   const handleCityChange = (city: CityEntry) => {
     setForm((prev) => ({
       ...prev,

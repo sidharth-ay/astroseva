@@ -65,6 +65,17 @@ export default function HoroscopePage() {
     document.title = `${activeTab} Horoscope | AstroSeva`;
   }, [activeTab]);
 
+  useEffect(() => {
+    // Deep links (?tab=Weekly) land on the right tab. Read once from the URL
+    // rather than through state so a bad value falls back to Daily instead of
+    // rendering an empty tab.
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab && (tabs as readonly string[]).includes(tab)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveTab(tab as Tab);
+    }
+  }, []);
+
   const fetchHoroscope = useCallback(
     (tab: Tab, zodiac: string) => {
       // Genuinely cancel the previous request (signal is wired into fetch).
