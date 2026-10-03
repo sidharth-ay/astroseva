@@ -827,6 +827,20 @@ export interface AuthUser {
   role?: UserRole;
 }
 
+/** Birth profile as reported by GET /api/v1/auth/me. Every field is nullable:
+ * accounts created before birth data existed, or without it, report nulls. */
+export interface BirthProfile {
+  phone_number: string | null;
+  gender: string | null;
+  birth_date: string | null;
+  birth_time: string | null;
+  birth_place: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  timezone_offset: number | null;
+  timezone_iana: string | null;
+}
+
 // --- astrologer marketplace -------------------------------------------------
 
 /** Applicant lifecycle. Terminal outcomes are verified/probation/rejected. */
@@ -1367,10 +1381,24 @@ export const api = {
       body: JSON.stringify({ birth_data, report_type }),
     }),
 
-  register: (email: string, name: string, password: string) =>
+  register: (
+    email: string,
+    name: string,
+    password: string,
+    birth?: {
+      gender?: string;
+      birth_date?: string;
+      birth_time?: string;
+      birth_place?: string;
+      latitude?: number;
+      longitude?: number;
+      timezone_offset?: number;
+      timezone_iana?: string;
+    },
+  ) =>
     fetchAPI<{ message: string }>("/api/v1/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, name, password }),
+      body: JSON.stringify({ email, name, password, ...birth }),
     }),
 
   login: (email: string, password: string) =>
@@ -1388,7 +1416,7 @@ export const api = {
       body: JSON.stringify({ current_password, new_password }),
     }),
 
-  getMe: () => fetchAuth<{ id: number; email: string; name: string; created_at: string }>("/api/v1/auth/me"),
+  getMe: () => fetchAuth<{ id: number; email: string; name: string; created_at: string } & BirthProfile>("/api/v1/auth/me"),
 
   saveChart: (data: { name: string; birth_date: string; birth_time: string; birth_place: string; latitude: number; longitude: number; timezone_offset: number; chart_data: Record<string, unknown> }) =>
     fetchAuth<{ message: string; chart_id: number }>("/api/v1/charts/save", {

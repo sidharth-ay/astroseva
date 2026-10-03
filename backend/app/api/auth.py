@@ -26,12 +26,40 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 PASSWORD_REGEX = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,128}$")
 
 
+def _check_birth_profile(data) -> None:
+    """Range-check birth geo fields. String shapes (date/time) are enforced by
+    pydantic patterns on the request models; anything numeric that slips past
+    (out-of-range coordinates, absurd offsets) is rejected here with a 400.
+    Shared by register and profile update so the two cannot disagree."""
+    lat = getattr(data, "latitude", None)
+    if lat is not None and not -90 <= lat <= 90:
+        raise HTTPException(status_code=400, detail="Latitude must be between -90 and 90.")
+    lng = getattr(data, "longitude", None)
+    if lng is not None and not -180 <= lng <= 180:
+        raise HTTPException(status_code=400, detail="Longitude must be between -180 and 180.")
+    tz = getattr(data, "timezone_offset", None)
+    if tz is not None and not -12 <= tz <= 14:
+        raise HTTPException(status_code=400, detail="Timezone offset must be between -12 and +14.")
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     name: str = Field(..., min_length=1, max_length=100)
     # min_length is characters and max_length is also characters; the handler
     # then rejects anything over 72 bytes, because bcrypt uses only those.
     password: str = Field(..., min_length=8, max_length=1024)
+    # First-run birth profile: a new user enters birth details before creating
+    # the account, so registration carries them onto the new User row. All
+    # optional (an account without them is simply an incomplete profile), but
+    # when present they must already be shaped like SavedChart stores them.
+    gender: str | None = Field(default=None, max_length=32)
+    birth_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    birth_time: str | None = Field(default=None, pattern=r"^\d{2}:\d{2}(:\d{2})?$")
+    birth_place: str | None = Field(default=None, max_length=100)
+    latitude: float | None = None
+    longitude: float | None = None
+    timezone_offset: float | None = None
+    timezone_iana: str | None = Field(default=None, max_length=64)
 
 
 class LoginRequest(BaseModel):
@@ -88,10 +116,19 @@ async def register(request: Request, register_data: RegisterRequest, db: Session
 
     existing = db.query(User).filter(User.email == register_data.email).first()
     if existing is None:
+        _check_birth_profile(register_data)
         user = User(
             email=register_data.email,
             name=register_data.name,
             hashed_password=hash_password(register_data.password),
+            gender=register_data.gender,
+            birth_date=register_data.birth_date,
+            birth_time=register_data.birth_time,
+            birth_place=register_data.birth_place,
+            latitude=register_data.latitude,
+            longitude=register_data.longitude,
+            timezone_offset=register_data.timezone_offset,
+            timezone_iana=register_data.timezone_iana,
         )
         db.add(user)
         db.commit()
@@ -206,6 +243,15 @@ async def get_me(request: Request, user: User = Depends(get_current_user)):
         "name": user.name,
         "role": getattr(user, "role", "client"),
         "created_at": str(user.created_at),
+        "phone_number": user.phone_number,
+        "gender": user.gender,
+        "birth_date": user.birth_date,
+        "birth_time": user.birth_time,
+        "birth_place": user.birth_place,
+        "latitude": user.latitude,
+        "longitude": user.longitude,
+        "timezone_offset": user.timezone_offset,
+        "timezone_iana": user.timezone_iana,
     }
 
 

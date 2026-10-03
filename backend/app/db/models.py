@@ -28,6 +28,19 @@ class User(Base):
     role = Column(String(32), nullable=False, default=ROLE_CLIENT, index=True)
     token_version = Column(Integer, nullable=False, default=0)
     email_verified = Column(Boolean, nullable=False, default=False)
+    # The account's birth profile: the single source of truth every
+    # calculation reads. All nullable so pre-existing rows stay valid; the
+    # application treats "every birth field present" as complete. Conventions
+    # match SavedChart (string dates, float geo) so the two stay comparable.
+    phone_number = Column(String(64), nullable=True, default=None)
+    gender = Column(String(32), nullable=True, default=None)
+    birth_date = Column(String(20), nullable=True, default=None)
+    birth_time = Column(String(10), nullable=True, default=None)
+    birth_place = Column(String(255), nullable=True, default=None)
+    latitude = Column(Float, nullable=True, default=None)
+    longitude = Column(Float, nullable=True, default=None)
+    timezone_offset = Column(Float, nullable=True, default=None)
+    timezone_iana = Column(String(64), nullable=True, default=None)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
